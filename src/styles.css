@@ -161,22 +161,73 @@
     scroll-behavior: smooth;
   }
 
-  button, a, input, select, textarea { letter-spacing: 0; }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    letter-spacing: 0;
+  }
 
-  label { @apply grid gap-2 text-xs font-semibold text-foreground; }
-  input, select, textarea { @apply w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15; }
-  textarea { resize: vertical; }
+  label {
+    @apply grid gap-2 text-xs font-semibold text-foreground;
+  }
+  input,
+  select,
+  textarea {
+    @apply w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15;
+  }
+  textarea {
+    resize: vertical;
+  }
 }
 
 @utility bg-hero-overlay {
-  background: linear-gradient(90deg, color-mix(in oklab, var(--ink) 97%, transparent) 0%, color-mix(in oklab, var(--ink) 84%, transparent) 42%, color-mix(in oklab, var(--ink) 12%, transparent) 78%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ink) 97%, transparent) 0%,
+    color-mix(in oklab, var(--ink) 84%, transparent) 42%,
+    color-mix(in oklab, var(--ink) 12%, transparent) 78%
+  );
 }
 
 @utility bg-trust-overlay {
-  background: linear-gradient(90deg, color-mix(in oklab, var(--ink) 98%, transparent) 0%, color-mix(in oklab, var(--ink) 88%, transparent) 38%, color-mix(in oklab, var(--ink) 25%, transparent) 73%, color-mix(in oklab, var(--ink) 58%, transparent) 100%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ink) 98%, transparent) 0%,
+    color-mix(in oklab, var(--ink) 88%, transparent) 38%,
+    color-mix(in oklab, var(--ink) 25%, transparent) 73%,
+    color-mix(in oklab, var(--ink) 58%, transparent) 100%
+  );
 }
 
 @media (max-width: 640px) {
-  .bg-hero-overlay { background: linear-gradient(90deg, color-mix(in oklab, var(--ink) 95%, transparent), color-mix(in oklab, var(--ink) 55%, transparent)); }
-  .bg-trust-overlay { background: color-mix(in oklab, var(--ink) 80%, transparent); }
+  .bg-hero-overlay {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--ink) 95%, transparent),
+      color-mix(in oklab, var(--ink) 55%, transparent)
+    );
+  }
+  .bg-trust-overlay {
+    background: color-mix(in oklab, var(--ink) 80%, transparent);
+  }
+}
+
+/* Ensure no Lovable watermark or external branding badge appears */
+#lovable-badge,
+.lovable-badge,
+[id*="lovable-badge"],
+[class*="lovable-badge"],
+[data-lovable-badge],
+a[href*="lovable.dev"],
+button[data-lovable],
+.tanstack-devtools,
+[class*="tanstack-devtools"],
+#tanstack-devtools,
+div:has(> a[href*="lovable.dev"]) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }

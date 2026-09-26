@@ -27,11 +27,27 @@ export function SiteHeader() {
         <BrandLogo />
         <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
           {links.map((link) => (
-            <a key={link} href={`#${link.toLowerCase()}`} className="text-sm font-semibold text-foreground transition-colors hover:text-primary">{link}</a>
+            <a
+              key={link}
+              href={`#${link.toLowerCase()}`}
+              className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
+            >
+              {link}
+            </a>
           ))}
         </nav>
-        <a href="tel:+918639858221" className="hidden lg:block"><Button><Phone className="size-4" /> 8639858221</Button></a>
-        <Button variant="ghost" className="size-11 px-0 lg:hidden" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}>
+        <a href="tel:+918639858221" className="hidden lg:block">
+          <Button>
+            <Phone className="size-4" /> 8639858221
+          </Button>
+        </a>
+        <Button
+          variant="ghost"
+          className="size-11 px-0 lg:hidden"
+          aria-label="Open menu"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+        >
           <Menu />
         </Button>
       </div>
@@ -56,7 +72,14 @@ export function SiteHeader() {
             >
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border pb-5">
                 <BrandLogo />
-                <Button variant="ghost" className="size-11 px-0" aria-label="Close menu" onClick={() => setOpen(false)}><X /></Button>
+                <Button
+                  variant="ghost"
+                  className="size-11 px-0"
+                  aria-label="Close menu"
+                  onClick={() => setOpen(false)}
+                >
+                  <X />
+                </Button>
               </div>
               <nav className="grid gap-1 py-6" aria-label="Mobile navigation">
                 {links.map((link, index) => (
@@ -68,10 +91,16 @@ export function SiteHeader() {
                     initial={{ opacity: 0, x: 24 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.08 + index * 0.035 }}
-                  >{link}</motion.a>
+                  >
+                    {link}
+                  </motion.a>
                 ))}
               </nav>
-              <a href="tel:+918639858221" className="mt-auto"><Button className="w-full"><Phone className="size-4" /> Call 8639858221</Button></a>
+              <a href="tel:+918639858221" className="mt-auto">
+                <Button className="w-full">
+                  <Phone className="size-4" /> Call 8639858221
+                </Button>
+              </a>
             </motion.aside>
           </>
         )}
