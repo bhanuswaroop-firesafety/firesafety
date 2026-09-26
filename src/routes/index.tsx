@@ -30,6 +30,10 @@ import projectPump from "@/assets/project-pump.jpg";
 import projectCctv from "@/assets/project-cctv.jpg";
 import projectCable from "@/assets/project-cable.jpg";
 import projectHydrant from "@/assets/project-hydrant.jpg";
+import roadSafety from "@/assets/road-safety.jpg";
+import medicalSafety from "@/assets/medical-safety.jpg";
+import marineSafety from "@/assets/marine-safety.jpg";
+import cableManagement from "@/assets/cable-management.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,11 +55,11 @@ const products = [
   { name: "Fire Pumps", desc: "Reliable pumps for fire protection systems", image: pump, icon: Wrench },
   { name: "Personal Protective Equipment", desc: "Head, hand, foot and body protection", image: helmet, icon: HardHat },
   { name: "Electrical Safety", desc: "Workplace electrical protection equipment", image: gloves, icon: Zap },
-  { name: "Road Safety", desc: "Cones, barriers and reflective protection", image: construction, icon: Construction },
-  { name: "Medical & Surgical Safety", desc: "Essential workplace medical protection", image: gloves, icon: Stethoscope },
-  { name: "Rain & Marine Safety", desc: "Weather-ready and marine protection", image: helmet, icon: ShipWheel },
+  { name: "Road Safety", desc: "Cones, barriers and reflective protection", image: roadSafety, icon: Construction },
+  { name: "Medical & Surgical Safety", desc: "Essential workplace medical protection", image: medicalSafety, icon: Stethoscope },
+  { name: "Rain & Marine Safety", desc: "Weather-ready and marine protection", image: marineSafety, icon: ShipWheel },
   { name: "CCTV & Security Systems", desc: "Professional surveillance solutions", image: cctv, icon: Camera },
-  { name: "Cable Management Systems", desc: "Industrial cable trays and routing", image: projectCable, icon: Boxes },
+  { name: "Cable Management Systems", desc: "Industrial cable trays and routing", image: cableManagement, icon: Boxes },
 ];
 
 const industries = [
