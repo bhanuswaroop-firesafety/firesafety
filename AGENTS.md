@@ -12,3 +12,4 @@
 ## Project architecture
 
 - Keep the Udharchi website as a single-page B2B portfolio with anchor navigation, because its reference composition is one continuous homepage.
+- Use Motion for React for restrained entrance and navigation transitions, with reduced-motion support for accessibility.
