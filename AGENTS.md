@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Project architecture
+
+- Keep the Udharchi website as a single-page B2B portfolio with anchor navigation, because its reference composition is one continuous homepage.
