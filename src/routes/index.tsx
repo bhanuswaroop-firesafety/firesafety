@@ -59,13 +59,13 @@ import cableManagement from "@/assets/cable-management.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Udharchi Enterprises | Fire & Industrial Safety Solutions" },
+      { title: "Sri Udharchi Enterprises | Fire & Industrial Safety Solutions" },
       {
         name: "description",
         content:
           "Professional fire safety, industrial safety, PPE, hydrant systems, CCTV, installation and maintenance solutions in Andhra Pradesh.",
       },
-      { property: "og:title", content: "Udharchi Enterprises | Safety Solutions" },
+      { property: "og:title", content: "Sri Udharchi Enterprises | Safety Solutions" },
       {
         property: "og:description",
         content:
@@ -261,7 +261,7 @@ function Index() {
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
           <div>
             <SectionHeading
-              eyebrow="About Udharchi Enterprises"
+              eyebrow="About Sri Udharchi Enterprises"
               title={
                 <>
                   Complete Fire & Industrial
@@ -271,7 +271,7 @@ function Index() {
               }
             />
             <p className="text-base leading-relaxed text-muted-foreground">
-              Udharchi Enterprises provides professional fire safety, industrial safety and
+              Sri Udharchi Enterprises provides professional fire safety, industrial safety and
               workplace protection solutions including fire protection systems, PPE, fire hydrant
               products, fire pumps, safety signage, CCTV and installation services.
             </p>
@@ -454,7 +454,7 @@ function Index() {
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[1fr_0.8fr] lg:px-8">
           <div>
             <span className="rounded-full border border-primary-foreground/25 px-3 py-1 text-xs">
-              Why Choose Udharchi
+              Why Choose Sri Udharchi
             </span>
             <h2 className="mt-5 font-display text-4xl font-black leading-tight md:text-5xl">
               Your Trusted Partner
@@ -685,7 +685,7 @@ function Index() {
                 role="status"
                 className="sm:col-span-2 rounded-md bg-success/10 p-3 text-center text-sm font-semibold text-success"
               >
-                Thank you. Your enquiry is ready for the Udharchi team.
+                Thank you. Your enquiry is ready for the Sri Udharchi team.
               </p>
             )}
           </form>
@@ -731,7 +731,7 @@ function Index() {
           ))}
         </div>
         <div className="border-t border-border px-5 py-5 text-center text-xs text-muted-foreground">
-          © 2026 Udharchi Enterprises. All rights reserved.
+          © 2026 Sri Udharchi Enterprises. All rights reserved.
         </div>
       </footer>
     </main>

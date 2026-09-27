@@ -78,17 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Udharchi Enterprises" },
+      { title: "Sri Udharchi Enterprises" },
       {
         name: "description",
         content: "Fire and industrial safety solutions showcase and equipment catalog.",
       },
-      { property: "og:title", content: "Udharchi Enterprises" },
+      { property: "og:title", content: "Sri Udharchi Enterprises" },
       {
         property: "og:description",
         content: "Fire and industrial safety solutions showcase and equipment catalog.",
       },
-      { name: "author", content: "Udharchi Enterprises" },
+      { name: "author", content: "Sri Udharchi Enterprises" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
