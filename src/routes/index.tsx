@@ -227,9 +227,17 @@ function Index() {
               <a href="tel:+918639858221">
                 <Button
                   variant="outline"
-                  className="h-12 border-primary-foreground/45 bg-transparent px-7 text-primary-foreground hover:bg-primary-foreground/10"
+                  className="h-12 border-primary-foreground/45 bg-transparent px-5 text-primary-foreground hover:bg-primary-foreground/10"
                 >
                   <Phone className="size-4" /> Call 8639858221
+                </Button>
+              </a>
+              <a href="tel:+919030609171">
+                <Button
+                  variant="outline"
+                  className="h-12 border-primary-foreground/45 bg-transparent px-5 text-primary-foreground hover:bg-primary-foreground/10"
+                >
+                  <Phone className="size-4" /> Call 9030609171
                 </Button>
               </a>
             </div>
@@ -586,10 +594,13 @@ function Index() {
           </div>
           <div className="grid grid-cols-4 gap-2">
             {[
-              [projectPump, "Fire pump installation"],
-              [projectCctv, "CCTV systems"],
-              [projectCable, "Cable management"],
-              [projectHydrant, "Hydrant installation"],
+              ["/src/assets/images/project_fire_pump_1790949771594.jpg", "Fire pump installation"],
+              ["/src/assets/images/project_industrial_cctv_1790949816614.jpg", "CCTV systems"],
+              ["/src/assets/images/project_cable_management_1790949831946.jpg", "Cable management"],
+              [
+                "/src/assets/images/project_hydrant_network_1790949784743.jpg",
+                "Hydrant installation",
+              ],
             ].map(([image, label], index) => (
               <motion.figure
                 key={label}
@@ -603,6 +614,7 @@ function Index() {
                   src={image}
                   alt={label}
                   loading="lazy"
+                  referrerPolicy="no-referrer"
                   width={720}
                   height={520}
                   className="aspect-[0.85] w-full object-cover"
@@ -626,12 +638,13 @@ function Index() {
             />
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
               {[
-                [Phone, "Call Us", "8639858221", "tel:+918639858221"],
+                [Phone, "Call Primary", "+91 8639858221", "tel:+918639858221"],
+                [Phone, "Call Secondary", "+91 9030609171", "tel:+919030609171"],
                 [
                   Mail,
                   "Email Us",
-                  "udharchienterprises@gmail.com",
-                  "mailto:udharchienterprises@gmail.com",
+                  "sriudharchienterprises@gmail.com",
+                  "mailto:sriudharchienterprises@gmail.com",
                 ],
                 [
                   MapPin,

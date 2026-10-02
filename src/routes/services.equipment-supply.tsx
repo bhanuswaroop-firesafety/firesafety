@@ -57,6 +57,11 @@ export function EquipmentSupplyServicePage() {
                     <Phone className="size-4" /> Call +91 8639858221
                   </Button>
                 </a>
+                <a href="tel:+919030609171">
+                  <Button variant="outline" size="lg">
+                    <Phone className="size-4" /> Call +91 9030609171
+                  </Button>
+                </a>
               </div>
             </div>
 
@@ -140,8 +145,8 @@ export function EquipmentSupplyServicePage() {
             Direct Delivery Across Andhra Pradesh & Pan-India
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            Fast dispatch from our Visakhapatnam inventory hub with competitive wholesale rates for
-            contractors, factories, and builders.
+            Fast dispatch from our Palasamudram, AP inventory hub with competitive wholesale rates
+            for contractors, factories, and builders.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-4">
             <a href="/products">

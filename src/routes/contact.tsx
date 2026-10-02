@@ -103,6 +103,11 @@ function ContactPage() {
                       <Phone className="size-4" /> Call +91 8639858221
                     </Button>
                   </a>
+                  <a href="tel:+919030609171" className="w-full sm:w-auto">
+                    <Button size="lg" variant="outline" className="w-full">
+                      <Phone className="size-4" /> Call +91 9030609171
+                    </Button>
+                  </a>
                 </div>
               </div>
 
@@ -146,13 +151,23 @@ function ContactPage() {
                   <MapPin className="size-5" />
                 </div>
                 <h3 className="font-display text-base font-bold text-foreground">
-                  Headquarters & Supply Hub
+                  Our Office & Supply Hub
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Sri Udharchi Enterprises
                   <br />
-                  Visakhapatnam, Andhra Pradesh, India
+                  H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241
                 </p>
+                <div className="mt-3">
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=Kubera+Hills+Palasamudram+Andhra+Pradesh+515241"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center text-xs font-semibold text-primary hover:underline"
+                  >
+                    View on Google Maps →
+                  </a>
+                </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Serving clients across Andhra Pradesh, Telangana, Odisha, and Pan-India.
                 </p>

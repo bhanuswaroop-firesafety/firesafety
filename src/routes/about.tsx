@@ -52,8 +52,9 @@ function AboutPage() {
               </h1>
               <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
                 Sri Udharchi Enterprises is a premier fire protection engineering, industrial safety
-                consulting, and workplace hazard mitigation firm headquartered in Visakhapatnam,
-                Andhra Pradesh, serving industrial and commercial clients nationwide.
+                consulting, and workplace hazard mitigation firm headquartered at H-7, Kubera Hills,
+                Palasamudram, Sri Sathya Sai District, AP - 515241, serving industrial and
+                commercial clients nationwide.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <a href="/contact">
@@ -62,6 +63,11 @@ function AboutPage() {
                 <a href="tel:+918639858221">
                   <Button variant="outline" size="lg">
                     <Phone className="size-4" /> Call +91 8639858221
+                  </Button>
+                </a>
+                <a href="tel:+919030609171">
+                  <Button variant="outline" size="lg">
+                    <Phone className="size-4" /> Call +91 9030609171
                   </Button>
                 </a>
               </div>
@@ -214,6 +220,11 @@ function AboutPage() {
             <a href="tel:+918639858221">
               <Button variant="outline" size="lg">
                 <Phone className="size-4" /> Call +91 8639858221
+              </Button>
+            </a>
+            <a href="tel:+919030609171">
+              <Button variant="outline" size="lg">
+                <Phone className="size-4" /> Call +91 9030609171
               </Button>
             </a>
           </div>

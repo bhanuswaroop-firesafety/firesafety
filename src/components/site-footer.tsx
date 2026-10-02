@@ -101,11 +101,14 @@ export function SiteFooter() {
           <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
             <li className="flex items-start gap-3">
               <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div>
+              <div className="space-y-0.5">
                 <a href="tel:+918639858221" className="block font-semibold hover:text-primary">
                   +91 8639858221
                 </a>
-                <span className="text-xs text-muted-foreground">24/7 Emergency Support</span>
+                <a href="tel:+919030609171" className="block font-semibold hover:text-primary">
+                  +91 9030609171
+                </a>
+                <span className="block text-xs text-muted-foreground">24/7 Emergency Support</span>
               </div>
             </li>
             <li className="flex items-start gap-3">
@@ -119,7 +122,7 @@ export function SiteFooter() {
             </li>
             <li className="flex items-start gap-3">
               <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>Visakhapatnam, Andhra Pradesh, India</span>
+              <span>H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241</span>
             </li>
           </ul>
         </div>

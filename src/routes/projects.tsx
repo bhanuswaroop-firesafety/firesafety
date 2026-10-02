@@ -32,7 +32,7 @@ const projectsList = [
     id: "heavy-manufacturing-hydrant",
     title: "Heavy Manufacturing Facility Fire Hydrant Network",
     category: "Hydrant Systems",
-    image: projectHydrantImg,
+    image: "/src/assets/images/project_hydrant_network_1790949784743.jpg",
     location: "Visakhapatnam Industrial Corridor, AP",
     client: "Heavy Machinery & Fabrication Plant (45,000 sq.m)",
     scope:
@@ -43,7 +43,7 @@ const projectsList = [
     id: "industrial-pump-house",
     title: "Automated Main & Standby Diesel Fire Pump House",
     category: "Fire Pumps",
-    image: projectPumpImg,
+    image: "/src/assets/images/project_fire_pump_1790949771594.jpg",
     location: "Kakinada Port Special Economic Zone, AP",
     client: "Chemical Processing & Bulk Liquid Storage Terminal",
     scope:
@@ -54,7 +54,7 @@ const projectsList = [
     id: "logistics-warehouse-sprinkler",
     title: "Mega Logistics Warehouse ESFR Sprinkler Grid",
     category: "Sprinkler Systems",
-    image: warehousesImg,
+    image: "/src/assets/images/project_warehouse_sprinkler_1790949802340.jpg",
     location: "Vijayawada Logistics Hub, AP",
     client: "E-Commerce Regional Fulfillment Center (120,000 sq.ft)",
     scope:
@@ -65,7 +65,7 @@ const projectsList = [
     id: "industrial-cctv-flame-detection",
     title: "Explosion-Proof IP CCTV & Optical Flame Detection",
     category: "Surveillance & CCTV",
-    image: projectCctvImg,
+    image: "/src/assets/images/project_industrial_cctv_1790949816614.jpg",
     location: "Visakhapatnam Refinery Zone, AP",
     client: "Petrochemical Intermediate Storage & Transfer Terminal",
     scope:
@@ -76,7 +76,7 @@ const projectsList = [
     id: "fire-rated-cable-management",
     title: "High-Temp Fire-Rated Industrial Cable Tray Network",
     category: "Cable Management",
-    image: projectCableImg,
+    image: "/src/assets/images/project_cable_management_1790949831946.jpg",
     location: "Rayalaseema Industrial Estate, AP",
     client: "Continuous Process Steel Rolling Mill",
     scope:
@@ -87,7 +87,7 @@ const projectsList = [
     id: "hospital-clean-agent-suppression",
     title: "Multi-Specialty Hospital Clean Agent Gas Suppression",
     category: "Gas Suppression",
-    image: hydrantImg,
+    image: "/src/assets/images/project_fire_pump_1790949771594.jpg",
     location: "Guntur Healthcare District, AP",
     client: "350-Bed Tertiary Care Hospital Campus",
     scope:
@@ -225,6 +225,11 @@ function ProjectsPage() {
             <a href="tel:+918639858221">
               <Button variant="outline" size="lg">
                 <Phone className="size-4" /> Call +91 8639858221
+              </Button>
+            </a>
+            <a href="tel:+919030609171">
+              <Button variant="outline" size="lg">
+                <Phone className="size-4" /> Call +91 9030609171
               </Button>
             </a>
           </div>

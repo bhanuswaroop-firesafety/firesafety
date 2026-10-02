@@ -113,11 +113,18 @@ export function SiteHeader() {
               <Lock className="size-3.5" /> Admin
             </Button>
           </a>
-          <a href="tel:+918639858221">
-            <Button>
-              <Phone className="size-4" /> 8639858221
-            </Button>
-          </a>
+          <div className="flex items-center gap-1.5">
+            <a href="tel:+918639858221">
+              <Button size="sm">
+                <Phone className="size-3.5" /> 8639858221
+              </Button>
+            </a>
+            <a href="tel:+919030609171">
+              <Button size="sm" variant="outline">
+                <Phone className="size-3.5" /> 9030609171
+              </Button>
+            </a>
+          </div>
         </div>
 
         <Button
@@ -227,11 +234,18 @@ export function SiteHeader() {
                     <Lock className="size-3.5" /> Open Admin Portal
                   </Button>
                 </a>
-                <a href="tel:+918639858221">
-                  <Button className="w-full">
-                    <Phone className="size-4" /> Call 8639858221
-                  </Button>
-                </a>
+                <div className="grid grid-cols-2 gap-2">
+                  <a href="tel:+918639858221">
+                    <Button className="w-full text-xs">
+                      <Phone className="size-3.5" /> 8639858221
+                    </Button>
+                  </a>
+                  <a href="tel:+919030609171">
+                    <Button variant="outline" className="w-full text-xs">
+                      <Phone className="size-3.5" /> 9030609171
+                    </Button>
+                  </a>
+                </div>
               </div>
             </motion.aside>
           </>

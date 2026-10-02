@@ -183,6 +183,11 @@ function ProductsPage() {
                 <Phone className="size-4" /> Call +91 8639858221
               </Button>
             </a>
+            <a href="tel:+919030609171">
+              <Button variant="outline" size="lg">
+                <Phone className="size-4" /> Call +91 9030609171
+              </Button>
+            </a>
           </div>
         </div>
       </section>
