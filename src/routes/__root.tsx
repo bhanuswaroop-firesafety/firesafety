@@ -9,9 +9,10 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
+import { AuthProvider } from "../lib/auth-context";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { logAppError } from "../lib/error-logger";
 
 function NotFoundComponent() {
   return (
@@ -39,7 +40,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    logAppError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -103,6 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", href: "/sri-udharchi-enterprises-logo.png", type: "image/png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
@@ -129,38 +131,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  useEffect(() => {
-    const purgeLovableWatermarks = () => {
-      const selectors = [
-        "#lovable-badge",
-        ".lovable-badge",
-        '[id*="lovable"]',
-        '[class*="lovable-badge"]',
-        "[data-lovable-badge]",
-        'a[href*="lovable.dev"]',
-        "button[data-lovable]",
-      ];
-      selectors.forEach((selector) => {
-        document.querySelectorAll(selector).forEach((el) => {
-          el.remove();
-        });
-      });
-    };
-
-    purgeLovableWatermarks();
-    const observer = new MutationObserver(() => {
-      purgeLovableWatermarks();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <MotionConfig reducedMotion="user">
       <QueryClientProvider client={queryClient}>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
+        <AuthProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+        </AuthProvider>
       </QueryClientProvider>
     </MotionConfig>
   );

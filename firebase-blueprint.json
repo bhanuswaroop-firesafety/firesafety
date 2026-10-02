@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Industrial safety and fire protection product record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "image": { "type": "string", "maxLength": 1000 },
+        "specs": { "type": "array" },
+        "inStock": { "type": "boolean" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "category", "description"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["admin", "staff", "customer"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "Customer contact or quote request lead",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 200 },
+        "service": { "type": "string", "maxLength": 100 },
+        "facility": { "type": "string", "maxLength": 100 },
+        "message": { "type": "string", "maxLength": 3000 },
+        "status": { "type": "string", "enum": ["new", "contacted", "closed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "phone", "email"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog of safety and fire protection equipment"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered system users and administrators"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": "Inquiry",
+      "description": "Customer lead submissions and quote requests"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Equipment categories"
+    }
+  }
+}

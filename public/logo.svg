@@ -1,0 +1,138 @@
+<svg viewBox="0 0 570 210" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sri Udharchi Enterprises Logo">
+  <defs>
+    <linearGradient id="pubUdharchiRedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e51824" />
+      <stop offset="35%" stop-color="#c8101a" />
+      <stop offset="70%" stop-color="#9e0610" />
+      <stop offset="100%" stop-color="#680007" />
+    </linearGradient>
+
+    <linearGradient id="pubGoldBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe57f" />
+      <stop offset="25%" stop-color="#ffd54f" />
+      <stop offset="50%" stop-color="#ffb300" />
+      <stop offset="75%" stop-color="#ff8f00" />
+      <stop offset="100%" stop-color="#b26a00" />
+    </linearGradient>
+
+    <linearGradient id="pubMonogramRedGrad" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#f01a26" />
+      <stop offset="30%" stop-color="#c50f18" />
+      <stop offset="75%" stop-color="#87050d" />
+      <stop offset="100%" stop-color="#4f0006" />
+    </linearGradient>
+
+    <linearGradient id="pubSwooshUpperGrad" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#b71018" />
+      <stop offset="50%" stop-color="#e51c26" />
+      <stop offset="100%" stop-color="#8d0910" />
+    </linearGradient>
+
+    <linearGradient id="pubSwooshLowerGrad" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#96070e" />
+      <stop offset="40%" stop-color="#d9141f" />
+      <stop offset="100%" stop-color="#e52b34" />
+    </linearGradient>
+
+    <radialGradient id="pubFlameOuterGrad" cx="50%" cy="80%" r="70%">
+      <stop offset="0%" stop-color="#ffea00" />
+      <stop offset="60%" stop-color="#ff9100" />
+      <stop offset="100%" stop-color="#d50000" />
+    </radialGradient>
+    <radialGradient id="pubFlameCoreGrad" cx="50%" cy="85%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="40%" stop-color="#fff9c4" />
+      <stop offset="80%" stop-color="#ffeb3b" />
+      <stop offset="100%" stop-color="#ff9800" />
+    </radialGradient>
+
+    <linearGradient id="pubExtinguisherShine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b0000" />
+      <stop offset="25%" stop-color="#e51c23" />
+      <stop offset="50%" stop-color="#ff5252" />
+      <stop offset="75%" stop-color="#c62828" />
+      <stop offset="100%" stop-color="#5f0000" />
+    </linearGradient>
+
+    <radialGradient id="pubReelGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#b71c1c" />
+      <stop offset="70%" stop-color="#d32f2f" />
+      <stop offset="100%" stop-color="#8b0000" />
+    </radialGradient>
+
+    <filter id="pubLogoShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Left Emblem -->
+  <g id="pubEmblem">
+    <path d="M 38 88 C 45 42, 105 24, 155 42 C 172 49, 185 62, 194 78 C 185 64, 168 53, 148 48 C 105 34, 52 50, 42 85 Z" fill="#111111" />
+    <path d="M 22 92 C 28 46, 88 18, 142 28 C 175 35, 195 54, 205 76 C 196 58, 172 42, 138 36 C 88 28, 38 52, 30 90 C 27 94, 23 95, 22 92 Z" fill="url(#pubSwooshUpperGrad)" />
+    <path d="M 195 142 C 185 178, 140 200, 95 198 C 65 196, 45 186, 32 170 C 46 182, 70 190, 100 191 C 140 192, 180 172, 190 140 Z" fill="#111111" />
+    <path d="M 204 135 C 196 182, 145 208, 92 204 C 55 201, 28 185, 12 165 C 26 179, 58 195, 96 197 C 145 199, 188 178, 198 138 C 201 132, 205 130, 204 135 Z" fill="url(#pubSwooshLowerGrad)" />
+
+    <path d="M 40 178 C 55 188, 75 194, 98 196 C 80 192, 60 185, 48 174 Z" fill="#c62828" />
+    <path d="M 125 196 C 145 193, 165 185, 180 172 C 168 182, 148 190, 128 195 Z" fill="#111111" />
+
+    <!-- UR Monogram -->
+    <g filter="url(#pubLogoShadow)">
+      <path d="M 45 68 L 78 68 L 88 140 C 90 152, 98 158, 108 158 C 118 158, 126 150, 128 138 L 132 110 C 130 92, 138 72, 158 68 L 192 68 C 206 68, 212 78, 208 94 C 204 110, 190 120, 175 125 L 198 175 L 165 175 L 148 132 C 144 134, 138 135, 134 136 C 130 162, 114 174, 92 174 C 68 174, 52 156, 48 132 Z" fill="url(#pubGoldBevelGrad)" stroke="#8c6708" stroke-width="2.5" stroke-linejoin="round" />
+      <path d="M 49 72 L 74 72 L 84 138 C 86 148, 94 154, 104 154 C 114 154, 122 146, 124 136 L 128 108 C 126 88, 136 74, 154 72 L 188 72 C 198 72, 204 78, 200 90 C 196 102, 186 112, 172 116 L 192 168 L 168 168 L 150 128 C 144 130, 138 131, 132 132 C 128 156, 114 168, 94 168 C 72 168, 56 152, 52 130 Z" fill="url(#pubMonogramRedGrad)" />
+      <path d="M 152 86 L 176 86 C 182 86, 186 89, 184 95 C 182 101, 176 105, 170 105 L 148 105 Z" stroke="url(#pubGoldBevelGrad)" stroke-width="3" fill="#2b0204" />
+      <path d="M 52 74 L 72 74 L 62 120 C 58 115, 54 95, 52 74 Z" fill="#ffffff" opacity="0.25" />
+      <path d="M 156 74 L 186 74 C 192 74, 196 77, 194 82 L 154 82 Z" fill="#ffffff" opacity="0.3" />
+    </g>
+
+    <!-- Flame -->
+    <g filter="url(#pubLogoShadow)">
+      <path d="M 104 36 C 104 36, 126 66, 124 88 C 122 102, 112 112, 102 112 C 90 112, 82 102, 84 88 C 86 68, 104 36, 104 36 Z" fill="url(#pubFlameOuterGrad)" />
+      <path d="M 103 48 C 103 48, 120 72, 118 89 C 116 99, 109 106, 102 106 C 94 106, 88 99, 90 89 C 92 74, 103 48, 103 48 Z" fill="url(#pubFlameOuterGrad)" />
+      <path d="M 103 62 C 103 62, 114 78, 112 90 C 111 96, 106 100, 102 100 C 97 100, 93 96, 94 90 C 95 80, 103 62, 103 62 Z" fill="url(#pubFlameCoreGrad)" />
+    </g>
+
+    <!-- Extinguisher -->
+    <g transform="rotate(-15 42 140)">
+      <rect x="30" y="114" width="22" height="48" rx="9" fill="url(#pubExtinguisherShine)" stroke="#500004" stroke-width="1.2" />
+      <path d="M 33 158 L 49 158 L 47 163 L 35 163 Z" fill="#1f1f1f" />
+      <rect x="33" y="128" width="16" height="20" rx="1.5" fill="#ffffff" />
+      <line x1="36" y1="132" x2="46" y2="132" stroke="#111111" stroke-width="1.5" />
+      <line x1="36" y1="136" x2="44" y2="136" stroke="#c62828" stroke-width="1.2" />
+      <line x1="36" y1="140" x2="46" y2="140" stroke="#111111" stroke-width="1.2" />
+      <line x1="36" y1="144" x2="43" y2="144" stroke="#111111" stroke-width="1.2" />
+      <rect x="38" y="110" width="6" height="5" fill="#d1d5db" />
+      <path d="M 34 105 L 44 108 L 48 103 L 42 101 Z" fill="#111111" stroke="#ffffff" stroke-width="0.4" />
+      <path d="M 36 109 L 46 110 L 44 113 L 35 111 Z" fill="#111111" />
+      <circle cx="46" cy="111" r="2.8" fill="#ffd700" stroke="#111" stroke-width="0.6" />
+      <circle cx="46" cy="111" r="1.8" fill="#ffffff" />
+      <line x1="46" y1="111" x2="47" y2="110" stroke="#d50000" stroke-width="0.6" />
+      <path d="M 38 111 Q 25 116 26 138 Q 27 154 33 156" fill="none" stroke="#111111" stroke-width="3.2" stroke-linecap="round" />
+      <polygon points="31,154 36,155 35,160 30,158" fill="#111111" />
+    </g>
+
+    <!-- Hose Reel -->
+    <g transform="translate(142, 114)">
+      <path d="M 28 22 C 38 32, 42 42, 38 48 C 34 52, 22 50, 16 44" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linecap="round" />
+      <circle cx="26" cy="24" r="22" fill="url(#pubReelGrad)" stroke="#6b0000" stroke-width="1.5" />
+      <circle cx="26" cy="24" r="17" fill="none" stroke="#ffffff" stroke-width="2.8" opacity="0.95" />
+      <circle cx="26" cy="24" r="13" fill="#b71c1c" />
+      <circle cx="26" cy="24" r="9" fill="none" stroke="#ffffff" stroke-width="2.2" opacity="0.9" />
+      <circle cx="26" cy="24" r="5" fill="#800000" />
+      <circle cx="26" cy="24" r="2.2" fill="#ffd700" />
+      <path d="M 40 34 C 44 42, 48 45, 52 46" fill="none" stroke="#111111" stroke-width="3.2" stroke-linecap="round" />
+    </g>
+  </g>
+
+  <!-- Typography -->
+  <g transform="translate(225, 0)">
+    <path d="M 2 73 C 25 72, 60 72.5, 88 73 C 60 74.5, 25 74, 2 73 Z" fill="#c5121b" />
+    <text x="132" y="79" text-anchor="middle" fill="#111827" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="23" font-weight="900" letter-spacing="0.28em">SRI</text>
+    <path d="M 175 73 C 205 72.5, 255 72, 290 73 C 255 74, 205 74.5, 175 73 Z" fill="#c5121b" />
+
+    <text x="2" y="136" fill="url(#pubUdharchiRedGrad)" font-family="'Impact', 'Montserrat', 'Arial Black', sans-serif" font-size="60" font-weight="950" letter-spacing="0.045em">UDHARCHI</text>
+
+    <path d="M 2 158 C 12 157.5, 26 157.5, 38 158 C 26 159, 12 159, 2 158 Z" fill="#c5121b" />
+    <text x="164" y="164" text-anchor="middle" fill="#1f2937" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="900" letter-spacing="0.22em">ENTERPRISES</text>
+    <path d="M 292 158 C 304 157.5, 318 157.5, 330 158 C 318 159, 304 159, 292 158 Z" fill="#c5121b" />
+  </g>
+</svg>

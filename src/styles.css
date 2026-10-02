@@ -214,18 +214,10 @@
   }
 }
 
-/* Ensure no Lovable watermark or external branding badge appears */
-#lovable-badge,
-.lovable-badge,
-[id*="lovable-badge"],
-[class*="lovable-badge"],
-[data-lovable-badge],
-a[href*="lovable.dev"],
-button[data-lovable],
+/* Hide devtools in production */
 .tanstack-devtools,
 [class*="tanstack-devtools"],
-#tanstack-devtools,
-div:has(> a[href*="lovable.dev"]) {
+#tanstack-devtools {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;

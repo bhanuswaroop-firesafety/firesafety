@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "sriudharchienterprises@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin")
+      );
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Products collection: public read, admin write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Categories collection: public read, admin write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Inquiries: anyone can submit lead, only admin can view & manage
+    match /inquiries/{inquiryId} {
+      allow create: if request.resource.data.name is string &&
+                       request.resource.data.phone is string &&
+                       request.resource.data.email is string;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Users collection: user can read/write self, admin can manage all
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+  }
+}

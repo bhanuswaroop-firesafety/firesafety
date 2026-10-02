@@ -29,7 +29,9 @@ import {
 import { Button } from "@/components/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { SectionHeading } from "@/components/section-heading";
+import { submitInquiry } from "@/lib/db-service";
 import hero from "@/assets/udharchi-hero.jpg";
 import hydrant from "@/assets/fire-hydrant-system.jpg";
 import trust from "@/assets/trusted-safety-partner.jpg";
@@ -163,8 +165,21 @@ const featured = [
 
 function Index() {
   const [sent, setSent] = useState(false);
-  function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    try {
+      await submitInquiry({
+        name: String(formData.get("name") || ""),
+        phone: String(formData.get("phone") || ""),
+        email: String(formData.get("email") || ""),
+        service: String(formData.get("requirement") || "Homepage Inquiry"),
+        facility: String(formData.get("company") || "Standard"),
+        message: String(formData.get("message") || ""),
+      });
+    } catch (err) {
+      console.warn("Firestore inquiry error:", err);
+    }
     setSent(true);
   }
   return (
@@ -275,7 +290,7 @@ function Index() {
               workplace protection solutions including fire protection systems, PPE, fire hydrant
               products, fire pumps, safety signage, CCTV and installation services.
             </p>
-            <a href="#contact" className="mt-7 inline-block">
+            <a href="/about" className="mt-7 inline-block">
               <Button>
                 Know More About Us <ArrowRight className="size-4" />
               </Button>
@@ -350,6 +365,13 @@ function Index() {
               </motion.article>
             ))}
           </div>
+          <div className="mt-10 text-center">
+            <a href="/products">
+              <Button size="lg">
+                View All Products & Specifications <ArrowRight className="size-4" />
+              </Button>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -367,9 +389,9 @@ function Index() {
               }
               copy="We provide end-to-end fire safety and industrial safety solutions covering consultancy, installation, inspection, maintenance and equipment supply."
             />
-            <a href="#contact">
+            <a href="/services">
               <Button>
-                Explore Our Services <ArrowRight className="size-4" />
+                Explore All Services <ArrowRight className="size-4" />
               </Button>
             </a>
           </div>
@@ -437,6 +459,13 @@ function Index() {
                 <h3 className="mt-2 text-center text-xs font-bold leading-tight">{name}</h3>
               </motion.article>
             ))}
+          </div>
+          <div className="mt-8 text-center">
+            <a href="/industries">
+              <Button variant="outline">
+                Explore Industry Specific Solutions <ArrowRight className="size-4" />
+              </Button>
+            </a>
           </div>
         </div>
       </section>
@@ -549,7 +578,7 @@ function Index() {
               Professional fire protection and workplace safety applications across demanding
               environments.
             </p>
-            <a href="#contact" className="mt-6 inline-block">
+            <a href="/projects" className="mt-6 inline-block">
               <Button className="bg-background text-primary hover:bg-background/90">
                 View Our Projects <ArrowRight className="size-4" />
               </Button>
@@ -692,48 +721,7 @@ function Index() {
         </div>
       </section>
 
-      <footer className="border-t border-border bg-background">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.7fr_1fr_1fr] lg:px-8">
-          <div>
-            <BrandLogo />
-            <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              Fire safety solutions, consultation, supply and installation services.
-            </p>
-          </div>
-          {[
-            [
-              "Quick Links",
-              ["Home", "About", "Products", "Services", "Industries", "Projects", "Contact"],
-            ],
-            [
-              "Our Products",
-              ["Fire Safety", "Fire Hydrant", "Fire Pumps", "PPE", "CCTV", "Cable Management"],
-            ],
-            [
-              "Our Services",
-              ["Consultation", "Installation", "Inspection", "Maintenance", "Equipment Supply"],
-            ],
-          ].map(([heading, items]) => (
-            <div key={String(heading)}>
-              <h3 className="mb-3 text-sm font-bold">{String(heading)}</h3>
-              <div className="grid gap-2">
-                {(items as string[]).map((x) => (
-                  <a
-                    href={heading === "Quick Links" ? `#${x.toLowerCase()}` : "#contact"}
-                    key={x}
-                    className="text-xs text-muted-foreground hover:text-primary"
-                  >
-                    {x}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="border-t border-border px-5 py-5 text-center text-xs text-muted-foreground">
-          © 2026 Sri Udharchi Enterprises. All rights reserved.
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
