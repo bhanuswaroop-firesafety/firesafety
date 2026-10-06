@@ -79,19 +79,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sri Udharchi Enterprises" },
+      { title: "Sri Udharchi Enterprises | Fire & Industrial Safety Solutions" },
       {
         name: "description",
-        content: "Fire and industrial safety solutions showcase and equipment catalog.",
+        content:
+          "Leading fire fighting engineering contractor and industrial safety distributor in Andhra Pradesh. Turnkey hydrant networks, automated sprinklers, hydro-testing, and AMC maintenance.",
       },
-      { property: "og:title", content: "Sri Udharchi Enterprises" },
+      { property: "og:site_name", content: "Sri Udharchi Enterprises" },
+      { property: "og:title", content: "Sri Udharchi Enterprises | Fire & Industrial Safety" },
       {
         property: "og:description",
-        content: "Fire and industrial safety solutions showcase and equipment catalog.",
+        content:
+          "Turnkey fire fighting systems, statutory inspections, hydro-testing, AMC maintenance, and certified industrial safety supplies.",
       },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
       { name: "author", content: "Sri Udharchi Enterprises" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Sri Udharchi Enterprises | Fire & Safety" },
+      {
+        name: "twitter:description",
+        content:
+          "Turnkey fire fighting systems, statutory inspections, hydro-testing, and certified industrial safety equipment.",
+      },
+      { name: "twitter:image", content: "/sri-udharchi-enterprises-logo.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -106,6 +117,39 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/sri-udharchi-enterprises-logo.png", type: "image/png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          name: "Sri Udharchi Enterprises",
+          image: "/sri-udharchi-enterprises-logo.png",
+          description:
+            "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and turnkey AMC maintenance in Andhra Pradesh and Pan-India.",
+          telephone: "+918639858221",
+          email: "sriudharchienterprises@gmail.com",
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "H-7, Kubera Hills",
+            addressLocality: "Palasamudram",
+            addressRegion: "Andhra Pradesh",
+            postalCode: "515241",
+            addressCountry: "IN",
+          },
+          openingHoursSpecification: [
+            {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+              opens: "09:00",
+              closes: "19:00",
+            },
+          ],
+          areaServed: ["Andhra Pradesh", "Telangana", "Odisha", "India"],
+          priceRange: "$$",
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -132,7 +176,13 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig
+      reducedMotion="user"
+      transition={{
+        duration: 0.5,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

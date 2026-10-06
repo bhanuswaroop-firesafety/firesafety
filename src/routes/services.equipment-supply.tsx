@@ -22,6 +22,20 @@ export const Route = createFileRoute("/services/equipment-supply")({
           "Wholesale supply of BIS/ISI certified fire extinguishers, fire hoses, landing valves, fire pumps, personal protective equipment (PPE), and safety signage.",
       },
       { property: "og:title", content: "Fire Equipment Supply | Sri Udharchi Enterprises" },
+      {
+        property: "og:description",
+        content:
+          "Wholesale supply of BIS/ISI certified fire extinguishers, fire hoses, landing valves, fire pumps, PPE, and safety signage.",
+      },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Fire & Safety Equipment Supply" },
+      {
+        name: "twitter:description",
+        content:
+          "Wholesale supply of BIS/ISI certified fire extinguishers, fire hoses, landing valves, fire pumps, PPE, and safety signage.",
+      },
     ],
   }),
   component: EquipmentSupplyServicePage,

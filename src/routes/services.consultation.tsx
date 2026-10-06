@@ -22,6 +22,20 @@ export const Route = createFileRoute("/services/consultation")({
           "Professional fire safety risk assessment, NBC 2016 compliance consultation, fire department NOC approvals, and emergency evacuation plans.",
       },
       { property: "og:title", content: "Fire Safety Consultation | Sri Udharchi Enterprises" },
+      {
+        property: "og:description",
+        content:
+          "Professional fire safety risk assessment, NBC 2016 compliance consultation, and fire department NOC approvals.",
+      },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Fire Safety Consultation & NOC Advisory" },
+      {
+        name: "twitter:description",
+        content:
+          "Professional fire safety risk assessment, NBC 2016 compliance consultation, and fire department NOC approvals.",
+      },
     ],
   }),
   component: ConsultationServicePage,

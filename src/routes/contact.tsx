@@ -1,22 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { SectionHeading } from "@/components/section-heading";
 import { Button } from "@/components/button";
-import { submitInquiry } from "@/lib/db-service";
-import {
-  ArrowRight,
-  Clock,
-  Mail,
-  MapPin,
-  Phone,
-  PhoneCall,
-  ShieldAlert,
-  ShieldCheck,
-} from "lucide-react";
+import { ContactForm } from "@/components/contact-form";
+import { Clock, Mail, MapPin, Phone, PhoneCall, ShieldCheck } from "lucide-react";
+
+interface ContactSearchParams {
+  service?: string;
+  product?: string;
+}
 
 export const Route = createFileRoute("/contact")({
+  validateSearch: (search: Record<string, unknown>): ContactSearchParams => {
+    return {
+      service: typeof search.service === "string" ? search.service : undefined,
+      product: typeof search.product === "string" ? search.product : undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Contact Us & Request Quote | Sri Udharchi Enterprises" },
@@ -25,40 +25,30 @@ export const Route = createFileRoute("/contact")({
         content:
           "Get in touch with Sri Udharchi Enterprises for fire safety audits, equipment quotes, turnkey installation estimates, and 24/7 emergency support.",
       },
-      { property: "og:title", content: "Contact Sri Udharchi Enterprises" },
+      { property: "og:title", content: "Contact Sri Udharchi Enterprises | Safety Quotes" },
+      {
+        property: "og:description",
+        content:
+          "Contact our certified fire safety engineers for turnkey proposals, BOQ quotes, and 24/7 emergency dispatch.",
+      },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Contact Sri Udharchi Enterprises" },
+      {
+        name: "twitter:description",
+        content:
+          "Contact our certified fire safety engineers for turnkey proposals, BOQ quotes, and 24/7 emergency dispatch.",
+      },
     ],
   }),
   component: ContactPage,
 });
 
 function ContactPage() {
-  const [submitted, setSubmitted] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    service: "Consultation",
-    facility: "Manufacturing Plant",
-    message: "",
-  });
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    try {
-      await submitInquiry({
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        service: formData.service,
-        facility: formData.facility,
-        message: formData.message,
-      });
-    } catch (err) {
-      console.warn("Firestore lead submission fallback:", err);
-    }
-    setSubmitted(true);
-  };
-
+  const { service, product } = Route.useSearch();
+  const initialService =
+    service || (product ? "Certified PPE & Safety Equipment Supply" : undefined);
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
@@ -175,148 +165,13 @@ function ContactPage() {
             </div>
 
             {/* Right Quote Request Form */}
-            <div className="rounded-2xl border border-border bg-card p-8 shadow-lg sm:p-10">
-              <h2 className="font-display text-2xl font-black text-foreground sm:text-3xl">
-                Request a Detailed Price Proposal
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Fill in your project details below and an engineering consultant will contact you
-                promptly with custom pricing and BOQ estimates.
-              </p>
-
-              {submitted ? (
-                <div className="mt-8 rounded-xl border border-success/30 bg-success/10 p-8 text-center">
-                  <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-success/20 text-success">
-                    <ShieldCheck className="size-6" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold text-foreground">
-                    Inquiry Successfully Received!
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Thank you. The Sri Udharchi Enterprises engineering team has received your
-                    request and will contact you at{" "}
-                    <strong>{formData.phone || formData.email}</strong> shortly.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="mt-6"
-                    onClick={() => {
-                      setSubmitted(false);
-                      setFormData({
-                        name: "",
-                        phone: "",
-                        email: "",
-                        service: "Consultation",
-                        facility: "Manufacturing Plant",
-                        message: "",
-                      });
-                    }}
-                  >
-                    Submit Another Inquiry
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="mt-8 grid gap-5 sm:grid-cols-2">
-                  <div className="sm:col-span-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Ramesh Kumar"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+91 98765 43210"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="name@company.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Service Required
-                    </label>
-                    <select
-                      value={formData.service}
-                      onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                    >
-                      <option value="Consultation">Fire Safety Consultation & Audit</option>
-                      <option value="Installation">System Installation (Turnkey)</option>
-                      <option value="Inspection">Testing & Inspection Certification</option>
-                      <option value="Maintenance">Annual Maintenance Contract (AMC)</option>
-                      <option value="Equipment Supply">Certified Equipment Supply</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Facility Type
-                    </label>
-                    <select
-                      value={formData.facility}
-                      onChange={(e) => setFormData({ ...formData, facility: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                    >
-                      <option value="Manufacturing Plant">Manufacturing Plant / Factory</option>
-                      <option value="Warehouse / Logistics">Warehouse / Logistics Center</option>
-                      <option value="Hospital / Healthcare">Hospital / Healthcare Facility</option>
-                      <option value="Commercial Complex / IT Park">
-                        Commercial Complex / IT Park
-                      </option>
-                      <option value="Hotel / Hospitality">Hotel / Hospitality Resort</option>
-                      <option value="School / College">School / College Campus</option>
-                      <option value="Other">Other Facility</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Project Details or Questions
-                    </label>
-                    <textarea
-                      rows={4}
-                      placeholder="Please describe your facility area, current safety setup, or specific equipment requirements..."
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <Button type="submit" size="lg" className="w-full">
-                      Submit Request <ArrowRight className="size-4" />
-                    </Button>
-                  </div>
-                </form>
-              )}
+            <div>
+              <ContactForm
+                variant="card"
+                initialService={initialService}
+                initialProduct={product}
+                key={`${initialService || "contact"}-${product || ""}`}
+              />
             </div>
           </div>
         </div>

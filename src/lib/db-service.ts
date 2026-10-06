@@ -392,7 +392,7 @@ export function subscribeCategories(callback: (categories: CategoryItem[]) => vo
 
 export async function addCategory(category: {
   name: string;
-  description?: string;
+  description?: string | undefined;
 }): Promise<string> {
   try {
     const colRef = collection(db, "categories");

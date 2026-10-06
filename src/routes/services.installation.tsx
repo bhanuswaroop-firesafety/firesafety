@@ -14,6 +14,20 @@ export const Route = createFileRoute("/services/installation")({
           "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
       },
       { property: "og:title", content: "Fire Protection Installation | Sri Udharchi Enterprises" },
+      {
+        property: "og:description",
+        content:
+          "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, and gas suppression systems.",
+      },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Fire Protection Installation | Sri Udharchi Enterprises" },
+      {
+        name: "twitter:description",
+        content:
+          "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, and gas suppression systems.",
+      },
     ],
   }),
   component: InstallationServicePage,

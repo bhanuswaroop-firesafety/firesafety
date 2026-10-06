@@ -31,6 +31,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SectionHeading } from "@/components/section-heading";
+import { ServiceShowcaseGrid } from "@/components/service-showcase-grid";
+import { ContactForm } from "@/components/contact-form";
 import { submitInquiry } from "@/lib/db-service";
 import hero from "@/assets/udharchi-hero.jpg";
 import hydrant from "@/assets/fire-hydrant-system.jpg";
@@ -163,25 +165,31 @@ const featured = [
   ["CCTV Camera", "Security Systems", cctv],
 ] as const;
 
+const heroContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const heroItem = {
+  hidden: { opacity: 0, y: 28 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.7,
+      ease: [0.22, 1, 0.36, 1] as const,
+    },
+  },
+};
+
 function Index() {
-  const [sent, setSent] = useState(false);
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    try {
-      await submitInquiry({
-        name: String(formData.get("name") || ""),
-        phone: String(formData.get("phone") || ""),
-        email: String(formData.get("email") || ""),
-        service: String(formData.get("requirement") || "Homepage Inquiry"),
-        facility: String(formData.get("company") || "Standard"),
-        message: String(formData.get("message") || ""),
-      });
-    } catch (err) {
-      console.warn("Firestore inquiry error:", err);
-    }
-    setSent(true);
-  }
+  const [inquiryService, setInquiryService] = useState<string | undefined>(undefined);
   return (
     <main id="home" className="overflow-hidden bg-background">
       <SiteHeader />
@@ -197,60 +205,83 @@ function Index() {
         <div className="mx-auto flex min-h-[620px] max-w-7xl items-center px-5 py-20 lg:min-h-[650px] lg:px-8">
           <motion.div
             className="max-w-3xl"
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+            variants={heroContainer}
+            initial="hidden"
+            animate="visible"
           >
-            <p className="mb-5 text-xs font-black uppercase text-brand-warm md:text-sm">
+            <motion.p
+              variants={heroItem}
+              className="mb-5 text-xs font-black uppercase text-brand-warm md:text-sm"
+            >
               Fire Safety Solutions
-            </p>
-            <h1 className="font-display text-5xl font-black leading-[0.98] md:text-7xl">
+            </motion.p>
+            <motion.h1
+              variants={heroItem}
+              className="font-display text-5xl font-black leading-[0.98] md:text-7xl"
+            >
               Protecting
               <br />
               People, Property
               <br />
               <span className="text-brand-bright">& Every Workplace</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg">
+            </motion.h1>
+            <motion.p
+              variants={heroItem}
+              className="mt-6 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg"
+            >
               Complete fire safety, industrial safety and workplace protection solutions for
               commercial, industrial and institutional environments.
-            </p>
-            <p className="mt-3 text-sm text-primary-foreground/70">
+            </motion.p>
+            <motion.p variants={heroItem} className="mt-3 text-sm text-primary-foreground/70">
               Fire Protection | Industrial Safety | PPE | Fire Hydrant Systems | CCTV | Installation
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#contact">
+            </motion.p>
+            <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-3">
+              <motion.a href="#contact" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                 <Button className="h-12 px-7">
                   Request a Quote <ArrowRight className="size-4" />
                 </Button>
-              </a>
-              <a href="tel:+918639858221">
+              </motion.a>
+              <motion.a
+                href="tel:+918639858221"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
                 <Button
                   variant="outline"
                   className="h-12 border-primary-foreground/45 bg-transparent px-5 text-primary-foreground hover:bg-primary-foreground/10"
                 >
                   <Phone className="size-4" /> Call 8639858221
                 </Button>
-              </a>
-              <a href="tel:+919030609171">
+              </motion.a>
+              <motion.a
+                href="tel:+919030609171"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
                 <Button
                   variant="outline"
                   className="h-12 border-primary-foreground/45 bg-transparent px-5 text-primary-foreground hover:bg-primary-foreground/10"
                 >
                   <Phone className="size-4" /> Call 9030609171
                 </Button>
-              </a>
-            </div>
+              </motion.a>
+            </motion.div>
           </motion.div>
         </div>
-        <div className="absolute bottom-6 right-5 hidden items-center gap-3 rounded-lg border border-primary-foreground/30 bg-ink/70 px-5 py-3 text-xs font-bold backdrop-blur md:flex lg:right-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={{ scale: 1.04 }}
+          className="absolute bottom-6 right-5 hidden items-center gap-3 rounded-lg border border-primary-foreground/30 bg-ink/70 px-5 py-3 text-xs font-bold backdrop-blur md:flex lg:right-10"
+        >
           <span className="grid size-9 place-items-center rounded-full bg-primary">
             <Play className="size-4 fill-current" />
           </span>{" "}
           Our Safety Solutions
           <br />
           in Action
-        </div>
+        </motion.div>
       </section>
 
       <section className="border-b border-border bg-soft" aria-label="Our strengths">
@@ -260,12 +291,17 @@ function Index() {
             [Wrench, "Professional Installation", "Installation & maintenance"],
             [Boxes, "Complete Safety Solutions", "Solutions under one roof"],
             [MapPin, "Serving Multiple Industries", "Across commercial sectors"],
-          ].map(([Icon, title, copy]) => {
+          ].map(([Icon, title, copy], index) => {
             const I = Icon as typeof ShieldCheck;
             return (
-              <div
+              <motion.div
                 key={String(title)}
-                className="flex min-w-0 items-center gap-3 px-3 py-5 md:px-6"
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-20px" }}
+                transition={{ duration: 0.5, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                className="flex min-w-0 items-center gap-3 px-3 py-5 transition-colors hover:bg-muted/40 md:px-6"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                   <I className="size-5" />
@@ -274,7 +310,7 @@ function Index() {
                   <strong className="block text-sm leading-tight">{String(title)}</strong>
                   <span className="text-xs text-muted-foreground">{String(copy)}</span>
                 </span>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -351,9 +387,10 @@ function Index() {
                 key={name}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.45, delay: (index % 5) * 0.055 }}
-                className="group overflow-hidden rounded-lg border border-border bg-card transition hover:-translate-y-1 hover:shadow-lg"
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.5, delay: (index % 5) * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ y: -6, transition: { duration: 0.25, ease: "easeOut" } }}
+                className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
               >
                 <img
                   src={image}
@@ -361,14 +398,16 @@ function Index() {
                   loading="lazy"
                   width={720}
                   height={620}
-                  className="aspect-[1.35] w-full object-cover transition duration-500 group-hover:scale-105"
+                  className="aspect-[1.35] w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                 />
                 <div className="grid min-h-28 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 p-4">
                   <div className="min-w-0">
-                    <h3 className="text-sm font-bold leading-tight">{name}</h3>
+                    <h3 className="text-sm font-bold leading-tight group-hover:text-primary transition-colors">
+                      {name}
+                    </h3>
                     <p className="mt-1 hidden text-xs text-muted-foreground sm:block">{desc}</p>
                   </div>
-                  <ChevronRight className="size-7 shrink-0 rounded-full border border-border p-1.5 text-primary" />
+                  <ChevronRight className="size-7 shrink-0 rounded-full border border-border p-1.5 text-primary transition-transform duration-300 group-hover:translate-x-1 group-hover:bg-primary group-hover:text-primary-foreground" />
                 </div>
               </motion.article>
             ))}
@@ -383,59 +422,36 @@ function Index() {
         </div>
       </section>
 
-      <section id="services" className="scroll-mt-24 border-y border-border py-16 md:py-20">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
-          <div>
-            <SectionHeading
-              eyebrow="Our Services"
-              title={
-                <>
-                  Professional Services
-                  <br />
-                  Beyond Supply
-                </>
-              }
-              copy="We provide end-to-end fire safety and industrial safety solutions covering consultancy, installation, inspection, maintenance and equipment supply."
+      <section
+        id="services"
+        className="scroll-mt-24 border-y border-border bg-card/40 py-16 md:py-24"
+      >
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <SectionHeading
+            eyebrow="Our Safety Solutions"
+            title={
+              <>
+                Fire & Industrial
+                <br />
+                Safety Solutions
+              </>
+            }
+            copy="Comprehensive turnkey safety engineering, statutory consultation, certified equipment supply, and round-the-clock maintenance adhering strictly to NBC 2016, NFPA, and BIS standards."
+            action={
+              <a href="/services" className="hidden sm:inline-block">
+                <Button variant="outline">
+                  Full Service Directory <ArrowRight className="size-4" />
+                </Button>
+              </a>
+            }
+          />
+          <div className="mt-10">
+            <ServiceShowcaseGrid
+              onSelectService={(service) => {
+                setInquiryService(service.title);
+                document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+              }}
             />
-            <a href="/services">
-              <Button>
-                Explore All Services <ArrowRight className="size-4" />
-              </Button>
-            </a>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              [ClipboardCheck, "Consultation", "Expert advice for site safety requirements."],
-              [Wrench, "Installation", "Professional installation by experienced technicians."],
-              [
-                ShieldCheck,
-                "Inspection & Maintenance",
-                "Regular inspection and maintenance for reliable performance.",
-              ],
-              [
-                PackageCheck,
-                "Safety Equipment Supply",
-                "A wide range of workplace safety products.",
-              ],
-            ].map(([Icon, title, copy]) => {
-              const I = Icon as typeof ShieldCheck;
-              return (
-                <article
-                  key={String(title)}
-                  className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-border bg-card p-5 transition hover:border-primary/30"
-                >
-                  <span className="grid size-11 place-items-center rounded-full bg-primary/10 text-primary">
-                    <I className="size-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-bold">{String(title)}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      {String(copy)}
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
           </div>
         </div>
       </section>
@@ -451,20 +467,26 @@ function Index() {
             {industries.map(([name, image], index) => (
               <motion.article
                 key={name}
-                initial={{ opacity: 0, scale: 0.96 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.4, delay: (index % 4) * 0.05 }}
+                initial={{ opacity: 0, scale: 0.94, y: 16 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.45, delay: (index % 4) * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.22, ease: "easeOut" } }}
+                className="group cursor-pointer rounded-xl transition-all"
               >
-                <img
-                  src={image}
-                  alt={name}
-                  loading="lazy"
-                  width={720}
-                  height={520}
-                  className="aspect-[1.1] w-full rounded-lg object-cover"
-                />
-                <h3 className="mt-2 text-center text-xs font-bold leading-tight">{name}</h3>
+                <div className="overflow-hidden rounded-lg border border-border shadow-sm group-hover:border-primary/50 group-hover:shadow-md transition-all">
+                  <img
+                    src={image}
+                    alt={name}
+                    loading="lazy"
+                    width={720}
+                    height={520}
+                    className="aspect-[1.1] w-full rounded-lg object-cover transition-transform duration-500 ease-out group-hover:scale-108"
+                  />
+                </div>
+                <h3 className="mt-2 text-center text-xs font-bold leading-tight group-hover:text-primary transition-colors">
+                  {name}
+                </h3>
               </motion.article>
             ))}
           </div>
@@ -489,7 +511,12 @@ function Index() {
         />
         <div className="absolute inset-0 -z-10 bg-trust-overlay" />
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[1fr_0.8fr] lg:px-8">
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
             <span className="rounded-full border border-primary-foreground/25 px-3 py-1 text-xs">
               Why Choose Sri Udharchi
             </span>
@@ -510,25 +537,37 @@ function Index() {
                 "Reliable Product Supply",
                 "Industrial Safety Solutions",
                 "Long-Term Customer Support",
-              ].map((x) => (
-                <span key={x} className="flex items-center gap-2">
+              ].map((x, i) => (
+                <motion.span
+                  key={x}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.05 }}
+                  className="flex items-center gap-2"
+                >
                   <Check className="size-5 rounded-full bg-primary p-1" />
                   {x}
-                </span>
+                </motion.span>
               ))}
             </div>
-          </div>
+          </motion.div>
           <div className="grid gap-3">
             {[
               [Boxes, "Complete Product Categories", "Fire & industrial safety"],
               [Wrench, "End-to-End Solutions", "Supply • installation • support"],
               [ShieldCheck, "Professional Expertise", "Consultation • inspection • maintenance"],
-            ].map(([Icon, title, copy]) => {
+            ].map(([Icon, title, copy], idx) => {
               const I = Icon as typeof Boxes;
               return (
-                <div
+                <motion.div
                   key={String(title)}
-                  className="grid grid-cols-[auto_1fr] items-center gap-4 rounded-lg bg-background p-5 text-foreground"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px" }}
+                  transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  whileHover={{ x: 6, transition: { duration: 0.2 } }}
+                  className="grid grid-cols-[auto_1fr] items-center gap-4 rounded-xl border border-border/50 bg-background p-5 text-foreground shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
                 >
                   <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
                     <I />
@@ -537,7 +576,7 @@ function Index() {
                     <strong className="block text-xl">{String(title)}</strong>
                     <small className="text-muted-foreground">{String(copy)}</small>
                   </span>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -553,19 +592,24 @@ function Index() {
                 key={name}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.42, delay: index * 0.05 }}
-                className="rounded-lg border border-border bg-card p-3"
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.45, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ y: -6, transition: { duration: 0.25, ease: "easeOut" } }}
+                className="group rounded-xl border border-border bg-card p-3 shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
               >
-                <img
-                  src={image}
-                  alt={name}
-                  loading="lazy"
-                  width={720}
-                  height={620}
-                  className="aspect-square w-full object-cover"
-                />
-                <h3 className="mt-3 text-sm font-bold">{name}</h3>
+                <div className="overflow-hidden rounded-lg bg-muted">
+                  <img
+                    src={image}
+                    alt={name}
+                    loading="lazy"
+                    width={720}
+                    height={620}
+                    className="aspect-square w-full object-cover transition-transform duration-500 ease-out group-hover:scale-108"
+                  />
+                </div>
+                <h3 className="mt-3 text-sm font-bold group-hover:text-primary transition-colors">
+                  {name}
+                </h3>
                 <p className="mt-1 text-xs text-muted-foreground">{cat}</p>
               </motion.article>
             ))}
@@ -674,63 +718,12 @@ function Index() {
               })}
             </div>
           </div>
-          <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-            <label>
-              Full Name *<input required name="name" />
-            </label>
-            <label>
-              Company Name
-              <input name="company" />
-            </label>
-            <label>
-              Phone Number *<input required type="tel" name="phone" pattern="[0-9+ -]{8,15}" />
-            </label>
-            <label>
-              Email Address
-              <input type="email" name="email" />
-            </label>
-            <label>
-              Location
-              <input name="location" />
-            </label>
-            <label>
-              Requirement Type
-              <select name="requirement" defaultValue="">
-                <option value="" disabled>
-                  Select requirement
-                </option>
-                {[
-                  "Fire Safety",
-                  "Fire Hydrant",
-                  "Fire Pumps",
-                  "PPE",
-                  "CCTV",
-                  "Cable Management",
-                  "Safety Signage",
-                  "Installation",
-                  "Maintenance",
-                  "Consultancy",
-                  "Other",
-                ].map((x) => (
-                  <option key={x}>{x}</option>
-                ))}
-              </select>
-            </label>
-            <label className="sm:col-span-2">
-              Your Message / Requirement *<textarea required name="message" rows={4} />
-            </label>
-            <Button type="submit" className="sm:col-span-2">
-              Submit Enquiry <ArrowRight className="size-4" />
-            </Button>
-            {sent && (
-              <p
-                role="status"
-                className="sm:col-span-2 rounded-md bg-success/10 p-3 text-center text-sm font-semibold text-success"
-              >
-                Thank you. Your enquiry is ready for the Sri Udharchi team.
-              </p>
-            )}
-          </form>
+          <div>
+            <ContactForm
+              initialService={inquiryService}
+              key={inquiryService || "default-contact"}
+            />
+          </div>
         </div>
       </section>
 

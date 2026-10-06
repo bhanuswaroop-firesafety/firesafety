@@ -26,7 +26,7 @@ export const Route = createFileRoute("/admin/login")({
 });
 
 function AdminLoginPage() {
-  const { user, userProfile, isAdmin, loading, loginWithGoogle, loginWithEmail } = useAuth();
+  const { user, isAdmin, loading, authConfigError, loginWithGoogle, loginWithEmail } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -106,6 +106,22 @@ function AdminLoginPage() {
 
         {/* Card */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-8">
+          {authConfigError && (
+            <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-600 dark:text-amber-400">
+              <div className="flex items-center gap-1.5 font-bold">
+                <ShieldAlert className="size-4 shrink-0" />
+                <span>Firebase Authentication Setup Required</span>
+              </div>
+              <p className="mt-1 leading-relaxed opacity-90">
+                Authentication is not yet enabled in the Firebase Console for project{" "}
+                <code className="rounded bg-amber-500/15 px-1 py-0.5 font-mono font-bold">
+                  sri-udharchi-enterprises-c3be7
+                </code>
+                . Please enable Email/Password and/or Google under Authentication &gt; Sign-in
+                method in the Firebase Console before attempting to sign in.
+              </p>
+            </div>
+          )}
           {/* If user is logged in but not an admin in Firestore */}
           {user && !isAdmin && (
             <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive">

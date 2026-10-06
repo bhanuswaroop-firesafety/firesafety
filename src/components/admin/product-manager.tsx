@@ -72,9 +72,15 @@ interface ProductManagerProps {
   products: ProductItem[];
   categories: CategoryItem[];
   onNotify: (msg: string) => void;
+  initialCreateOpen?: boolean;
 }
 
-export function ProductManager({ products, categories, onNotify }: ProductManagerProps) {
+export function ProductManager({
+  products,
+  categories,
+  onNotify,
+  initialCreateOpen = false,
+}: ProductManagerProps) {
   // Filters & State
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,7 +91,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   // Product Modals
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(initialCreateOpen);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isDeleting, setIsDeleting] = useState<ProductItem | null>(null);
   const [previewProduct, setPreviewProduct] = useState<ProductItem | null>(null);
@@ -94,6 +100,9 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDesc, setNewCategoryDesc] = useState("");
+
+  const [formError, setFormError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
 
   // Product Form State
   const [formData, setFormData] = useState<Partial<ProductItem>>({
@@ -113,6 +122,20 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   const [currentSpec, setCurrentSpec] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+
+  // Escape key handler for dismissing open modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isDeleting) setIsDeleting(null);
+        else if (previewProduct) setPreviewProduct(null);
+        else if (isCategoryModalOpen) setIsCategoryModalOpen(false);
+        else if (isModalOpen) setIsModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDeleting, previewProduct, isCategoryModalOpen, isModalOpen]);
 
   // Available category names
   const categoryNames = useMemo(() => {
@@ -164,6 +187,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   // Open Create Modal
   const openCreateModal = () => {
     setEditingProduct(null);
+    setFormError("");
     setFormData({
       name: "",
       category: categories[0]?.name || "Fire Safety",
@@ -184,6 +208,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   // Open Edit Modal
   const openEditModal = (product: ProductItem) => {
     setEditingProduct(product);
+    setFormError("");
     setFormData({
       name: product.name,
       category: product.category,
@@ -207,7 +232,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (PNG, JPG, WebP).");
+      setFormError("Please upload a valid image file (PNG, JPG, WebP).");
       return;
     }
 
@@ -241,8 +266,9 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   // Submit Product Form (Create or Update)
   const handleSubmitProduct = async (e: FormEvent) => {
     e.preventDefault();
+    setFormError("");
     if (!formData.name?.trim() || !formData.category?.trim()) {
-      alert("Product name and category are required.");
+      setFormError("Product name and category are required.");
       return;
     }
 
@@ -271,7 +297,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
       }
       setIsModalOpen(false);
     } catch (err: unknown) {
-      alert("Error saving product: " + (err instanceof Error ? err.message : String(err)));
+      setFormError("Error saving product: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSubmitting(false);
     }
@@ -309,21 +335,18 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
       onNotify(`Deleted product "${isDeleting.name}" from Firestore.`);
       setIsDeleting(null);
     } catch (err: unknown) {
-      alert("Failed to delete product: " + (err instanceof Error ? err.message : String(err)));
+      onNotify("Failed to delete product: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
   // Seed default products
   const handleSeed = async () => {
-    if (!window.confirm("Seed default industrial safety catalog with prices into Firestore?")) {
-      return;
-    }
     setIsSeeding(true);
     try {
       const count = await seedDefaultProducts();
       onNotify(`Seeded ${count} industrial products with pricing into Firestore.`);
     } catch (err: unknown) {
-      alert("Error seeding products: " + (err instanceof Error ? err.message : String(err)));
+      onNotify("Error seeding products: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSeeding(false);
     }
@@ -332,6 +355,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
   // Add Category Handler
   const handleCreateCategory = async (e: FormEvent) => {
     e.preventDefault();
+    setCategoryError("");
     if (!newCategoryName.trim()) return;
     try {
       await addCategory({
@@ -342,23 +366,19 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
       setNewCategoryName("");
       setNewCategoryDesc("");
     } catch (err: unknown) {
-      alert("Error adding category: " + (err instanceof Error ? err.message : String(err)));
+      setCategoryError(
+        "Error adding category: " + (err instanceof Error ? err.message : String(err)),
+      );
     }
   };
 
   // Delete Category Handler
   const handleDeleteCategory = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `Delete category "${name}"? Existing products with this category will not be deleted.`,
-      )
-    )
-      return;
     try {
       await deleteCategory(id);
       onNotify(`Deleted category "${name}".`);
     } catch (err: unknown) {
-      alert("Error deleting category: " + (err instanceof Error ? err.message : String(err)));
+      onNotify("Error deleting category: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -858,6 +878,13 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
             </div>
 
             <form onSubmit={handleSubmitProduct} className="mt-4 space-y-4">
+              {formError && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 {/* Product Name */}
                 <div className="sm:col-span-2">
@@ -1113,7 +1140,7 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
       {/* CATEGORIES MANAGEMENT MODAL */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <h3 className="font-display text-base font-bold text-foreground">
@@ -1134,6 +1161,13 @@ export function ProductManager({ products, categories, onNotify }: ProductManage
 
             {/* Create Category Form */}
             <form onSubmit={handleCreateCategory} className="mt-4 space-y-3">
+              {categoryError && (
+                <div className="rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive flex items-center gap-2">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{categoryError}</span>
+                </div>
+              )}
+
               <div className="grid gap-2 sm:grid-cols-2">
                 <input
                   type="text"

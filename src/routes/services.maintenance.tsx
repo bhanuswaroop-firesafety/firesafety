@@ -14,6 +14,20 @@ export const Route = createFileRoute("/services/maintenance")({
           "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response across India.",
       },
       { property: "og:title", content: "Fire AMC & Maintenance | Sri Udharchi Enterprises" },
+      {
+        property: "og:description",
+        content:
+          "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response.",
+      },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Fire AMC & Preventive Maintenance" },
+      {
+        name: "twitter:description",
+        content:
+          "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response.",
+      },
     ],
   }),
   component: MaintenanceServicePage,

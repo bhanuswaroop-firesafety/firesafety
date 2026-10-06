@@ -6,44 +6,109 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Authoritative Admin Check: Checks the authenticated user's role in the Firestore users collection
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == "sriudharchienterprises@gmail.com" ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin")
-      );
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
-    // Default deny
+    // Bootstrap check allowed ONLY for initial document provisioning
+    function isDesignatedBootstrapAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        (
+          request.auth.token.email.lower() == "sriudharchienterprises@gmail.com" ||
+          request.auth.token.email.lower() == "venkateshchop14@gmail.com"
+        );
+    }
+
+    // Default Deny all unknown collections
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Products collection: public read, admin write
+    // Products: Public read, strictly authenticated admin write with payload validation
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() &&
+        request.resource.data.keys().hasOnly([
+          'id', 'name', 'category', 'image', 'description', 'specs',
+          'price', 'unit', 'sku', 'inStock', 'featured', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 200 &&
+        request.resource.data.category is string &&
+        request.resource.data.category.size() <= 100 &&
+        request.resource.data.description is string &&
+        request.resource.data.description.size() <= 2000 &&
+        request.resource.data.specs is list &&
+        request.resource.data.specs.size() <= 20 &&
+        request.resource.data.inStock is bool &&
+        request.resource.data.featured is bool;
+      allow delete: if isAdmin();
     }
 
-    // Categories collection: public read, admin write
+    // Categories: Public read, strictly authenticated admin write
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() &&
+        request.resource.data.keys().hasOnly(['id', 'name', 'description', 'createdAt']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100;
+      allow delete: if isAdmin();
     }
 
-    // Inquiries: anyone can submit lead, only admin can view & manage
+    // Inquiries: Anyone can submit a lead (create only) with strict zero-trust validation;
+    // ONLY verified Firestore admins can read, update status, or delete leads.
     match /inquiries/{inquiryId} {
-      allow create: if request.resource.data.name is string &&
-                       request.resource.data.phone is string &&
-                       request.resource.data.email is string;
-      allow read, update, delete: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly([
+          'name', 'phone', 'email', 'service', 'facility', 'message', 'status', 'createdAt'
+        ]) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() >= 2 &&
+        request.resource.data.name.size() <= 150 &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() >= 10 &&
+        request.resource.data.phone.size() <= 50 &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() >= 5 &&
+        request.resource.data.email.size() <= 200 &&
+        request.resource.data.status == "new" &&
+        request.resource.data.createdAt is string &&
+        request.resource.data.createdAt.size() <= 100 &&
+        (!('service' in request.resource.data) || (request.resource.data.service is string && request.resource.data.service.size() <= 200)) &&
+        (!('facility' in request.resource.data) || (request.resource.data.facility is string && request.resource.data.facility.size() <= 250)) &&
+        (!('message' in request.resource.data) || (request.resource.data.message is string && request.resource.data.message.size() <= 3000));
+
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin() &&
+        request.resource.data.status in ['new', 'contacted', 'closed'];
     }
 
-    // Users collection: user can read/write self, admin can manage all
+    // Users:
+    // - Signed in user can read only their own profile, or admin can read any user profile.
+    // - Initial profile creation: user can create own profile as 'customer', or designated bootstrap email as 'admin'.
+    // - Update: admin can update any role (to 'admin', 'staff', 'customer'); normal user cannot change their role.
+    // - Delete: only admin.
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        (isDesignatedBootstrapAdmin() && request.resource.data.role == "admin") ||
+        request.resource.data.role == "customer"
+      ) &&
+      request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt']);
+
+      allow update: if (isAdmin() && request.resource.data.role in ['admin', 'staff', 'customer']) || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+      );
+
+      allow delete: if isAdmin();
     }
   }
 }

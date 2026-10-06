@@ -1,36 +1,36 @@
 export interface ProductItem {
-  id?: string;
+  id?: string | undefined;
   name: string;
   category: string;
   description: string;
   image: string;
   specs: string[];
-  inStock?: boolean;
-  featured?: boolean;
-  price?: string;
-  unit?: string;
-  sku?: string;
-  minOrderQty?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  inStock?: boolean | undefined;
+  featured?: boolean | undefined;
+  price?: string | undefined;
+  unit?: string | undefined;
+  sku?: string | undefined;
+  minOrderQty?: string | undefined;
+  createdAt?: string | undefined;
+  updatedAt?: string | undefined;
 }
 
 export interface UserItem {
   id: string;
   email: string;
-  displayName?: string;
+  displayName?: string | undefined;
   role: "admin" | "staff" | "customer";
   createdAt: string;
 }
 
 export interface InquiryItem {
-  id?: string;
+  id?: string | undefined;
   name: string;
   phone: string;
   email: string;
-  service?: string;
-  facility?: string;
-  message?: string;
+  service?: string | undefined;
+  facility?: string | undefined;
+  message?: string | undefined;
   status: "new" | "contacted" | "closed";
   createdAt: string;
 }
@@ -38,5 +38,5 @@ export interface InquiryItem {
 export interface CategoryItem {
   id: string;
   name: string;
-  description?: string;
+  description?: string | undefined;
 }

@@ -22,6 +22,20 @@ export const Route = createFileRoute("/services/inspection")({
           "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B safety compliance certificates.",
       },
       { property: "og:title", content: "Fire System Inspection | Sri Udharchi Enterprises" },
+      {
+        property: "og:description",
+        content:
+          "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B certificates.",
+      },
+      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Fire System Inspection & Hydro-Testing" },
+      {
+        name: "twitter:description",
+        content:
+          "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B certificates.",
+      },
     ],
   }),
   component: InspectionServicePage,
