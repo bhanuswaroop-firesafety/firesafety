@@ -3,33 +3,30 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
 import { ArrowRight, Clock, Gauge, Phone, ShieldCheck, Wrench, Zap } from "lucide-react";
+import maintenanceImg from "@/assets/images/service_maintenance_1790861611461.jpg";
+import { NanoIcon } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/services/maintenance")({
-  head: () => ({
-    meta: [
-      { title: "AMC & Preventive Maintenance | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response across India.",
-      },
-      { property: "og:title", content: "Fire AMC & Maintenance | Sri Udharchi Enterprises" },
-      {
-        property: "og:description",
-        content:
-          "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Fire AMC & Preventive Maintenance" },
-      {
-        name: "twitter:description",
-        content:
-          "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "AMC & Preventive Maintenance | Sri Udharchi Enterprises",
+      description:
+        "Annual Maintenance Contracts (AMC), periodic extinguisher refilling, diesel fire pump service, and 24/7 on-call emergency response across India.",
+      path: "/services/maintenance",
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+          { name: "AMC & Maintenance", path: "/services/maintenance" },
+        ]),
+        schemas.service(
+          "Fire Fighting AMC & Preventive Maintenance",
+          "Comprehensive annual maintenance contracts (AMC), periodic extinguisher refilling, diesel booster pump test runs, gasket care, and 24/7 emergency dispatch.",
+          "/services/maintenance"
+        ),
+      ],
+    }),
   component: MaintenanceServicePage,
 });
 
@@ -71,13 +68,16 @@ export function MaintenanceServicePage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl border border-border shadow-2xl">
               <img
-                src="/src/assets/images/service_maintenance_1790861611461.jpg"
+                src={maintenanceImg}
                 alt="Technician servicing industrial diesel fire pumps and valves"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />
+              <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
+                <NanoIcon name="wrench" size="md" />
+              </div>
             </div>
           </div>
         </div>

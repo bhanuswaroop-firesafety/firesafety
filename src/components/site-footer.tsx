@@ -58,6 +58,16 @@ export function SiteFooter() {
                 Contact & Quotes
               </a>
             </li>
+            <li>
+              <a href="/login" className="transition-colors hover:text-primary">
+                Client Portal / Account
+              </a>
+            </li>
+            <li>
+              <a href="/admin" className="transition-colors hover:text-primary">
+                Executive Admin Access
+              </a>
+            </li>
           </ul>
         </div>
 

@@ -13,28 +13,51 @@ import {
   ShieldCheck,
   Wrench,
 } from "lucide-react";
+import consultationImg from "@/assets/images/service_consultation_1790861559415.jpg";
+import installationImg from "@/assets/images/service_installation_1790861578577.jpg";
+import inspectionImg from "@/assets/images/service_inspection_1790861596452.jpg";
+import maintenanceImg from "@/assets/images/service_maintenance_1790861611461.jpg";
+import supplyImg from "@/assets/images/service_supply_1790861624690.jpg";
+import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/services/")({
-  head: () => ({
-    meta: [
-      { title: "Our Services | Sri Udharchi Enterprises - Fire & Industrial Safety" },
-      {
-        name: "description",
-        content:
-          "End-to-end fire safety and industrial protection services: Consultation, Installation, Testing & Inspection, Maintenance & AMC, and Certified Equipment Supply.",
-      },
-      { property: "og:title", content: "Fire Safety Services | Sri Udharchi Enterprises" },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Our Services | Sri Udharchi Enterprises - Fire & Industrial Safety",
+      description:
+        "End-to-end fire safety and industrial protection services: Consultation, Installation, Testing & Inspection, Maintenance & AMC, and Certified Equipment Supply.",
+      path: "/services",
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+        ]),
+        schemas.service(
+          "Turnkey Fire Protection & Industrial Safety Services",
+          "Comprehensive engineering services including fire hydrant networks, automatic sprinklers, gas suppression, AMC maintenance, hydro-testing, and NBC compliance audits.",
+          "/services"
+        ),
+      ],
+    }),
   component: ServicesIndexPage,
 });
 
-const servicePillars = [
+const servicePillars: Array<{
+  slug: string;
+  title: string;
+  icon: typeof Flame;
+  nanoIcon: NanoIconName;
+  image: string;
+  summary: string;
+  bullets: string[];
+}> = [
   {
     slug: "consultation",
     title: "Fire Safety Consultation & Audit",
     icon: Flame,
-    image: "/src/assets/images/service_consultation_1790861559415.jpg",
+    nanoIcon: "fire",
+    image: consultationImg,
     summary:
       "Expert safety audits, hazard risk profiling, evacuation blueprints, and regulatory compliance consulting adhering strictly to the National Building Code (NBC 2016) and NFPA guidelines.",
     bullets: [
@@ -47,7 +70,8 @@ const servicePillars = [
     slug: "installation",
     title: "Fire Protection System Installation",
     icon: HardHat,
-    image: "/src/assets/images/service_installation_1790861578577.jpg",
+    nanoIcon: "helmet",
+    image: installationImg,
     summary:
       "Turnkey civil and mechanical installation of automated sprinkler grids, fire hydrants, riser downcomer systems, addressable fire alarms, and clean agent gas flooding systems.",
     bullets: [
@@ -60,7 +84,8 @@ const servicePillars = [
     slug: "inspection",
     title: "Testing, Inspection & Certification",
     icon: ClipboardCheck,
-    image: "/src/assets/images/service_inspection_1790861596452.jpg",
+    nanoIcon: "shield",
+    image: inspectionImg,
     summary:
       "Rigorous statutory inspections, hydrostatic pressure testing of cylinders, hydrant flow and head performance testing, and safety audit certification reports.",
     bullets: [
@@ -73,7 +98,8 @@ const servicePillars = [
     slug: "maintenance",
     title: "AMC & Preventive Maintenance",
     icon: Wrench,
-    image: "/src/assets/images/service_maintenance_1790861611461.jpg",
+    nanoIcon: "wrench",
+    image: maintenanceImg,
     summary:
       "Comprehensive Annual Maintenance Contracts (AMC) ensuring zero downtime, routine testing of alarms, prompt refilling of extinguishers, and 24/7 on-call emergency technician dispatch.",
     bullets: [
@@ -86,7 +112,8 @@ const servicePillars = [
     slug: "equipment-supply",
     title: "Certified Safety Equipment Supply",
     icon: PackageCheck,
-    image: "/src/assets/images/service_supply_1790861624690.jpg",
+    nanoIcon: "boxes",
+    image: supplyImg,
     summary:
       "Direct authorized wholesale distribution of BIS/ISI certified fire extinguishers, hoses, branch pipes, hydrant valves, pump skids, PPE gear, and industrial signage.",
     bullets: [
@@ -136,6 +163,9 @@ function ServicesIndexPage() {
                       referrerPolicy="no-referrer"
                       className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
                     />
+                    <div className="absolute right-3.5 top-3.5 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
+                      <NanoIcon name={srv.nanoIcon} size="md" />
+                    </div>
                   </div>
                 </div>
 

@@ -1,23 +1,41 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Lock, Menu, Phone, X } from "lucide-react";
+import {
+  ChevronDown,
+  Lock,
+  Menu,
+  Phone,
+  X,
+  User,
+  LogOut,
+  ShieldCheck,
+  ShoppingCart,
+  ArrowRight,
+  Flame,
+  Wrench,
+  Boxes,
+  Truck,
+  MessageCircle,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useAuth } from "@/lib/auth-context";
+import { useCart } from "@/lib/cart-context";
 import { BrandLogo } from "./brand-logo";
 import { Button } from "./button";
 
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "About", href: "/about" },
-  { name: "Products", href: "/products" },
+  { name: "Products", href: "/products", badge: "Shop" },
   {
     name: "Services",
     href: "/services",
     subLinks: [
-      { name: "All Services", href: "/services" },
-      { name: "Consultation", href: "/services/consultation" },
-      { name: "Installation", href: "/services/installation" },
-      { name: "Inspection", href: "/services/inspection" },
-      { name: "Maintenance", href: "/services/maintenance" },
-      { name: "Equipment Supply", href: "/services/equipment-supply" },
+      { name: "All Services Overview", href: "/services" },
+      { name: "Fire Safety Consultation", href: "/services/consultation" },
+      { name: "Hydrant & Piping Installation", href: "/services/installation" },
+      { name: "Statutory Inspection & Testing", href: "/services/inspection" },
+      { name: "AMC Annual Maintenance", href: "/services/maintenance" },
+      { name: "Industrial Equipment Supply", href: "/services/equipment-supply" },
     ],
   },
   { name: "Industries", href: "/industries" },
@@ -25,7 +43,17 @@ const navLinks = [
   { name: "Contact", href: "/contact" },
 ];
 
+const QUICK_CATEGORIES = [
+  { name: "Fire Extinguishers", href: "/products" },
+  { name: "Hydrant Valves", href: "/products" },
+  { name: "Fire Pumps", href: "/products" },
+  { name: "Industrial PPE", href: "/products" },
+  { name: "CCTV Surveillance", href: "/products" },
+];
+
 export function SiteHeader() {
+  const { user, userProfile, isAdmin, logout } = useAuth();
+  const { totalItems, totalAmount, setIsCartOpen } = useCart();
   const [open, setOpen] = useState(false);
   const [servicesDropdown, setServicesDropdown] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(true);
@@ -44,213 +72,496 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto grid h-[76px] max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 lg:flex lg:justify-between lg:px-8">
-        <BrandLogo />
-
-        <nav className="hidden items-center gap-6 lg:flex" aria-label="Main navigation">
-          {navLinks.map((link) => {
-            if (link.subLinks) {
-              return (
-                <div
-                  key={link.name}
-                  className="relative"
-                  onMouseEnter={() => setServicesDropdown(true)}
-                  onMouseLeave={() => setServicesDropdown(false)}
-                >
-                  <a
-                    href={link.href}
-                    className="flex items-center gap-1 py-2 text-sm font-semibold text-foreground transition-colors hover:text-primary"
-                  >
-                    <span>{link.name}</span>
-                    <ChevronDown className="size-4 opacity-70" />
-                  </a>
-
-                  <AnimatePresence>
-                    {servicesDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute left-0 top-full w-56 rounded-lg border border-border bg-popover p-2 shadow-xl"
-                      >
-                        {link.subLinks.map((sub) => (
-                          <a
-                            key={sub.name}
-                            href={sub.href}
-                            className="block rounded-md px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted hover:text-primary"
-                          >
-                            {sub.name}
-                          </a>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              );
-            }
-
-            return (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
-              >
-                {link.name}
-              </a>
-            );
-          })}
-        </nav>
-
-        <div className="hidden items-center gap-3 lg:flex">
-          <a href="/admin">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground hover:text-primary"
+    <>
+      {/* Top Utility & Emergency Ticker Bar */}
+      <div className="border-b border-border/80 bg-ink text-white/90 text-xs py-1.5 px-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <div className="flex items-center gap-3 overflow-hidden text-[11px] sm:text-xs">
+            <span className="flex items-center gap-1.5 font-bold text-brand-warm shrink-0">
+              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+              24/7 Safety Dispatch:
+            </span>
+            <a
+              href="tel:+918639858221"
+              className="font-mono hover:text-brand-warm transition-colors hidden sm:inline"
             >
-              <Lock className="size-3.5" /> Admin
-            </Button>
-          </a>
-          <div className="flex items-center gap-1.5">
-            <a href="tel:+918639858221">
-              <Button size="sm">
-                <Phone className="size-3.5" /> 8639858221
-              </Button>
+              +91 8639858221
             </a>
-            <a href="tel:+919030609171">
-              <Button size="sm" variant="outline">
-                <Phone className="size-3.5" /> 9030609171
-              </Button>
+            <span className="text-white/40 hidden sm:inline">•</span>
+            <a
+              href="tel:+919030609171"
+              className="font-mono hover:text-brand-warm transition-colors hidden md:inline"
+            >
+              +91 9030609171
+            </a>
+            <span className="text-white/40 hidden md:inline">•</span>
+            <span className="text-white/70 truncate">
+              NBC 2016 & IS Certified Industrial Contractor • Pan-India Logistics
+            </span>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-4 text-[11px] text-white/80 shrink-0">
+            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+              <Truck className="size-3" /> Free Cargo &gt; ₹5,000
+            </span>
+            <span className="text-white/30">|</span>
+            <a href="/cart" className="hover:text-white transition-colors flex items-center gap-1">
+              <span>Cart &amp; Quotation</span>
+              {totalItems > 0 && (
+                <span className="rounded-full bg-primary px-1.5 py-0.2 text-[9px] font-bold text-white">
+                  {totalItems}
+                </span>
+              )}
+            </a>
+            <span className="text-white/30">|</span>
+            <a href="/contact" className="hover:text-brand-warm transition-colors font-semibold">
+              Emergency NOC Inquiry
             </a>
           </div>
         </div>
-
-        <Button
-          variant="ghost"
-          className="size-11 px-0 lg:hidden"
-          aria-label="Open menu"
-          aria-expanded={open}
-          onClick={() => setOpen(true)}
-        >
-          <Menu />
-        </Button>
       </div>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.button
-              type="button"
-              aria-label="Close menu"
-              className="fixed inset-0 top-[76px] z-40 bg-ink/55 lg:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-            />
-            <motion.aside
-              className="fixed right-0 top-0 z-50 flex h-dvh w-[min(88vw,380px)] flex-col overflow-y-auto bg-background p-5 shadow-2xl lg:hidden"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 360, damping: 34 }}
-            >
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border pb-5">
-                <BrandLogo />
-                <Button
-                  variant="ghost"
-                  className="size-11 px-0"
-                  aria-label="Close menu"
-                  onClick={() => setOpen(false)}
-                >
-                  <X />
-                </Button>
-              </div>
+      {/* Main Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-3 px-5 lg:px-8">
+          <BrandLogo />
 
-              <nav className="grid gap-1 py-4" aria-label="Mobile navigation">
-                {navLinks.map((link, index) => {
-                  if (link.subLinks) {
-                    return (
-                      <div key={link.name} className="border-b border-border py-2">
-                        <div className="flex items-center justify-between px-2 py-1 text-base font-bold">
-                          <a
-                            href={link.href}
-                            onClick={() => setOpen(false)}
-                            className="hover:text-primary"
-                          >
-                            {link.name}
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
-                            className="p-1 text-muted-foreground"
-                          >
-                            <ChevronDown
-                              className={`size-4 transition-transform ${
-                                mobileServicesOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
-                        </div>
-                        {mobileServicesOpen && (
-                          <div className="mt-1 space-y-1 pl-4">
-                            {link.subLinks.map((sub) => (
-                              <a
-                                key={sub.name}
-                                href={sub.href}
-                                onClick={() => setOpen(false)}
-                                className="block rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-primary"
-                              >
-                                {sub.name}
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <motion.a
-                      key={link.name}
+          {/* Desktop Navigation */}
+          <nav className="hidden items-center gap-6 lg:flex" aria-label="Main navigation">
+            {navLinks.map((link) => {
+              if (link.subLinks) {
+                return (
+                  <div
+                    key={link.name}
+                    className="relative"
+                    onMouseEnter={() => setServicesDropdown(true)}
+                    onMouseLeave={() => setServicesDropdown(false)}
+                  >
+                    <a
                       href={link.href}
-                      onClick={() => setOpen(false)}
-                      className="border-b border-border px-2 py-3 text-base font-bold transition-colors hover:text-primary"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.05 + index * 0.03 }}
+                      className="flex items-center gap-1 py-2 text-sm font-semibold text-foreground transition-colors hover:text-primary"
                     >
-                      {link.name}
-                    </motion.a>
-                  );
-                })}
-              </nav>
+                      <span>{link.name}</span>
+                      <ChevronDown className="size-4 opacity-70" />
+                    </a>
 
-              <div className="mt-auto space-y-2 pt-4">
-                <a href="/admin" onClick={() => setOpen(false)} className="block">
-                  <Button variant="outline" className="w-full justify-center text-xs">
-                    <Lock className="size-3.5" /> Open Admin Portal
-                  </Button>
+                    <AnimatePresence>
+                      {servicesDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute left-0 top-full w-64 rounded-xl border border-border bg-popover p-2.5 shadow-xl"
+                        >
+                          {link.subLinks.map((sub) => (
+                            <a
+                              key={sub.name}
+                              href={sub.href}
+                              className="block rounded-lg px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted hover:text-primary"
+                            >
+                              {sub.name}
+                            </a>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              }
+
+              return (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                >
+                  <span>{link.name}</span>
+                  {link.badge && (
+                    <span className="rounded-full bg-primary/15 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+                      {link.badge}
+                    </span>
+                  )}
                 </a>
-                <div className="grid grid-cols-2 gap-2">
-                  <a href="tel:+918639858221">
-                    <Button className="w-full text-xs">
-                      <Phone className="size-3.5" /> 8639858221
+              );
+            })}
+          </nav>
+
+          {/* Action CTAs & Cart */}
+          <div className="flex items-center gap-2">
+            {/* Desktop Cart Button */}
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="relative hidden sm:flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-foreground hover:border-primary/50 hover:text-primary transition-all shadow-xs"
+              aria-label={`Open cart with ${totalItems} items`}
+            >
+              <ShoppingCart className="size-4 text-primary" />
+              <span>Cart</span>
+              {totalItems > 0 ? (
+                <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-black text-primary-foreground">
+                  {totalItems}
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground font-normal">0</span>
+              )}
+            </button>
+
+            {/* User Profile / Admin / Call Buttons */}
+            <div className="hidden items-center gap-2 lg:flex">
+              {user ? (
+                <div className="flex items-center gap-2 rounded-full border border-border bg-card/90 py-1 pl-3 pr-1.5 text-xs shadow-sm backdrop-blur">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`size-2 rounded-full ${
+                        isAdmin ? "bg-emerald-500 animate-pulse" : "bg-primary"
+                      }`}
+                    />
+                    <span className="font-semibold text-foreground max-w-[130px] truncate">
+                      {userProfile?.displayName || user.displayName || user.email?.split("@")[0]}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        isAdmin
+                          ? "bg-primary/15 text-primary border border-primary/20"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {isAdmin ? "Admin" : userProfile?.role || "Client"}
+                    </span>
+                  </div>
+
+                  {isAdmin && (
+                    <a href="/admin">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs font-bold text-primary hover:bg-primary/10"
+                      >
+                        <ShieldCheck className="size-3.5" /> Portal
+                      </Button>
+                    </a>
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={logout}
+                    title="Sign Out"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <LogOut className="size-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <a href="/login">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs font-semibold text-foreground hover:text-primary"
+                    >
+                      <User className="size-3.5" /> Sign In
                     </Button>
                   </a>
-                  <a href="tel:+919030609171">
-                    <Button variant="outline" className="w-full text-xs">
-                      <Phone className="size-3.5" /> 9030609171
+                  <a href="/admin">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
+                    >
+                      <Lock className="size-3.5" /> Admin
                     </Button>
                   </a>
                 </div>
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-    </header>
+              )}
+
+              <a href="tel:+918639858221">
+                <Button size="sm">
+                  <Phone className="size-3.5" /> 8639858221
+                </Button>
+              </a>
+            </div>
+
+            {/* Mobile Cart Trigger Icon */}
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="relative flex size-10 items-center justify-center rounded-xl border border-border bg-card text-foreground lg:hidden"
+              aria-label="Cart"
+            >
+              <ShoppingCart className="size-4" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-black text-primary-foreground">
+                  {totalItems}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Menu Hamburger */}
+            <Button
+              variant="ghost"
+              className="size-11 px-0 lg:hidden"
+              aria-label="Open menu"
+              aria-expanded={open}
+              onClick={() => setOpen(true)}
+            >
+              <Menu />
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Drawer (Sidebar) */}
+        <AnimatePresence>
+          {open && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 top-[110px] z-40 bg-ink/65 backdrop-blur-xs lg:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setOpen(false)}
+              />
+
+              <motion.aside
+                className="fixed right-0 top-0 z-50 flex h-dvh w-[min(90vw,400px)] flex-col overflow-y-auto bg-background p-5 shadow-2xl lg:hidden border-l border-border"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", stiffness: 360, damping: 34 }}
+              >
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <BrandLogo />
+                  <Button
+                    variant="ghost"
+                    className="size-10 px-0 rounded-lg hover:bg-muted"
+                    aria-label="Close menu"
+                    onClick={() => setOpen(false)}
+                  >
+                    <X className="size-5" />
+                  </Button>
+                </div>
+
+                {/* Active Cart Quick Card in Mobile Drawer */}
+                <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                        <ShoppingCart className="size-4" />
+                      </div>
+                      <div>
+                        <span className="block text-xs font-bold text-foreground">
+                          Safety Equipment Cart
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {totalItems === 0
+                            ? "0 items in cart"
+                            : `${totalItems} items • ₹${totalAmount.toLocaleString("en-IN")}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <a
+                      href="/cart"
+                      onClick={() => setOpen(false)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-xs hover:bg-primary/90"
+                    >
+                      {totalItems > 0 ? "View Cart" : "Shop"} <ArrowRight className="size-3" />
+                    </a>
+                  </div>
+
+                  {totalItems > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-primary/10 flex justify-between items-center text-[11px]">
+                      <span className="text-muted-foreground">Ready to order?</span>
+                      <a
+                        href="/checkout"
+                        onClick={() => setOpen(false)}
+                        className="font-bold text-primary hover:underline"
+                      >
+                        Proceed to Checkout &rarr;
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Navigation List */}
+                <nav className="grid gap-1 py-4" aria-label="Mobile navigation">
+                  {navLinks.map((link, index) => {
+                    if (link.subLinks) {
+                      return (
+                        <div key={link.name} className="border-b border-border/60 py-2">
+                          <div className="flex items-center justify-between px-2 py-1 text-sm font-bold text-foreground">
+                            <a
+                              href={link.href}
+                              onClick={() => setOpen(false)}
+                              className="hover:text-primary transition-colors"
+                            >
+                              {link.name}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                              className="p-1 text-muted-foreground"
+                            >
+                              <ChevronDown
+                                className={`size-4 transition-transform ${
+                                  mobileServicesOpen ? "rotate-180" : ""
+                                }`}
+                              />
+                            </button>
+                          </div>
+                          {mobileServicesOpen && (
+                            <div className="mt-1 space-y-1 pl-3 border-l-2 border-primary/30 ml-2">
+                              {link.subLinks.map((sub) => (
+                                <a
+                                  key={sub.name}
+                                  href={sub.href}
+                                  onClick={() => setOpen(false)}
+                                  className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
+                                >
+                                  {sub.name}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <motion.a
+                        key={link.name}
+                        href={link.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between border-b border-border/60 px-2 py-2.5 text-sm font-bold text-foreground transition-colors hover:text-primary"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 + index * 0.03 }}
+                      >
+                        <span>{link.name}</span>
+                        {link.badge && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                            {link.badge}
+                          </span>
+                        )}
+                      </motion.a>
+                    );
+                  })}
+                </nav>
+
+                {/* Popular Product Categories Shortcuts */}
+                <div className="py-2 border-b border-border/60">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-2 block mb-2">
+                    Popular Equipment
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 px-2">
+                    {QUICK_CATEGORIES.map((cat) => (
+                      <a
+                        key={cat.name}
+                        href={cat.href}
+                        onClick={() => setOpen(false)}
+                        className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      >
+                        {cat.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bottom Profile & Actions */}
+                <div className="mt-auto space-y-3 pt-4">
+                  {user ? (
+                    <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">
+                            {(userProfile?.displayName || user.displayName || user.email || "U")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                          <div className="truncate">
+                            <p className="text-xs font-bold text-foreground truncate">
+                              {userProfile?.displayName || user.displayName || user.email}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                              {isAdmin ? "Administrator" : userProfile?.role || "Customer"}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            logout();
+                            setOpen(false);
+                          }}
+                          className="size-7 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <LogOut className="size-3.5" />
+                        </Button>
+                      </div>
+
+                      {isAdmin && (
+                        <a href="/admin" onClick={() => setOpen(false)} className="block">
+                          <Button className="w-full justify-center text-xs">
+                            <Lock className="size-3.5" /> Open Admin Portal
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <a href="/login" onClick={() => setOpen(false)}>
+                        <Button variant="outline" className="w-full justify-center text-xs">
+                          <User className="size-3.5" /> Sign In
+                        </Button>
+                      </a>
+                      <a href="/admin" onClick={() => setOpen(false)}>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-center text-xs border-primary/40 text-primary"
+                        >
+                          <Lock className="size-3.5" /> Admin
+                        </Button>
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Hotlines */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <a href="tel:+918639858221">
+                      <Button className="w-full text-xs">
+                        <Phone className="size-3.5" /> 8639858221
+                      </Button>
+                    </a>
+                    <a
+                      href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20have%20an%20urgent%20fire%20safety%20inquiry."
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full text-xs border-emerald-500/40 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                      >
+                        <MessageCircle className="size-3.5 text-emerald-600" /> WhatsApp
+                      </Button>
+                    </a>
+                  </div>
+
+                  {/* Trust Footer */}
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-muted-foreground pt-1">
+                    <ShieldCheck className="size-3 text-primary" />
+                    <span>IS 15683 & NBC 2016 Certified Engineering Partner</span>
+                  </div>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+      </header>
+    </>
   );
 }

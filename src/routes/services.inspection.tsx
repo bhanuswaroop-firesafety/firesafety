@@ -11,33 +11,30 @@ import {
   Phone,
   ShieldCheck,
 } from "lucide-react";
+import inspectionImg from "@/assets/images/service_inspection_1790861596452.jpg";
+import { NanoIcon } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/services/inspection")({
-  head: () => ({
-    meta: [
-      { title: "Testing, Inspection & Certification | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B safety compliance certificates.",
-      },
-      { property: "og:title", content: "Fire System Inspection | Sri Udharchi Enterprises" },
-      {
-        property: "og:description",
-        content:
-          "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B certificates.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Fire System Inspection & Hydro-Testing" },
-      {
-        name: "twitter:description",
-        content:
-          "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B certificates.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Testing, Inspection & Certification | Sri Udharchi Enterprises",
+      description:
+        "Statutory fire safety audits, extinguisher hydrostatic pressure testing, hydrant pump performance checks, and Form B safety compliance certificates.",
+      path: "/services/inspection",
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+          { name: "Inspection & Certification", path: "/services/inspection" },
+        ]),
+        schemas.service(
+          "Fire Safety Testing, Inspection & Form B Certification",
+          "NABL/PESO-calibrated hydrostatic pressure testing, fire pump flow rate calibration, smoke detector sensitivity auditing, and statutory Form B certificates.",
+          "/services/inspection"
+        ),
+      ],
+    }),
   component: InspectionServicePage,
 });
 
@@ -80,13 +77,16 @@ export function InspectionServicePage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl border border-border shadow-2xl">
               <img
-                src="/src/assets/images/service_inspection_1790861596452.jpg"
+                src={inspectionImg}
                 alt="Fire safety inspector testing high pressure valves and gauges"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />
+              <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
+                <NanoIcon name="shield" size="md" />
+              </div>
             </div>
           </div>
         </div>

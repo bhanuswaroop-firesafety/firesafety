@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/button";
 import { submitInquiry } from "@/lib/db-service";
@@ -269,7 +268,7 @@ export function ContactForm({
             </div>
 
             <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-bold text-success">
-              <Sparkles className="size-3" /> Inquiry Received
+              <CheckCircle2 className="size-3" /> Inquiry Received
             </span>
 
             <h3 className="mt-3 font-display text-2xl font-black text-foreground sm:text-3xl">

@@ -1,11 +1,11 @@
-import { useState, useMemo, type ChangeEvent, type FormEvent } from "react";
+import { useState, useMemo, useEffect, type ChangeEvent, type FormEvent } from "react";
 import {
   addProduct,
   updateProduct,
   deleteProduct,
-  seedDefaultProducts,
   addCategory,
   deleteCategory,
+  seedOfficialCatalog,
 } from "@/lib/db-service";
 import type { ProductItem, CategoryItem } from "@/lib/types";
 import { Button } from "@/components/button";
@@ -26,7 +26,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Sparkles,
   Star,
   Tag,
   Trash2,
@@ -107,7 +106,7 @@ export function ProductManager({
   // Product Form State
   const [formData, setFormData] = useState<Partial<ProductItem>>({
     name: "",
-    category: categories[0]?.name || "Fire Safety",
+    category: categories[0]?.name || "",
     price: "",
     unit: "per piece",
     sku: "",
@@ -121,7 +120,6 @@ export function ProductManager({
 
   const [currentSpec, setCurrentSpec] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
 
   // Escape key handler for dismissing open modals
   useEffect(() => {
@@ -190,13 +188,13 @@ export function ProductManager({
     setFormError("");
     setFormData({
       name: "",
-      category: categories[0]?.name || "Fire Safety",
+      category: categories[0]?.name || "",
       price: "",
       unit: "per piece",
-      sku: `SUE-${Math.floor(1000 + Math.random() * 9000)}`,
+      sku: "",
       minOrderQty: "1",
       description: "",
-      specs: ["IS / BIS Certified", "High Industrial Grade"],
+      specs: [],
       image: extinguisherImg,
       inStock: true,
       featured: false,
@@ -339,19 +337,6 @@ export function ProductManager({
     }
   };
 
-  // Seed default products
-  const handleSeed = async () => {
-    setIsSeeding(true);
-    try {
-      const count = await seedDefaultProducts();
-      onNotify(`Seeded ${count} industrial products with pricing into Firestore.`);
-    } catch (err: unknown) {
-      onNotify("Error seeding products: " + (err instanceof Error ? err.message : String(err)));
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   // Add Category Handler
   const handleCreateCategory = async (e: FormEvent) => {
     e.preventDefault();
@@ -379,6 +364,20 @@ export function ProductManager({
       onNotify(`Deleted category "${name}".`);
     } catch (err: unknown) {
       onNotify("Error deleting category: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Seed / Sync Verified Sri Udharchi Catalog to Firestore
+  const [isSeeding, setIsSeeding] = useState(false);
+  const handleSeedCatalog = async () => {
+    setIsSeeding(true);
+    try {
+      const added = await seedOfficialCatalog();
+      onNotify(`Successfully synced ${added} official Sri Udharchi catalog products to Firestore.`);
+    } catch (err: unknown) {
+      onNotify("Error syncing catalog: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSeeding(false);
     }
   };
 
@@ -417,7 +416,7 @@ export function ProductManager({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Featured
             </span>
-            <Sparkles className="size-4 text-accent" />
+            <Star className="size-4 text-accent" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-black text-accent">{stats.featured}</span>
@@ -458,17 +457,6 @@ export function ProductManager({
             <Button variant="outline" size="sm" onClick={() => setIsCategoryModalOpen(true)}>
               <Tag className="size-3.5" />
               <span>Categories</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isSeeding}
-              onClick={handleSeed}
-              title="Populate default industrial equipment catalog into Firestore"
-            >
-              <RefreshCw className={`size-3.5 ${isSeeding ? "animate-spin" : ""}`} />
-              <span>Seed Catalog</span>
             </Button>
 
             <Button size="sm" onClick={openCreateModal}>
@@ -582,7 +570,7 @@ export function ProductManager({
               ? "No products match your active search filters. Try resetting the filters."
               : "Your Firestore products collection is currently empty."}
           </p>
-          <div className="mt-6 flex gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             {searchTerm || selectedCategory !== "All" ? (
               <Button
                 variant="outline"
@@ -595,16 +583,27 @@ export function ProductManager({
               >
                 Clear Filters
               </Button>
-            ) : (
-              <Button size="sm" onClick={handleSeed}>
-                <RefreshCw className="size-3.5" />
-                <span>Seed Default Industrial Products</span>
-              </Button>
-            )}
+            ) : null}
             <Button size="sm" onClick={openCreateModal}>
               <Plus className="size-3.5" />
-              <span>Add First Product</span>
+              <span>Add Custom Product</span>
             </Button>
+            {products.length === 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isSeeding}
+                onClick={handleSeedCatalog}
+                className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <RefreshCw className={`size-3.5 ${isSeeding ? "animate-spin" : ""}`} />
+                <span>
+                  {isSeeding
+                    ? "Syncing Official Catalog..."
+                    : "Initialize Official Sri Udharchi Catalog (9 Certified Items)"}
+                </span>
+              </Button>
+            )}
           </div>
         </div>
       ) : viewMode === "table" ? (
@@ -911,18 +910,30 @@ export function ProductManager({
                       + Add Category
                     </button>
                   </div>
-                  <select
-                    required
-                    value={formData.category || ""}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                  >
-                    {categoryNames.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
+                  {categoryNames.length === 0 ? (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter category name (e.g. Fire Safety)"
+                      value={formData.category || ""}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                    />
+                  ) : (
+                    <select
+                      required
+                      value={formData.category || ""}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                    >
+                      <option value="">Select a category</option>
+                      {categoryNames.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* SKU */}
@@ -1198,24 +1209,24 @@ export function ProductManager({
               <span className="text-[11px] font-bold uppercase text-muted-foreground">
                 Existing Categories
               </span>
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-2.5 text-xs"
-                >
-                  <div>
-                    <strong className="text-foreground">{cat.name}</strong>
-                    {cat.description && (
-                      <span className="block text-[11px] text-muted-foreground">
-                        {cat.description}
-                      </span>
-                    )}
-                  </div>
-                  {cat.id.startsWith("cat_") ? (
-                    <span className="rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                      Default
-                    </span>
-                  ) : (
+              {categories.length === 0 ? (
+                <div className="py-6 text-center text-xs text-muted-foreground">
+                  No categories added yet. Create one using the form above.
+                </div>
+              ) : (
+                categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-2.5 text-xs"
+                  >
+                    <div>
+                      <strong className="text-foreground">{cat.name}</strong>
+                      {cat.description && (
+                        <span className="block text-[11px] text-muted-foreground">
+                          {cat.description}
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleDeleteCategory(cat.id, cat.name)}
@@ -1224,9 +1235,9 @@ export function ProductManager({
                     >
                       <Trash2 className="size-3.5" />
                     </button>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

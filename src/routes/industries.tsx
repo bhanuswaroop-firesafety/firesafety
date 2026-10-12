@@ -13,19 +13,20 @@ import schoolsImg from "@/assets/schools.jpg";
 import constructionImg from "@/assets/construction.jpg";
 import marineImg from "@/assets/marine-safety.jpg";
 import infrastructureImg from "@/assets/infrastructure.jpg";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/industries")({
-  head: () => ({
-    meta: [
-      { title: "Industries Served | Sri Udharchi Enterprises - Industrial Fire Safety" },
-      {
-        name: "description",
-        content:
-          "Specialized fire safety, hydrant systems, and hazard suppression solutions for Manufacturing, Warehouses, Hospitals, Commercial Real Estate, Marine Ports, and Schools.",
-      },
-      { property: "og:title", content: "Industries Served | Sri Udharchi Enterprises" },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Industries Served | Sri Udharchi Enterprises - Industrial Fire Safety",
+      description:
+        "Specialized fire safety, hydrant systems, and hazard suppression solutions for Manufacturing, Warehouses, Hospitals, Commercial Real Estate, Marine Ports, and Schools.",
+      path: "/industries",
+      jsonLd: schemas.breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Industries", path: "/industries" },
+      ]),
+    }),
   component: IndustriesPage,
 });
 

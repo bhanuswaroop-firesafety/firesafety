@@ -5,43 +5,33 @@ import { Button } from "@/components/button";
 import { ContactForm } from "@/components/contact-form";
 import { Clock, Mail, MapPin, Phone, PhoneCall, ShieldCheck } from "lucide-react";
 
+import { seoHead, schemas } from "@/lib/seo";
+
 interface ContactSearchParams {
-  service?: string;
-  product?: string;
+  service?: string | undefined;
+  product?: string | undefined;
 }
 
 export const Route = createFileRoute("/contact")({
   validateSearch: (search: Record<string, unknown>): ContactSearchParams => {
+    const service = search["service"];
+    const product = search["product"];
     return {
-      service: typeof search.service === "string" ? search.service : undefined,
-      product: typeof search.product === "string" ? search.product : undefined,
+      service: typeof service === "string" ? service : undefined,
+      product: typeof product === "string" ? product : undefined,
     };
   },
-  head: () => ({
-    meta: [
-      { title: "Contact Us & Request Quote | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Get in touch with Sri Udharchi Enterprises for fire safety audits, equipment quotes, turnkey installation estimates, and 24/7 emergency support.",
-      },
-      { property: "og:title", content: "Contact Sri Udharchi Enterprises | Safety Quotes" },
-      {
-        property: "og:description",
-        content:
-          "Contact our certified fire safety engineers for turnkey proposals, BOQ quotes, and 24/7 emergency dispatch.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Contact Sri Udharchi Enterprises" },
-      {
-        name: "twitter:description",
-        content:
-          "Contact our certified fire safety engineers for turnkey proposals, BOQ quotes, and 24/7 emergency dispatch.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Contact Us & Request Quote | Sri Udharchi Enterprises",
+      description:
+        "Get in touch with Sri Udharchi Enterprises for fire safety audits, equipment quotes, turnkey installation estimates, and 24/7 emergency support.",
+      path: "/contact",
+      jsonLd: schemas.breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Contact Us", path: "/contact" },
+      ]),
+    }),
   component: ContactPage,
 });
 

@@ -3,33 +3,30 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
 import { ArrowRight, Boxes, CheckCircle2, HardHat, Phone, ShieldCheck, Wrench } from "lucide-react";
+import installationImg from "@/assets/images/service_installation_1790861578577.jpg";
+import { NanoIcon } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/services/installation")({
-  head: () => ({
-    meta: [
-      { title: "Fire Safety System Installation | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
-      },
-      { property: "og:title", content: "Fire Protection Installation | Sri Udharchi Enterprises" },
-      {
-        property: "og:description",
-        content:
-          "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, and gas suppression systems.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Fire Protection Installation | Sri Udharchi Enterprises" },
-      {
-        name: "twitter:description",
-        content:
-          "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, and gas suppression systems.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Fire Safety System Installation | Sri Udharchi Enterprises",
+      description:
+        "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
+      path: "/services/installation",
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+          { name: "System Installation", path: "/services/installation" },
+        ]),
+        schemas.service(
+          "Turnkey Fire Safety System Installation",
+          "Engineered installation of industrial fire hydrants, automatic sprinkler rings, diesel pump houses, FM-200 clean agent gas flooding, and intelligent detection systems.",
+          "/services/installation"
+        ),
+      ],
+    }),
   component: InstallationServicePage,
 });
 
@@ -71,13 +68,16 @@ export function InstallationServicePage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl border border-border shadow-2xl">
               <img
-                src="/src/assets/images/service_installation_1790861578577.jpg"
+                src={installationImg}
                 alt="Engineers installing industrial fire sprinkler piping and hydrant network"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />
+              <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
+                <NanoIcon name="helmet" size="md" />
+              </div>
             </div>
           </div>
         </div>

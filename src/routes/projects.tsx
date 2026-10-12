@@ -9,30 +9,46 @@ import projectHydrantImg from "@/assets/project-hydrant.jpg";
 import projectPumpImg from "@/assets/project-pump.jpg";
 import projectCctvImg from "@/assets/project-cctv.jpg";
 import projectCableImg from "@/assets/project-cable.jpg";
+import cleanAgentImg from "@/assets/images/project_clean_agent_gas.jpg";
+import warehouseSprinklerImg from "@/assets/images/project_warehouse_sprinkler_1790949802340.jpg";
+import hydrantNetworkImg from "@/assets/images/project_hydrant_network_1790949784743.jpg";
 import hydrantImg from "@/assets/fire-hydrant-system.jpg";
 import warehousesImg from "@/assets/warehouses.jpg";
+import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/projects")({
-  head: () => ({
-    meta: [
-      { title: "Featured Projects & Portfolio | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Explore real-world fire protection installations, industrial pump houses, automated sprinkler networks, and cable management projects delivered by Sri Udharchi Enterprises.",
-      },
-      { property: "og:title", content: "Featured Projects | Sri Udharchi Enterprises" },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Featured Projects & Portfolio | Sri Udharchi Enterprises",
+      description:
+        "Explore real-world fire protection installations, industrial pump houses, automated sprinkler networks, and cable management projects delivered by Sri Udharchi Enterprises.",
+      path: "/projects",
+      jsonLd: schemas.breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "Projects", path: "/projects" },
+      ]),
+    }),
   component: ProjectsPage,
 });
 
-const projectsList = [
+const projectsList: Array<{
+  id: string;
+  title: string;
+  category: string;
+  image: string;
+  nanoIcon: NanoIconName;
+  location: string;
+  client: string;
+  scope: string;
+  metrics: string[];
+}> = [
   {
     id: "heavy-manufacturing-hydrant",
     title: "Heavy Manufacturing Facility Fire Hydrant Network",
     category: "Hydrant Systems",
-    image: "/src/assets/images/project_hydrant_network_1790949784743.jpg",
+    image: hydrantNetworkImg,
+    nanoIcon: "hydrant",
     location: "Visakhapatnam Industrial Corridor, AP",
     client: "Heavy Machinery & Fabrication Plant (45,000 sq.m)",
     scope:
@@ -43,7 +59,8 @@ const projectsList = [
     id: "industrial-pump-house",
     title: "Automated Main & Standby Diesel Fire Pump House",
     category: "Fire Pumps",
-    image: "/src/assets/images/project_fire_pump_1790949771594.jpg",
+    image: projectPumpImg,
+    nanoIcon: "pump",
     location: "Kakinada Port Special Economic Zone, AP",
     client: "Chemical Processing & Bulk Liquid Storage Terminal",
     scope:
@@ -54,7 +71,8 @@ const projectsList = [
     id: "logistics-warehouse-sprinkler",
     title: "Mega Logistics Warehouse ESFR Sprinkler Grid",
     category: "Sprinkler Systems",
-    image: "/src/assets/images/project_warehouse_sprinkler_1790949802340.jpg",
+    image: warehouseSprinklerImg,
+    nanoIcon: "fire",
     location: "Vijayawada Logistics Hub, AP",
     client: "E-Commerce Regional Fulfillment Center (120,000 sq.ft)",
     scope:
@@ -65,7 +83,8 @@ const projectsList = [
     id: "industrial-cctv-flame-detection",
     title: "Explosion-Proof IP CCTV & Optical Flame Detection",
     category: "Surveillance & CCTV",
-    image: "/src/assets/images/project_industrial_cctv_1790949816614.jpg",
+    image: projectCctvImg,
+    nanoIcon: "cctv",
     location: "Visakhapatnam Refinery Zone, AP",
     client: "Petrochemical Intermediate Storage & Transfer Terminal",
     scope:
@@ -76,7 +95,8 @@ const projectsList = [
     id: "fire-rated-cable-management",
     title: "High-Temp Fire-Rated Industrial Cable Tray Network",
     category: "Cable Management",
-    image: "/src/assets/images/project_cable_management_1790949831946.jpg",
+    image: projectCableImg,
+    nanoIcon: "cable",
     location: "Rayalaseema Industrial Estate, AP",
     client: "Continuous Process Steel Rolling Mill",
     scope:
@@ -87,7 +107,8 @@ const projectsList = [
     id: "hospital-clean-agent-suppression",
     title: "Multi-Specialty Hospital Clean Agent Gas Suppression",
     category: "Gas Suppression",
-    image: "/src/assets/images/project_fire_pump_1790949771594.jpg",
+    image: cleanAgentImg,
+    nanoIcon: "medical",
     location: "Guntur Healthcare District, AP",
     client: "350-Bed Tertiary Care Hospital Campus",
     scope:
@@ -171,6 +192,9 @@ function ProjectsPage() {
                   <span className="absolute left-4 top-4 rounded-md bg-background/90 px-3 py-1 text-xs font-bold uppercase tracking-wider text-foreground backdrop-blur">
                     {proj.category}
                   </span>
+                  <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60 transition-transform duration-300 group-hover:scale-110">
+                    <NanoIcon name={proj.nanoIcon} size="sm" />
+                  </div>
                 </div>
 
                 <div className="flex flex-1 flex-col p-6 sm:p-8">

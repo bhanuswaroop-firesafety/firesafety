@@ -21,6 +21,10 @@ export interface UserItem {
   displayName?: string | undefined;
   role: "admin" | "staff" | "customer";
   createdAt: string;
+  updatedAt?: string | undefined;
+  phone?: string | undefined;
+  company?: string | undefined;
+  lastLoginAt?: string | undefined;
 }
 
 export interface InquiryItem {
@@ -39,4 +43,29 @@ export interface CategoryItem {
   id: string;
   name: string;
   description?: string | undefined;
+}
+
+export interface OrderItem {
+  id?: string | undefined;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  shippingAddress: string;
+  companyName?: string | undefined;
+  gstin?: string | undefined;
+  paymentMethod: "upi" | "card" | "netbanking" | "po" | "cod";
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  subtotal: number;
+  discount: number;
+  gst: number;
+  shipping: number;
+  total: number;
+  status: "pending" | "confirmed" | "dispatched" | "delivered" | "cancelled";
+  createdAt: string;
+  estimatedDelivery?: string | undefined;
 }

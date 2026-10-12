@@ -18,18 +18,20 @@ import trustImg from "@/assets/trusted-safety-partner.jpg";
 import hydrantImg from "@/assets/fire-hydrant-system.jpg";
 import manufacturingImg from "@/assets/manufacturing.jpg";
 
+import { seoHead, schemas } from "@/lib/seo";
+
 export const Route = createFileRoute("/about")({
-  head: () => ({
-    meta: [
-      { title: "About Us | Sri Udharchi Enterprises - Fire & Industrial Safety" },
-      {
-        name: "description",
-        content:
-          "Learn about Sri Udharchi Enterprises, our mission, certified fire protection engineering team, and commitment to workplace safety across India.",
-      },
-      { property: "og:title", content: "About Sri Udharchi Enterprises" },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "About Us | Sri Udharchi Enterprises - Fire & Industrial Safety",
+      description:
+        "Learn about Sri Udharchi Enterprises, our mission, certified fire protection engineering team, and commitment to workplace safety across India.",
+      path: "/about",
+      jsonLd: schemas.breadcrumbs([
+        { name: "Home", path: "/" },
+        { name: "About Us", path: "/about" },
+      ]),
+    }),
   component: AboutPage,
 });
 

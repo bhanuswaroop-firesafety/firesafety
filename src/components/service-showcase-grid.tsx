@@ -13,7 +13,6 @@ import {
   Search,
   Check,
   PhoneCall,
-  Sparkles,
   ChevronRight,
   Filter,
 } from "lucide-react";
@@ -28,6 +27,8 @@ import supplyImg from "@/assets/images/service_supply_1790861624690.jpg";
 import cctvImg from "@/assets/cctv-camera.jpg";
 import cableImg from "@/assets/cable-management.jpg";
 
+import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
+
 export interface ServiceItem {
   id: string;
   title: string;
@@ -39,6 +40,7 @@ export interface ServiceItem {
     | "Surveillance & Containment";
   tag: string;
   icon: typeof Flame;
+  nanoIcon?: NanoIconName;
   image: string;
   description: string;
   deliverables: string[];
@@ -53,6 +55,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Fire Protection",
     tag: "Active Fire Protection",
     icon: Flame,
+    nanoIcon: "hydrant",
     image: hydrantImg,
     description:
       "Heavy-duty internal and external hydrant networks, wet and dry riser downcomers, landing valves, and automated hose reel stations engineered for high-pressure industrial response.",
@@ -70,6 +73,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Fire Protection",
     tag: "Automated Suppression",
     icon: ShieldCheck,
+    nanoIcon: "shield",
     image: installationImg,
     description:
       "Ceiling sprinkler grids and specialized clean-agent gas suppression (CO2, FM-200, Novec 1230) protecting high-value server rooms, electrical rooms, and factory floors without water damage.",
@@ -87,6 +91,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Audit & Compliance",
     tag: "Regulatory Compliance",
     icon: ClipboardCheck,
+    nanoIcon: "award",
     image: consultationImg,
     description:
       "Comprehensive on-site hazard profiling, life safety reviews, and complete documentation assistance for securing provisional and final Fire Safety NOC from statutory authorities.",
@@ -104,6 +109,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Inspection & AMC",
     tag: "Testing & Validation",
     icon: CheckCircle2,
+    nanoIcon: "wrench",
     image: inspectionImg,
     description:
       "Statutory hydrostatic stretch testing of high-pressure cylinders, hydrant flow and head pressure verification, and certified periodic Form-B inspection certificates.",
@@ -121,6 +127,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Inspection & AMC",
     tag: "24/7 Reliability",
     icon: Wrench,
+    nanoIcon: "wrench",
     image: maintenanceImg,
     description:
       "Scheduled preventive maintenance programs ensuring round-the-clock operational readiness of all fire fighting systems, routine refilling, and priority emergency technician support.",
@@ -138,6 +145,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Workplace & PPE",
     tag: "Workplace Protection",
     icon: HardHat,
+    nanoIcon: "helmet",
     image: supplyImg,
     description:
       "Authorized wholesale supply of personal protective gear and photoluminescent emergency signage ensuring worker safety across construction, manufacturing, and refineries.",
@@ -155,6 +163,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Surveillance & Containment",
     tag: "Intelligent Monitoring",
     icon: Camera,
+    nanoIcon: "cctv",
     image: cctvImg,
     description:
       "Industrial surveillance cameras and thermal flame detection networks designed for explosive environments, fuel yards, hazardous chemical storage, and factory perimeters.",
@@ -172,6 +181,7 @@ export const SAFETY_SERVICES: ServiceItem[] = [
     category: "Surveillance & Containment",
     tag: "Passive Fire Defense",
     icon: Boxes,
+    nanoIcon: "cable",
     image: cableImg,
     description:
       "Engineered perforated and ladder cable trays coupled with intumescent firestop barriers that prevent flame and toxic smoke propagation through building penetrations.",
@@ -371,15 +381,19 @@ export function ServiceShowcaseGrid({
 
                       {/* Tag pill top left */}
                       <div className="absolute left-3 top-3">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2.5 py-0.5 text-[11px] font-bold tracking-tight text-white backdrop-blur-md">
-                          <Sparkles className="size-3 text-brand-gold" />
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-2.5 py-0.5 text-[11px] font-bold tracking-tight text-white backdrop-blur-md">
+                          <ShieldCheck className="size-3 text-brand-gold" />
                           <span>{service.tag}</span>
                         </span>
                       </div>
 
                       {/* Floating Service Icon bottom left */}
-                      <div className="absolute -bottom-4 left-4 z-10 flex size-12 items-center justify-center rounded-xl border border-border bg-card p-2 text-primary shadow-lg ring-4 ring-card">
-                        <Icon className="size-6" />
+                      <div className="absolute -bottom-4 left-4 z-10 flex size-12 items-center justify-center rounded-xl border border-border bg-card p-1.5 shadow-lg ring-4 ring-card">
+                        {service.nanoIcon ? (
+                          <NanoIcon name={service.nanoIcon} size="md" />
+                        ) : (
+                          <Icon className="size-6 text-primary" />
+                        )}
                       </div>
                     </div>
 

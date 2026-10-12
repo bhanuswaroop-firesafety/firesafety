@@ -10,33 +10,336 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as CartRouteImport } from './routes/cart'
+import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as ConsultationRouteImport } from './routes/consultation'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as EquipmentSupplyRouteImport } from './routes/equipment-supply'
+import { Route as IndustriesRouteImport } from './routes/industries'
+import { Route as InspectionRouteImport } from './routes/inspection'
+import { Route as InstallationRouteImport } from './routes/installation'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
+import { Route as PaymentRouteImport } from './routes/payment'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as ServicesIndexRouteImport } from './routes/services.index'
+import { Route as ServicesConsultationRouteImport } from './routes/services.consultation'
+import { Route as ServicesEquipmentSupplyRouteImport } from './routes/services.equipment-supply'
+import { Route as ServicesInspectionRouteImport } from './routes/services.inspection'
+import { Route as ServicesInstallationRouteImport } from './routes/services.installation'
+import { Route as ServicesMaintenanceRouteImport } from './routes/services.maintenance'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CartRoute = CartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultationRoute = ConsultationRouteImport.update({
+  id: '/consultation',
+  path: '/consultation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipmentSupplyRoute = EquipmentSupplyRouteImport.update({
+  id: '/equipment-supply',
+  path: '/equipment-supply',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndustriesRoute = IndustriesRouteImport.update({
+  id: '/industries',
+  path: '/industries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InspectionRoute = InspectionRouteImport.update({
+  id: '/inspection',
+  path: '/inspection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstallationRoute = InstallationRouteImport.update({
+  id: '/installation',
+  path: '/installation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentRoute = PaymentRouteImport.update({
+  id: '/payment',
+  path: '/payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesIndexRoute = ServicesIndexRouteImport.update({
+  id: '/services/',
+  path: '/services/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesConsultationRoute = ServicesConsultationRouteImport.update({
+  id: '/services/consultation',
+  path: '/services/consultation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesEquipmentSupplyRoute = ServicesEquipmentSupplyRouteImport.update({
+  id: '/services/equipment-supply',
+  path: '/services/equipment-supply',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesInspectionRoute = ServicesInspectionRouteImport.update({
+  id: '/services/inspection',
+  path: '/services/inspection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesInstallationRoute = ServicesInstallationRouteImport.update({
+  id: '/services/installation',
+  path: '/services/installation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesMaintenanceRoute = ServicesMaintenanceRouteImport.update({
+  id: '/services/maintenance',
+  path: '/services/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRoute
+  '/consultation': typeof ConsultationRoute
+  '/contact': typeof ContactRoute
+  '/equipment-supply': typeof EquipmentSupplyRoute
+  '/industries': typeof IndustriesRoute
+  '/inspection': typeof InspectionRoute
+  '/installation': typeof InstallationRoute
+  '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
+  '/payment': typeof PaymentRoute
+  '/products': typeof ProductsRoute
+  '/projects': typeof ProjectsRoute
+  '/signup': typeof SignupRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/services/consultation': typeof ServicesConsultationRoute
+  '/services/equipment-supply': typeof ServicesEquipmentSupplyRoute
+  '/services/inspection': typeof ServicesInspectionRoute
+  '/services/installation': typeof ServicesInstallationRoute
+  '/services/maintenance': typeof ServicesMaintenanceRoute
+  '/admin/': typeof AdminIndexRoute
+  '/services/': typeof ServicesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRoute
+  '/consultation': typeof ConsultationRoute
+  '/contact': typeof ContactRoute
+  '/equipment-supply': typeof EquipmentSupplyRoute
+  '/industries': typeof IndustriesRoute
+  '/inspection': typeof InspectionRoute
+  '/installation': typeof InstallationRoute
+  '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
+  '/payment': typeof PaymentRoute
+  '/products': typeof ProductsRoute
+  '/projects': typeof ProjectsRoute
+  '/signup': typeof SignupRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/services/consultation': typeof ServicesConsultationRoute
+  '/services/equipment-supply': typeof ServicesEquipmentSupplyRoute
+  '/services/inspection': typeof ServicesInspectionRoute
+  '/services/installation': typeof ServicesInstallationRoute
+  '/services/maintenance': typeof ServicesMaintenanceRoute
+  '/admin': typeof AdminIndexRoute
+  '/services': typeof ServicesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRoute
+  '/consultation': typeof ConsultationRoute
+  '/contact': typeof ContactRoute
+  '/equipment-supply': typeof EquipmentSupplyRoute
+  '/industries': typeof IndustriesRoute
+  '/inspection': typeof InspectionRoute
+  '/installation': typeof InstallationRoute
+  '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
+  '/payment': typeof PaymentRoute
+  '/products': typeof ProductsRoute
+  '/projects': typeof ProjectsRoute
+  '/signup': typeof SignupRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/services/consultation': typeof ServicesConsultationRoute
+  '/services/equipment-supply': typeof ServicesEquipmentSupplyRoute
+  '/services/inspection': typeof ServicesInspectionRoute
+  '/services/installation': typeof ServicesInstallationRoute
+  '/services/maintenance': typeof ServicesMaintenanceRoute
+  '/admin/': typeof AdminIndexRoute
+  '/services/': typeof ServicesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/cart'
+    | '/checkout'
+    | '/consultation'
+    | '/contact'
+    | '/equipment-supply'
+    | '/industries'
+    | '/inspection'
+    | '/installation'
+    | '/login'
+    | '/maintenance'
+    | '/payment'
+    | '/products'
+    | '/projects'
+    | '/signup'
+    | '/admin/login'
+    | '/services/consultation'
+    | '/services/equipment-supply'
+    | '/services/inspection'
+    | '/services/installation'
+    | '/services/maintenance'
+    | '/admin/'
+    | '/services/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/cart'
+    | '/checkout'
+    | '/consultation'
+    | '/contact'
+    | '/equipment-supply'
+    | '/industries'
+    | '/inspection'
+    | '/installation'
+    | '/login'
+    | '/maintenance'
+    | '/payment'
+    | '/products'
+    | '/projects'
+    | '/signup'
+    | '/admin/login'
+    | '/services/consultation'
+    | '/services/equipment-supply'
+    | '/services/inspection'
+    | '/services/installation'
+    | '/services/maintenance'
+    | '/admin'
+    | '/services'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/cart'
+    | '/checkout'
+    | '/consultation'
+    | '/contact'
+    | '/equipment-supply'
+    | '/industries'
+    | '/inspection'
+    | '/installation'
+    | '/login'
+    | '/maintenance'
+    | '/payment'
+    | '/products'
+    | '/projects'
+    | '/signup'
+    | '/admin/login'
+    | '/services/consultation'
+    | '/services/equipment-supply'
+    | '/services/inspection'
+    | '/services/installation'
+    | '/services/maintenance'
+    | '/admin/'
+    | '/services/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  CartRoute: typeof CartRoute
+  CheckoutRoute: typeof CheckoutRoute
+  ConsultationRoute: typeof ConsultationRoute
+  ContactRoute: typeof ContactRoute
+  EquipmentSupplyRoute: typeof EquipmentSupplyRoute
+  IndustriesRoute: typeof IndustriesRoute
+  InspectionRoute: typeof InspectionRoute
+  InstallationRoute: typeof InstallationRoute
+  LoginRoute: typeof LoginRoute
+  MaintenanceRoute: typeof MaintenanceRoute
+  PaymentRoute: typeof PaymentRoute
+  ProductsRoute: typeof ProductsRoute
+  ProjectsRoute: typeof ProjectsRoute
+  SignupRoute: typeof SignupRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  ServicesConsultationRoute: typeof ServicesConsultationRoute
+  ServicesEquipmentSupplyRoute: typeof ServicesEquipmentSupplyRoute
+  ServicesInspectionRoute: typeof ServicesInspectionRoute
+  ServicesInstallationRoute: typeof ServicesInstallationRoute
+  ServicesMaintenanceRoute: typeof ServicesMaintenanceRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  ServicesIndexRoute: typeof ServicesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +351,195 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cart': {
+      id: '/cart'
+      path: '/cart'
+      fullPath: '/cart'
+      preLoaderRoute: typeof CartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consultation': {
+      id: '/consultation'
+      path: '/consultation'
+      fullPath: '/consultation'
+      preLoaderRoute: typeof ConsultationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipment-supply': {
+      id: '/equipment-supply'
+      path: '/equipment-supply'
+      fullPath: '/equipment-supply'
+      preLoaderRoute: typeof EquipmentSupplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/industries': {
+      id: '/industries'
+      path: '/industries'
+      fullPath: '/industries'
+      preLoaderRoute: typeof IndustriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inspection': {
+      id: '/inspection'
+      path: '/inspection'
+      fullPath: '/inspection'
+      preLoaderRoute: typeof InspectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/installation': {
+      id: '/installation'
+      path: '/installation'
+      fullPath: '/installation'
+      preLoaderRoute: typeof InstallationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment': {
+      id: '/payment'
+      path: '/payment'
+      fullPath: '/payment'
+      preLoaderRoute: typeof PaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/': {
+      id: '/services/'
+      path: '/services'
+      fullPath: '/services/'
+      preLoaderRoute: typeof ServicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/consultation': {
+      id: '/services/consultation'
+      path: '/services/consultation'
+      fullPath: '/services/consultation'
+      preLoaderRoute: typeof ServicesConsultationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/equipment-supply': {
+      id: '/services/equipment-supply'
+      path: '/services/equipment-supply'
+      fullPath: '/services/equipment-supply'
+      preLoaderRoute: typeof ServicesEquipmentSupplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/inspection': {
+      id: '/services/inspection'
+      path: '/services/inspection'
+      fullPath: '/services/inspection'
+      preLoaderRoute: typeof ServicesInspectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/installation': {
+      id: '/services/installation'
+      path: '/services/installation'
+      fullPath: '/services/installation'
+      preLoaderRoute: typeof ServicesInstallationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/maintenance': {
+      id: '/services/maintenance'
+      path: '/services/maintenance'
+      fullPath: '/services/maintenance'
+      preLoaderRoute: typeof ServicesMaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  CartRoute: CartRoute,
+  CheckoutRoute: CheckoutRoute,
+  ConsultationRoute: ConsultationRoute,
+  ContactRoute: ContactRoute,
+  EquipmentSupplyRoute: EquipmentSupplyRoute,
+  IndustriesRoute: IndustriesRoute,
+  InspectionRoute: InspectionRoute,
+  InstallationRoute: InstallationRoute,
+  LoginRoute: LoginRoute,
+  MaintenanceRoute: MaintenanceRoute,
+  PaymentRoute: PaymentRoute,
+  ProductsRoute: ProductsRoute,
+  ProjectsRoute: ProjectsRoute,
+  SignupRoute: SignupRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  ServicesConsultationRoute: ServicesConsultationRoute,
+  ServicesEquipmentSupplyRoute: ServicesEquipmentSupplyRoute,
+  ServicesInspectionRoute: ServicesInspectionRoute,
+  ServicesInstallationRoute: ServicesInstallationRoute,
+  ServicesMaintenanceRoute: ServicesMaintenanceRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  ServicesIndexRoute: ServicesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

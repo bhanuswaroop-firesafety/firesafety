@@ -4,42 +4,86 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SectionHeading } from "@/components/section-heading";
 import { Button } from "@/components/button";
-import { ArrowRight, Check, Phone, Search, ShieldCheck, X, Package } from "lucide-react";
+import { ArrowRight, Check, Phone, Search, ShieldCheck, X, Package, ShoppingBag, Zap, ShoppingCart } from "lucide-react";
 import { subscribeProducts, CATEGORIES } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
+import { useCart } from "@/lib/cart-context";
+import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
+import { OFFICIAL_CATALOG_PRODUCTS } from "@/lib/catalog-data";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/products")({
-  head: () => ({
-    meta: [
-      { title: "Products Catalog | Sri Udharchi Enterprises - Fire Protection & Safety Gear" },
-      {
-        name: "description",
-        content:
-          "Explore certified fire extinguishers, fire hydrant systems, diesel & electric fire pumps, industrial PPE gear, CCTV surveillance, and fire-rated cable management.",
-      },
-      { property: "og:title", content: "Fire & Safety Products | Sri Udharchi Enterprises" },
-      {
-        property: "og:description",
-        content:
-          "Certified fire extinguishers, hydrant systems, pumps, PPE gear, CCTV, and cable management.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Fire Protection Equipment Catalog | Sri Udharchi" },
-      {
-        name: "twitter:description",
-        content:
-          "Certified fire extinguishers, hydrant valves, fire pumps, PPE, and industrial safety hardware.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Fire Safety Products & Equipment | Buy Certified Safety Gear - Sri Udharchi Enterprises",
+      description:
+        "Buy ISI/BIS certified fire safety products and industrial safety gear online. Explore ABC & CO2 fire extinguishers, fire hydrant systems, diesel fire pumps, PPE kits, CCTV, and emergency safety products at Sri Udharchi Enterprises.",
+      path: "/products",
+      keywords: [
+        "fire safety products",
+        "fire safety product",
+        "buy fire safety equipment",
+        "fire extinguishers online",
+        "industrial safety products",
+        "fire hydrant system equipment",
+        "fire fighting equipment suppliers",
+        "ISI certified safety gear",
+        "fire protection systems",
+        "safety helmet safety shoes PPE",
+        "Andhra Pradesh fire safety supplier",
+        "Sri Udharchi Enterprises",
+      ],
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Fire Safety Products", path: "/products" },
+        ]),
+        schemas.productList(
+          OFFICIAL_CATALOG_PRODUCTS.map((p) => ({
+            name: p.name,
+            category: p.category,
+            description: p.description,
+            price: p.price,
+            image: p.image,
+          }))
+        ),
+      ],
+    }),
   component: ProductsPage,
 });
+
+const DEFAULT_PRODUCTS: ProductItem[] = OFFICIAL_CATALOG_PRODUCTS.map((p, idx) => ({
+  id: `sue-cat-${idx + 1}`,
+  ...p,
+}));
+
+const getCategoryIcon = (category: string): NanoIconName => {
+  switch (category) {
+    case "Fire Safety":
+      return "fire";
+    case "Fire Hydrant":
+      return "hydrant";
+    case "Fire Pumps":
+      return "pump";
+    case "PPE":
+      return "helmet";
+    case "CCTV":
+      return "cctv";
+    case "Cable Management":
+      return "cable";
+    case "Road Safety":
+      return "road";
+    case "Medical Safety":
+      return "medical";
+    default:
+      return "shield";
+  }
+};
 
 const categories = ["All", ...CATEGORIES];
 
 function ProductsPage() {
+  const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [productsList, setProductsList] = useState<ProductItem[]>([]);
@@ -51,8 +95,10 @@ function ProductsPage() {
     return () => unsub();
   }, []);
 
+  const activeProducts = productsList.length > 0 ? productsList : DEFAULT_PRODUCTS;
+
   const filteredProducts = useMemo(() => {
-    return productsList.filter((p) => {
+    return activeProducts.filter((p) => {
       const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -64,7 +110,7 @@ function ProductsPage() {
         (p.specs && p.specs.some((s) => s.toLowerCase().includes(q)));
       return matchesCategory && matchesSearch;
     });
-  }, [productsList, selectedCategory, searchQuery]);
+  }, [activeProducts, selectedCategory, searchQuery]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -74,14 +120,13 @@ function ProductsPage() {
       <section className="border-b border-border bg-gradient-to-b from-primary/10 via-background to-background py-16 lg:py-20">
         <div className="mx-auto max-w-7xl px-5 text-center lg:px-8">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
-            <ShieldCheck className="size-3.5" /> Certified Equipment
+            <ShieldCheck className="size-3.5" /> ISI & BIS Certified Fire Safety Products
           </span>
           <h1 className="mt-4 font-display text-4xl font-black text-foreground sm:text-5xl lg:text-6xl">
-            Fire Protection Systems & <span className="text-primary">Safety Hardware</span>
+            Certified Fire Safety Products & <span className="text-primary">Safety Equipment</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Every product supplied by Sri Udharchi Enterprises undergoes rigorous testing and meets
-            strict national (BIS/ISI/NBC) and international (NFPA/CE) compliance benchmarks.
+            Buy certified fire safety products and industrial protective equipment. Every safety product supplied by Sri Udharchi Enterprises meets strict national (BIS/ISI/NBC) and international (NFPA/CE) compliance benchmarks.
           </p>
 
           {/* Search bar & Categories Pill Navigation */}
@@ -113,7 +158,7 @@ function ProductsPage() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`rounded-full px-5 py-2 text-xs font-bold transition-all sm:text-sm ${
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all sm:px-5 sm:py-2 sm:text-sm ${
                   selectedCategory === cat
                     ? "bg-primary text-primary-foreground shadow-md"
                     : "border border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
@@ -155,79 +200,101 @@ function ProductsPage() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
               {filteredProducts.map((prod) => (
                 <div
                   key={prod.id || prod.name}
                   className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-xl"
                 >
-                  <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                  <div className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted">
                     <img
                       src={prod.image}
-                      alt={prod.name}
+                      alt={`${prod.name} - Certified Fire Safety Product | Sri Udharchi Enterprises`}
                       referrerPolicy="no-referrer"
                       className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <span className="absolute left-3 top-3 rounded-md bg-background/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
+                    <span className="absolute left-2 top-2 sm:left-3 sm:top-3 rounded-md bg-background/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
                       {prod.category}
                     </span>
+                    <div className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-lg sm:rounded-xl bg-background/90 p-1 sm:p-1.5 shadow-md backdrop-blur-md border border-border/60 transition-transform duration-300 group-hover:scale-110">
+                      <NanoIcon name={getCategoryIcon(prod.category)} size="sm" />
+                    </div>
                   </div>
 
-                  <div className="flex flex-1 flex-col p-6">
-                    <h3 className="font-display text-xl font-bold text-foreground">{prod.name}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  <div className="flex flex-1 flex-col p-3 sm:p-6">
+                    <h3 className="font-display text-xs sm:text-xl font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
+                      {prod.name}
+                    </h3>
+                    <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-2 hidden sm:block">
                       {prod.description}
                     </p>
 
-                    <div className="mt-4 space-y-1.5 border-t border-border pt-4">
-                      {prod.specs.map((spec) => (
+                    <div className="mt-2 sm:mt-4 space-y-1 sm:space-y-1.5 border-t border-border pt-2 sm:pt-4">
+                      {prod.specs.slice(0, 2).map((spec) => (
                         <div
                           key={spec}
-                          className="flex items-center gap-2 text-xs text-muted-foreground"
+                          className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground"
                         >
-                          <Check className="size-3.5 text-primary" />
-                          <span>{spec}</span>
+                          <Check className="size-3 text-primary shrink-0" />
+                          <span className="truncate">{spec}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-4 flex items-baseline justify-between border-t border-border pt-3">
+                    <div className="mt-2.5 sm:mt-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-t border-border pt-2 sm:pt-3 gap-1">
                       <div>
                         {prod.price ? (
                           <div className="flex items-baseline gap-1 text-primary">
-                            <span className="font-display text-lg font-black">
+                            <span className="font-display text-sm sm:text-lg font-black">
                               {prod.price.startsWith("₹") ? prod.price : `₹${prod.price}`}
                             </span>
                             {prod.unit && (
-                              <span className="text-xs text-muted-foreground">/ {prod.unit}</span>
+                              <span className="text-[10px] sm:text-xs text-muted-foreground">/ {prod.unit}</span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs font-semibold text-muted-foreground">
+                          <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                             Price on Request
                           </span>
                         )}
                       </div>
                       {prod.inStock === false ? (
-                        <span className="rounded bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive">
+                        <span className="self-start sm:self-auto rounded bg-destructive/10 px-1.5 py-0.5 text-[9px] sm:text-[11px] font-bold text-destructive">
                           Out of Stock
                         </span>
                       ) : (
-                        <span className="rounded bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
+                        <span className="self-start sm:self-auto rounded bg-success/10 px-1.5 py-0.5 text-[9px] sm:text-[11px] font-bold text-success">
                           In Stock
                         </span>
                       )}
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-2.5 sm:mt-4 flex flex-col gap-1.5 sm:gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addToCart(prod, 1)}
+                          className="h-8 sm:h-9 w-full justify-center px-1.5 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all"
+                        >
+                          <ShoppingBag className="size-3 sm:size-3.5 mr-1" /> Add<span className="hidden sm:inline">&nbsp;to Cart</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            addToCart(prod, 1);
+                            window.location.href = "/checkout";
+                          }}
+                          className="h-8 sm:h-9 w-full justify-center px-1.5 text-[10px] sm:text-xs font-bold"
+                        >
+                          <Zap className="size-3 sm:size-3.5 mr-1" /> Buy Now
+                        </Button>
+                      </div>
                       <a
                         href={`/contact?product=${encodeURIComponent(prod.name)}`}
-                        className="w-full"
+                        className="hidden sm:block text-center text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors py-0.5"
                       >
-                        <Button variant="outline" className="w-full justify-between">
-                          <span>{prod.price ? "Order / Inquire Now" : "Request Pricing"}</span>
-                          <ArrowRight className="size-4" />
-                        </Button>
+                        Request Custom Bulk Specification
                       </a>
                     </div>
                   </div>
@@ -237,6 +304,31 @@ function ProductsPage() {
           )}
         </div>
       </section>
+
+      {/* Floating Cart Trigger on Products Page */}
+      {totalItems > 0 && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="flex items-center gap-3 rounded-full bg-primary px-5 py-3 text-primary-foreground shadow-2xl hover:scale-105 active:scale-95 transition-all border border-white/20"
+          >
+            <div className="relative">
+              <ShoppingCart className="size-5" />
+              <span className="absolute -top-2 -right-2 flex size-4 items-center justify-center rounded-full bg-white text-[10px] font-black text-primary">
+                {totalItems}
+              </span>
+            </div>
+            <div className="text-left pr-1">
+              <span className="block text-xs font-bold leading-tight">View Cart ({totalItems})</span>
+              <span className="block text-[11px] font-semibold text-white/90">
+                ₹{totalAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <ArrowRight className="size-4" />
+          </button>
+        </div>
+      )}
 
       {/* Bulk Supply Banner */}
       <section className="border-t border-border bg-muted/40 py-16">

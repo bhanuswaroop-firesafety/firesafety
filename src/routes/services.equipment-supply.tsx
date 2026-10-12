@@ -11,33 +11,39 @@ import {
   ShieldCheck,
   Truck,
 } from "lucide-react";
+import supplyImg from "@/assets/images/service_supply_1790861624690.jpg";
+import { NanoIcon } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/services/equipment-supply")({
-  head: () => ({
-    meta: [
-      { title: "Certified Safety Equipment Supply | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Wholesale supply of BIS/ISI certified fire extinguishers, fire hoses, landing valves, fire pumps, personal protective equipment (PPE), and safety signage.",
-      },
-      { property: "og:title", content: "Fire Equipment Supply | Sri Udharchi Enterprises" },
-      {
-        property: "og:description",
-        content:
-          "Wholesale supply of BIS/ISI certified fire extinguishers, fire hoses, landing valves, fire pumps, PPE, and safety signage.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Fire & Safety Equipment Supply" },
-      {
-        name: "twitter:description",
-        content:
-          "Wholesale supply of BIS/ISI certified fire extinguishers, fire hoses, landing valves, fire pumps, PPE, and safety signage.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Fire Safety Products & Certified Equipment Supply | Sri Udharchi Enterprises",
+      description:
+        "Wholesale distributor of certified fire safety products: BIS/ISI fire extinguishers, hydrant valves, fire hoses, pumps, PPE safety equipment, and industrial emergency hardware.",
+      path: "/services/equipment-supply",
+      keywords: [
+        "fire safety products",
+        "fire safety product supply",
+        "certified safety equipment",
+        "fire extinguishers wholesale",
+        "fire fighting products Andhra Pradesh",
+        "industrial PPE gear",
+        "Sri Udharchi Enterprises",
+      ],
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+          { name: "Equipment Supply", path: "/services/equipment-supply" },
+        ]),
+        schemas.service(
+          "Industrial Fire Safety Products & Equipment Supply",
+          "Distributor of BIS/ISI certified fire extinguishers, hydrant landing valves, RRL hoses, PPE safety gear, photoluminescent safety signage, and fire pumps.",
+          "/services/equipment-supply"
+        ),
+      ],
+    }),
   component: EquipmentSupplyServicePage,
 });
 
@@ -79,13 +85,16 @@ export function EquipmentSupplyServicePage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl border border-border shadow-2xl">
               <img
-                src="/src/assets/images/service_supply_1790861624690.jpg"
+                src={supplyImg}
                 alt="Modern safety equipment showroom stocked with fire extinguishers and PPE gear"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />
+              <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
+                <NanoIcon name="boxes" size="md" />
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import {
   ArrowRight,
@@ -7,15 +7,12 @@ import {
   Building2,
   Check,
   ChevronRight,
-  ClipboardCheck,
   Flame,
   HardHat,
   HeartPulse,
   Mail,
   MapPin,
-  PackageCheck,
   Phone,
-  Play,
   ShieldCheck,
   ShipWheel,
   Stethoscope,
@@ -25,6 +22,15 @@ import {
   Construction,
   Factory,
   Warehouse,
+  ShoppingBag,
+  ShoppingCart,
+  FileText,
+  Star,
+  Award,
+  Clock,
+  Truck,
+  CheckCircle2,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/button";
 import { BrandLogo } from "@/components/brand-logo";
@@ -33,7 +39,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { SectionHeading } from "@/components/section-heading";
 import { ServiceShowcaseGrid } from "@/components/service-showcase-grid";
 import { ContactForm } from "@/components/contact-form";
-import { submitInquiry } from "@/lib/db-service";
+import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
+import { useCart } from "@/lib/cart-context";
 import hero from "@/assets/udharchi-hero.jpg";
 import hydrant from "@/assets/fire-hydrant-system.jpg";
 import trust from "@/assets/trusted-safety-partner.jpg";
@@ -59,89 +66,187 @@ import roadSafety from "@/assets/road-safety.jpg";
 import medicalSafety from "@/assets/medical-safety.jpg";
 import marineSafety from "@/assets/marine-safety.jpg";
 import cableManagement from "@/assets/cable-management.jpg";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Sri Udharchi Enterprises | Fire & Industrial Safety Solutions" },
-      {
-        name: "description",
-        content:
-          "Professional fire safety, industrial safety, PPE, hydrant systems, CCTV, installation and maintenance solutions in Andhra Pradesh.",
-      },
-      { property: "og:title", content: "Sri Udharchi Enterprises | Safety Solutions" },
-      {
-        property: "og:description",
-        content:
-          "Complete fire and industrial safety solutions for workplaces, commercial properties and institutions.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Fire Safety Products & Turnkey Fire Protection Systems | Sri Udharchi Enterprises",
+      description:
+        "India's certified supplier of fire safety products and turnkey fire protection engineering. Buy ISI certified fire extinguishers, hydrant systems, fire pumps, PPE safety equipment, and AMC maintenance services.",
+      path: "/",
+      keywords: [
+        "fire safety products",
+        "fire safety product",
+        "fire safety equipment",
+        "buy fire safety products",
+        "fire extinguishers online",
+        "industrial safety products",
+        "fire protection equipment India",
+        "fire fighting contractors Andhra Pradesh",
+        "fire hydrant valve and hoses",
+        "Sri Udharchi Enterprises",
+      ],
+      jsonLd: schemas.faq([
+        {
+          question: "What certified fire safety products do you supply?",
+          answer:
+            "Sri Udharchi Enterprises supplies IS 15683 certified ABC/CO2/Foam fire extinguishers, fire hydrant landing valves, RRL fire hoses, diesel & electric fire pumps, PPE safety helmets, protective boots, and flame detection hardware.",
+        },
+        {
+          question: "What fire protection services does Sri Udharchi Enterprises provide?",
+          answer:
+            "Sri Udharchi Enterprises provides turnkey fire hydrant networks, automatic sprinkler systems, fire pump automation, FM-200 gas flooding, statutory NBC 2016 safety audits, extinguisher refilling, and comprehensive AMC maintenance.",
+        },
+        {
+          question: "Are your fire safety products compliant with Indian standards?",
+          answer:
+            "Yes, all fire safety products supplied by Sri Udharchi Enterprises comply strictly with BIS/ISI certifications, NBC 2016 codes, PESO guidelines, and CE/NFPA standards.",
+        },
+        {
+          question: "Do you offer Annual Maintenance Contracts (AMC) for fire fighting systems?",
+          answer:
+            "Yes, we provide 24/7 preventive and breakdown AMC coverage including quarterly pump runs, pressure hydro-testing, detector sensitivity audits, and statutory Form B inspection certificates.",
+        },
+        {
+          question: "Which geographic regions do you deliver fire safety equipment to?",
+          answer:
+            "We serve industrial clients across Andhra Pradesh, Telangana, Odisha, and provide turnkey equipment supply and engineering pan-India with GST input tax invoices.",
+        },
+      ]),
+    }),
   component: Index,
 });
 
-const products = [
+const PRODUCT_CATEGORIES = [
   {
-    name: "Fire Safety & Fire Fighting",
-    desc: "Extinguishers and fire fighting essentials",
+    name: "Fire Safety & Extinguishers",
+    desc: "IS 15683 certified ABC, CO2, and Foam extinguishers",
     image: extinguisher,
-    icon: Flame,
+    nanoIcon: "fire" as NanoIconName,
   },
   {
-    name: "Fire Hydrant Products",
-    desc: "Valves, hose reels and hydrant accessories",
+    name: "Fire Hydrant Hardware",
+    desc: "Landing valves, hose reels, branch pipes and couplings",
     image: valve,
-    icon: ShieldCheck,
+    nanoIcon: "hydrant" as NanoIconName,
   },
   {
-    name: "Fire Pumps",
-    desc: "Reliable pumps for fire protection systems",
+    name: "Fire Pumps & Booster Sets",
+    desc: "Electric motor and diesel engine centrifugal booster pumps",
     image: pump,
-    icon: Wrench,
+    nanoIcon: "pump" as NanoIconName,
   },
   {
     name: "Personal Protective Equipment",
-    desc: "Head, hand, foot and body protection",
+    desc: "Helmets, Kevlar gloves, safety shoes, reflective vests",
     image: helmet,
-    icon: HardHat,
+    nanoIcon: "helmet" as NanoIconName,
   },
   {
-    name: "Electrical Safety",
-    desc: "Workplace electrical protection equipment",
+    name: "Electrical & High Voltage Safety",
+    desc: "Insulating mats, arc flash protection and safety gloves",
     image: gloves,
-    icon: Zap,
+    nanoIcon: "zap" as NanoIconName,
   },
   {
-    name: "Road Safety",
-    desc: "Cones, barriers and reflective protection",
+    name: "Road & Traffic Safety",
+    desc: "Heavy-base cones, speed humps, and reflective batons",
     image: roadSafety,
-    icon: Construction,
+    nanoIcon: "road" as NanoIconName,
   },
   {
-    name: "Medical & Surgical Safety",
-    desc: "Essential workplace medical protection",
+    name: "Emergency Medical & Trauma",
+    desc: "Factories Act compliant workplace first-aid & burn kits",
     image: medicalSafety,
-    icon: Stethoscope,
+    nanoIcon: "medical" as NanoIconName,
   },
   {
-    name: "Rain & Marine Safety",
-    desc: "Weather-ready and marine protection",
+    name: "Marine & Weather Protection",
+    desc: "Lifebuoys, immersion suits, and marine safety gear",
     image: marineSafety,
-    icon: ShipWheel,
+    nanoIcon: "marine" as NanoIconName,
   },
   {
-    name: "CCTV & Security Systems",
-    desc: "Professional surveillance solutions",
+    name: "Industrial CCTV Surveillance",
+    desc: "Explosion-proof cameras, thermal imaging, and NVRs",
     image: cctv,
-    icon: Camera,
+    nanoIcon: "cctv" as NanoIconName,
   },
   {
-    name: "Cable Management Systems",
-    desc: "Industrial cable trays and routing",
+    name: "Cable Management Trays",
+    desc: "Hot-dip galvanized perforated trays and wire ladders",
     image: cableManagement,
-    icon: Boxes,
+    nanoIcon: "cable" as NanoIconName,
+  },
+];
+
+const FEATURED_ACTIONABLE_PRODUCTS = [
+  {
+    id: "def-extinguisher",
+    name: "Commercial ABC Dry Chemical Fire Extinguisher (6kg)",
+    category: "Fire Safety",
+    price: 2450,
+    priceDisplay: "₹2,450",
+    image: extinguisher,
+    specs: "IS 15683 Certified • 4-A:60-B:C Rating",
+    unit: "unit",
+    inStock: true,
+  },
+  {
+    id: "def-hydrant-valve",
+    name: "Industrial Landing Valve & Instantaneous Coupling",
+    category: "Fire Hydrant",
+    price: 3800,
+    priceDisplay: "₹3,800",
+    image: valve,
+    specs: "IS 5290 / BS 5041 • 65mm Single Flanged Outlet",
+    unit: "piece",
+    inStock: true,
+  },
+  {
+    id: "def-fire-pump",
+    name: "Industrial Centrifugal End-Suction Fire Pump Skid",
+    category: "Fire Pumps",
+    price: 68000,
+    priceDisplay: "₹68,000",
+    image: pump,
+    specs: "NBC 2016 Compliant • 1620 LPM Booster Capacity",
+    unit: "set",
+    inStock: true,
+  },
+  {
+    id: "def-safety-helmet",
+    name: "High-Visibility Industrial Safety Hard Hat",
+    category: "PPE",
+    price: 380,
+    priceDisplay: "₹380",
+    image: helmet,
+    specs: "IS 2925 Certified • 4-Point Ratchet Suspension",
+    unit: "piece",
+    inStock: true,
+  },
+  {
+    id: "def-safety-gloves",
+    name: "Heavy-Duty Kevlar & Cowhide Protective Gloves",
+    category: "PPE",
+    price: 450,
+    priceDisplay: "₹450",
+    image: gloves,
+    specs: "EN 388 Level 4 Cut & Puncture Resistant",
+    unit: "pair",
+    inStock: true,
+  },
+  {
+    id: "def-cctv-camera",
+    name: "Explosion-Proof Dome IP Surveillance Camera",
+    category: "CCTV",
+    price: 4200,
+    priceDisplay: "₹4,200",
+    image: cctv,
+    specs: "4K Ultra-HD • Smart IR 40m • IK10 Vandal-Proof",
+    unit: "camera",
+    inStock: true,
   },
 ];
 
@@ -156,158 +261,221 @@ const industries = [
   ["Infrastructure", infrastructure],
 ] as const;
 
-const featured = [
-  ["CO2 Fire Extinguisher", "Fire Safety", extinguisher],
-  ["Fire Hose & Hydrant Valve", "Fire Hydrant", valve],
-  ["Safety Helmet", "Head Protection", helmet],
-  ["Safety Gloves", "Hand Protection", gloves],
-  ["Fire Pump", "Fire Protection", pump],
-  ["CCTV Camera", "Security Systems", cctv],
-] as const;
-
-const heroContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.12,
-      delayChildren: 0.1,
-    },
+const CLIENT_TESTIMONIALS = [
+  {
+    quote:
+      "Sri Udharchi Enterprises engineered and commissioned our entire 120,000 sq ft manufacturing plant hydrant network in Palasamudram. Flawless execution, NBC 2016 adherence, and hassle-free Fire NOC approval.",
+    author: "K. R. Venkatraman",
+    role: "Head of Plant Infrastructure",
+    company: "Automotive Precision Components, AP",
   },
-};
-
-const heroItem = {
-  hidden: { opacity: 0, y: 28 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.7,
-      ease: [0.22, 1, 0.36, 1] as const,
-    },
+  {
+    quote:
+      "When we required emergency hydro-testing and supply of 80 fire extinguishers before our safety audit, their team dispatched everything within 24 hours with complete BIS test certificates and GST tax invoice.",
+    author: "Dr. S. Meenakshi",
+    role: "Director of Facilities & Safety",
+    company: "Super Specialty Healthcare Group",
   },
-};
+  {
+    quote:
+      "Outstanding vendor for turnkey AMC maintenance. Their technician team conducts quarterly pump churn tests, hydrant pressure checks, and emergency staff drills without failing a single schedule.",
+    author: "Anand Shekar",
+    role: "EHS Manager",
+    company: "Global Logistics & Cold Chain Parks",
+  },
+];
 
 function Index() {
   const [inquiryService, setInquiryService] = useState<string | undefined>(undefined);
+  const { addToCart, setIsCartOpen, totalItems } = useCart();
+
   return (
     <main id="home" className="overflow-hidden bg-background">
       <SiteHeader />
-      <section className="relative isolate min-h-[620px] overflow-hidden bg-ink text-primary-foreground lg:min-h-[650px]">
-        <img
-          src={hero}
-          alt="Safety engineer inspecting an industrial fire pump installation"
-          width={1920}
-          height={1080}
-          className="absolute inset-0 -z-20 h-full w-full object-cover object-[68%_center]"
-        />
-        <div className="absolute inset-0 -z-10 bg-hero-overlay" />
-        <div className="mx-auto flex min-h-[620px] max-w-7xl items-center px-5 py-20 lg:min-h-[650px] lg:px-8">
-          <motion.div
-            className="max-w-3xl"
-            variants={heroContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            <motion.p
-              variants={heroItem}
-              className="mb-5 text-xs font-black uppercase text-brand-warm md:text-sm"
-            >
-              Fire Safety Solutions
-            </motion.p>
-            <motion.h1
-              variants={heroItem}
-              className="font-display text-5xl font-black leading-[0.98] md:text-7xl"
-            >
-              Protecting
-              <br />
-              People, Property
-              <br />
-              <span className="text-brand-bright">& Every Workplace</span>
-            </motion.h1>
-            <motion.p
-              variants={heroItem}
-              className="mt-6 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg"
-            >
-              Complete fire safety, industrial safety and workplace protection solutions for
-              commercial, industrial and institutional environments.
-            </motion.p>
-            <motion.p variants={heroItem} className="mt-3 text-sm text-primary-foreground/70">
-              Fire Protection | Industrial Safety | PPE | Fire Hydrant Systems | CCTV | Installation
-            </motion.p>
-            <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-3">
-              <motion.a href="#contact" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Button className="h-12 px-7">
-                  Request a Quote <ArrowRight className="size-4" />
-                </Button>
-              </motion.a>
-              <motion.a
-                href="tel:+918639858221"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <Button
-                  variant="outline"
-                  className="h-12 border-primary-foreground/45 bg-transparent px-5 text-primary-foreground hover:bg-primary-foreground/10"
-                >
-                  <Phone className="size-4" /> Call 8639858221
-                </Button>
-              </motion.a>
-              <motion.a
-                href="tel:+919030609171"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <Button
-                  variant="outline"
-                  className="h-12 border-primary-foreground/45 bg-transparent px-5 text-primary-foreground hover:bg-primary-foreground/10"
-                >
-                  <Phone className="size-4" /> Call 9030609171
-                </Button>
-              </motion.a>
-            </motion.div>
-          </motion.div>
+
+      {/* Hero Section */}
+      <section className="relative isolate min-h-[660px] overflow-hidden bg-ink text-primary-foreground lg:min-h-[720px]">
+        {/* Background Hero Banner */}
+        <div className="absolute inset-0 -z-20 overflow-hidden bg-ink">
+          <img
+            src={hero}
+            alt="Safety engineer inspecting industrial fire pump equipment"
+            className="h-full w-full object-cover object-[68%_center] transition-transform duration-1000 scale-100 hover:scale-105"
+            loading="eager"
+            fetchPriority="high"
+          />
+          {/* Deep Cinematic Gradient Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-r from-ink/95 via-ink/85 to-ink/45" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-transparent to-ink/50" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent pointer-events-none" />
         </div>
+
+        {/* Floating Nano Trust Badge */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          whileHover={{ scale: 1.04 }}
-          className="absolute bottom-6 right-5 hidden items-center gap-3 rounded-lg border border-primary-foreground/30 bg-ink/70 px-5 py-3 text-xs font-bold backdrop-blur md:flex lg:right-10"
+          initial={{ opacity: 0, scale: 0.9, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="absolute bottom-6 right-4 z-20 hidden md:flex flex-col items-end gap-2 md:right-8 lg:right-12"
         >
-          <span className="grid size-9 place-items-center rounded-full bg-primary">
-            <Play className="size-4 fill-current" />
-          </span>{" "}
-          Our Safety Solutions
-          <br />
-          in Action
+          <div className="flex items-center gap-3.5 rounded-2xl border border-white/20 bg-ink/90 p-4 shadow-2xl backdrop-blur-xl">
+            <NanoIcon name="shield" size="lg" />
+            <div className="text-left pr-2">
+              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-brand-warm">
+                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                NBC 2016 & IS 15683 Certified
+              </div>
+              <div className="text-sm font-bold text-white">Turnkey Fire Safety Engineering</div>
+              <div className="text-[11px] text-white/70">
+                Official Contractor in Andhra Pradesh & Pan-India
+              </div>
+            </div>
+          </div>
         </motion.div>
+
+        <div className="mx-auto flex min-h-[660px] max-w-7xl items-center px-5 py-20 lg:min-h-[720px] lg:px-8">
+          <div className="max-w-3xl">
+            {/* Top Pill */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 rounded-full border border-brand-warm/30 bg-brand-warm/10 px-4 py-1.5 text-xs font-bold text-brand-warm backdrop-blur-md mb-5"
+            >
+              <Award className="size-3.5" />
+              <span>Certified Fire Safety Products & Turnkey Engineering</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="font-display text-4xl font-black leading-[1.02] sm:text-6xl lg:text-7xl"
+            >
+              Protecting Lives,
+              <br />
+              Assets & <span className="text-brand-bright">Every Workplace</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mt-6 max-w-2xl text-base leading-relaxed text-primary-foreground/85 md:text-lg"
+            >
+              Certified fire safety products, ISI extinguishers, turnkey hydrant networks, automated sprinkler arrays, diesel booster pumps, statutory inspections, hydro-testing, and industrial PPE gear.
+            </motion.p>
+
+            {/* Value checklist */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-primary-foreground/80"
+            >
+              <span className="flex items-center gap-1.5">
+                <Check className="size-4 text-emerald-400" /> NBC 2016 & BIS Certified
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="size-4 text-emerald-400" /> 24/7 Rapid Emergency Response
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="size-4 text-emerald-400" /> 18% GST Input Tax Credit (ITC)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="size-4 text-emerald-400" /> Pan-India Direct Logistics
+              </span>
+            </motion.div>
+
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-8 flex flex-wrap items-center gap-3"
+            >
+              <a href="/products">
+                <Button className="h-12 px-7 text-sm font-bold shadow-lg">
+                  <ShoppingBag className="size-4" /> Shop Safety Catalog
+                </Button>
+              </a>
+
+              <a href="#contact">
+                <Button
+                  variant="outline"
+                  className="h-12 border-primary-foreground/40 bg-white/10 px-5 text-sm font-bold text-white hover:bg-white/20 backdrop-blur-md"
+                >
+                  <FileText className="size-4 text-brand-warm" /> Request Formal Quote
+                </Button>
+              </a>
+
+              <a href="tel:+918639858221">
+                <Button
+                  variant="outline"
+                  className="h-12 border-primary-foreground/30 bg-transparent px-5 text-sm font-bold text-white hover:bg-white/10"
+                >
+                  <Phone className="size-4" /> 8639858221
+                </Button>
+              </a>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Live Operational Metrics Ribbon */}
+        <div className="border-t border-white/10 bg-black/40 backdrop-blur-md py-4">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-5 sm:grid-cols-4 lg:px-8">
+            <div className="text-center sm:text-left">
+              <span className="block font-display text-2xl font-black text-brand-warm sm:text-3xl">
+                500+
+              </span>
+              <span className="text-xs text-white/70">Industrial Turnkey Projects</span>
+            </div>
+            <div className="text-center sm:text-left">
+              <span className="block font-display text-2xl font-black text-white sm:text-3xl">
+                15+ Yrs
+              </span>
+              <span className="text-xs text-white/70">Engineering Experience</span>
+            </div>
+            <div className="text-center sm:text-left">
+              <span className="block font-display text-2xl font-black text-emerald-400 sm:text-3xl">
+                100%
+              </span>
+              <span className="text-xs text-white/70">NBC 2016 Audit Compliance</span>
+            </div>
+            <div className="text-center sm:text-left">
+              <span className="block font-display text-2xl font-black text-brand-bright sm:text-3xl">
+                24/7
+              </span>
+              <span className="text-xs text-white/70">Emergency Spares Dispatch</span>
+            </div>
+          </div>
+        </div>
       </section>
 
+      {/* Key Strengths Bar */}
       <section className="border-b border-border bg-soft" aria-label="Our strengths">
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-border px-3 lg:grid-cols-4 lg:px-8">
           {[
-            [ShieldCheck, "Quality Safety Products", "Professional product selection"],
-            [Wrench, "Professional Installation", "Installation & maintenance"],
-            [Boxes, "Complete Safety Solutions", "Solutions under one roof"],
-            [MapPin, "Serving Multiple Industries", "Across commercial sectors"],
-          ].map(([Icon, title, copy], index) => {
-            const I = Icon as typeof ShieldCheck;
+            ["shield", "Certified Equipment", "IS 15683 & BIS compliant"],
+            ["wrench", "Professional Installation", "Turnkey piping & manifolds"],
+            ["boxes", "Complete Safety Store", "Direct distributor pricing"],
+            ["map", "Across Andhra Pradesh", "Rapid site dispatch & AMC"],
+          ].map(([iconKey, title, copy], index) => {
             return (
               <motion.div
                 key={String(title)}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-20px" }}
-                transition={{ duration: 0.5, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                className="flex min-w-0 items-center gap-3 px-3 py-5 transition-colors hover:bg-muted/40 md:px-6"
+                transition={{ duration: 0.5, delay: index * 0.08 }}
+                className="flex min-w-0 items-center gap-3.5 px-3 py-5 transition-colors hover:bg-muted/40 md:px-6 group"
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                  <I className="size-5" />
-                </span>
+                <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 border border-primary/20 shadow-xs transition-transform duration-300 group-hover:scale-110">
+                  <NanoIcon name={iconKey as NanoIconName} size="md" />
+                </div>
                 <span>
-                  <strong className="block text-sm leading-tight">{String(title)}</strong>
+                  <strong className="block text-sm leading-tight text-foreground group-hover:text-primary transition-colors">
+                    {String(title)}
+                  </strong>
                   <span className="text-xs text-muted-foreground">{String(copy)}</span>
                 </span>
               </motion.div>
@@ -316,102 +484,85 @@ function Index() {
         </div>
       </section>
 
-      <section id="about" className="scroll-mt-24 py-16 md:py-20">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
-          <div>
-            <SectionHeading
-              eyebrow="About Sri Udharchi Enterprises"
-              title={
-                <>
-                  Complete Fire & Industrial
-                  <br />
-                  Safety Solutions Provider
-                </>
-              }
-            />
-            <p className="text-base leading-relaxed text-muted-foreground">
-              Sri Udharchi Enterprises provides professional fire safety, industrial safety and
-              workplace protection solutions including fire protection systems, PPE, fire hydrant
-              products, fire pumps, safety signage, CCTV and installation services.
-            </p>
-            <a href="/about" className="mt-7 inline-block">
-              <Button>
-                Know More About Us <ArrowRight className="size-4" />
-              </Button>
-            </a>
-          </div>
-          <div className="relative">
-            <img
-              src={hydrant}
-              alt="Industrial fire hydrant valves and pressure gauges"
-              loading="lazy"
-              width={1400}
-              height={900}
-              className="aspect-[16/10] w-full rounded-lg object-cover"
-            />
-            <div className="absolute -bottom-5 right-3 w-[230px] rounded-lg bg-background p-5 shadow-xl md:bottom-6 md:right-[-12px]">
-              <strong className="mb-3 block">Our Commitment</strong>
-              {[
-                "Quality & Safety",
-                "Reliable Products",
-                "Expert Installation",
-                "Professional Support",
-              ].map((x) => (
-                <span key={x} className="mb-2 flex items-center gap-2 text-xs">
-                  <Check className="size-4 rounded-full bg-primary p-0.5 text-primary-foreground" />
-                  {x}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <section id="products" className="scroll-mt-24 bg-soft py-16 md:py-20">
+
+      {/* ACTIONABLE FEATURED PRODUCTS WITH ADD TO CART */}
+      <section id="featured-products" className="py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <SectionHeading
-            eyebrow="Our Products"
-            title="Wide Range of Safety Products"
-            copy="Comprehensive safety products and protection systems for workplaces, commercial properties and industrial environments."
+            eyebrow="Certified Equipment Catalog"
+            title="Essential Fire & Industrial Safety Products"
+            copy="Immediate dispatch available with statutory 18% GST invoices and manufacturer compliance certificates."
             action={
-              <a href="#featured" className="hidden sm:block">
+              <a href="/products" className="hidden sm:inline-block">
                 <Button>
-                  View Products <ArrowRight className="size-4" />
+                  Explore Full Catalog <ArrowRight className="size-4" />
                 </Button>
               </a>
             }
           />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-            {products.map(({ name, desc, image }, index) => (
-              <motion.article
-                key={name}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.5, delay: (index % 5) * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -6, transition: { duration: 0.25, ease: "easeOut" } }}
-                className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
+
+          <div className="mt-8 sm:mt-10 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
+            {FEATURED_ACTIONABLE_PRODUCTS.map((prod) => (
+              <div
+                key={prod.id}
+                className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-sm transition-all hover:border-primary/50 hover:shadow-xl"
               >
-                <img
-                  src={image}
-                  alt={name}
-                  loading="lazy"
-                  width={720}
-                  height={620}
-                  className="aspect-[1.35] w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                />
-                <div className="grid min-h-28 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 p-4">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold leading-tight group-hover:text-primary transition-colors">
-                      {name}
-                    </h3>
-                    <p className="mt-1 hidden text-xs text-muted-foreground sm:block">{desc}</p>
-                  </div>
-                  <ChevronRight className="size-7 shrink-0 rounded-full border border-border p-1.5 text-primary transition-transform duration-300 group-hover:translate-x-1 group-hover:bg-primary group-hover:text-primary-foreground" />
+                <div className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted">
+                  <img
+                    src={prod.image}
+                    alt={`${prod.name} - Fire Safety Product | Sri Udharchi Enterprises`}
+                    className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <span className="absolute left-2 top-2 sm:left-3 sm:top-3 rounded-md bg-background/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
+                    {prod.category}
+                  </span>
+                  <span className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-full bg-emerald-500/90 text-white px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[9px] sm:text-[10px] font-bold backdrop-blur">
+                    In Stock
+                  </span>
                 </div>
-              </motion.article>
+
+                <div className="flex flex-1 flex-col p-3 sm:p-5">
+                  <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
+                    {prod.name}
+                  </h3>
+                  <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground line-clamp-1">{prod.specs}</p>
+
+                  <div className="mt-2.5 sm:mt-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-t border-border pt-2 sm:pt-3 gap-0.5">
+                    <div>
+                      <span className="font-display text-sm sm:text-xl font-black text-primary">
+                        {prod.priceDisplay}
+                      </span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground ml-1">/ {prod.unit}</span>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground">Excl. 18% GST</span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addToCart(prod, 1)}
+                      className="h-8 sm:h-9 w-full px-2 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <ShoppingBag className="size-3 sm:size-3.5 mr-1" /> Add<span className="hidden sm:inline">&nbsp;to Cart</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        addToCart(prod, 1);
+                        window.location.href = "/checkout";
+                      }}
+                      className="h-8 sm:h-9 w-full px-2 text-[10px] sm:text-xs font-bold"
+                    >
+                      Buy Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
+
           <div className="mt-10 text-center">
             <a href="/products">
               <Button size="lg">
@@ -422,20 +573,57 @@ function Index() {
         </div>
       </section>
 
-      <section
-        id="services"
-        className="scroll-mt-24 border-y border-border bg-card/40 py-16 md:py-24"
-      >
+      {/* Complete Product Categories Overview Grid */}
+      <section id="categories" className="scroll-mt-24 bg-soft py-16 md:py-20 border-y border-border">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <SectionHeading
-            eyebrow="Our Safety Solutions"
-            title={
-              <>
-                Fire & Industrial
-                <br />
-                Safety Solutions
-              </>
-            }
+            eyebrow="Wide Range of Categories"
+            title="Specialized Industrial Protection Categories"
+            copy="Comprehensive safety systems engineered for manufacturing plants, high-rises, warehouses, and institutions."
+          />
+
+          <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-5 mt-10">
+            {PRODUCT_CATEGORIES.map(({ name, desc, image, nanoIcon }, index) => (
+              <motion.article
+                key={name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.45, delay: (index % 5) * 0.05 }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                className="group overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
+              >
+                <div className="relative overflow-hidden bg-muted">
+                  <img
+                    src={image}
+                    alt={name}
+                    loading="lazy"
+                    width={720}
+                    height={620}
+                    className="aspect-[1.3] w-full object-cover transition-transform duration-500 group-hover:scale-108"
+                  />
+                  <div className="absolute right-2 top-2 rounded-xl bg-background/85 p-1.5 shadow-md backdrop-blur-md border border-border/60">
+                    <NanoIcon name={nanoIcon} size="sm" />
+                  </div>
+                </div>
+                <div className="p-3.5">
+                  <h3 className="text-xs font-bold leading-tight group-hover:text-primary transition-colors">
+                    {name}
+                  </h3>
+                  <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{desc}</p>
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Turnkey Safety Solutions */}
+      <section id="services" className="scroll-mt-24 py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <SectionHeading
+            eyebrow="Turnkey Engineering"
+            title="Complete Fire & Industrial Safety Solutions"
             copy="Comprehensive turnkey safety engineering, statutory consultation, certified equipment supply, and round-the-clock maintenance adhering strictly to NBC 2016, NFPA, and BIS standards."
             action={
               <a href="/services" className="hidden sm:inline-block">
@@ -456,25 +644,69 @@ function Index() {
         </div>
       </section>
 
+      {/* Verified Client Testimonials */}
+      <section className="bg-muted/40 py-16 md:py-20 border-y border-border">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">
+              Client Feedback
+            </span>
+            <h2 className="mt-2 font-display text-3xl font-black text-foreground sm:text-4xl">
+              Trusted by Facility Directors & EHS Leaders
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Real testimonials from industrial clients who rely on our certified engineering and fast turnaround.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {CLIENT_TESTIMONIALS.map((t, idx) => (
+              <div
+                key={idx}
+                className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between hover:border-primary/40 transition-all hover:shadow-md"
+              >
+                <div>
+                  <div className="flex gap-1 text-amber-500 mb-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="size-4 fill-amber-500" />
+                    ))}
+                  </div>
+                  <p className="text-xs text-foreground/90 leading-relaxed italic">
+                    "{t.quote}"
+                  </p>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-border/80">
+                  <strong className="block text-xs font-bold text-foreground">{t.author}</strong>
+                  <span className="block text-[11px] text-muted-foreground">{t.role}</span>
+                  <span className="block text-[11px] font-semibold text-primary">{t.company}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Industries We Serve */}
       <section id="industries" className="scroll-mt-24 py-16 md:py-20">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <SectionHeading
             eyebrow="Industries We Serve"
-            title="Serving Multiple Industries"
-            copy="Safety solutions designed for diverse commercial, industrial and institutional environments."
+            title="Engineered for Diverse Industrial Corridors"
+            copy="Customized protection systems designed for manufacturing plants, pharmaceutical zones, high-rises, and institutional facilities."
           />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8 mt-8">
             {industries.map(([name, image], index) => (
               <motion.article
                 key={name}
                 initial={{ opacity: 0, scale: 0.94, y: 16 }}
                 whileInView={{ opacity: 1, scale: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.45, delay: (index % 4) * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.22, ease: "easeOut" } }}
+                transition={{ duration: 0.45, delay: (index % 4) * 0.05 }}
+                whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.2 } }}
                 className="group cursor-pointer rounded-xl transition-all"
               >
-                <div className="overflow-hidden rounded-lg border border-border shadow-sm group-hover:border-primary/50 group-hover:shadow-md transition-all">
+                <div className="overflow-hidden rounded-lg border border-border shadow-xs group-hover:border-primary/50 group-hover:shadow-md transition-all">
                   <img
                     src={image}
                     alt={name}
@@ -500,170 +732,47 @@ function Index() {
         </div>
       </section>
 
-      <section className="relative isolate overflow-hidden bg-ink py-16 text-primary-foreground md:py-20">
-        <img
-          src={trust}
-          alt="Industrial safety engineer inspecting fire protection systems"
-          loading="lazy"
-          width={1920}
-          height={1080}
-          className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 -z-10 bg-trust-overlay" />
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[1fr_0.8fr] lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, x: -24 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <span className="rounded-full border border-primary-foreground/25 px-3 py-1 text-xs">
-              Why Choose Sri Udharchi
-            </span>
-            <h2 className="mt-5 font-display text-4xl font-black leading-tight md:text-5xl">
-              Your Trusted Partner
-              <br />
-              in Safety Solutions
-            </h2>
-            <p className="mt-4 max-w-xl text-primary-foreground/75">
-              Committed to delivering reliable fire and industrial safety products with professional
-              support.
-            </p>
-            <div className="mt-6 grid gap-2 text-sm sm:grid-cols-2">
-              {[
-                "Wide Range of Safety Products",
-                "Professional Consultation",
-                "Expert Installation & Support",
-                "Reliable Product Supply",
-                "Industrial Safety Solutions",
-                "Long-Term Customer Support",
-              ].map((x, i) => (
-                <motion.span
-                  key={x}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.05 }}
-                  className="flex items-center gap-2"
-                >
-                  <Check className="size-5 rounded-full bg-primary p-1" />
-                  {x}
-                </motion.span>
-              ))}
-            </div>
-          </motion.div>
-          <div className="grid gap-3">
-            {[
-              [Boxes, "Complete Product Categories", "Fire & industrial safety"],
-              [Wrench, "End-to-End Solutions", "Supply • installation • support"],
-              [ShieldCheck, "Professional Expertise", "Consultation • inspection • maintenance"],
-            ].map(([Icon, title, copy], idx) => {
-              const I = Icon as typeof Boxes;
-              return (
-                <motion.div
-                  key={String(title)}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-30px" }}
-                  transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  whileHover={{ x: 6, transition: { duration: 0.2 } }}
-                  className="grid grid-cols-[auto_1fr] items-center gap-4 rounded-xl border border-border/50 bg-background p-5 text-foreground shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
-                >
-                  <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
-                    <I />
-                  </span>
-                  <span>
-                    <strong className="block text-xl">{String(title)}</strong>
-                    <small className="text-muted-foreground">{String(copy)}</small>
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section id="featured" className="scroll-mt-24 py-16 md:py-20">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <SectionHeading eyebrow="Featured Products" title="Our Safety Products" />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-            {featured.map(([name, cat, image], index) => (
-              <motion.article
-                key={name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.45, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -6, transition: { duration: 0.25, ease: "easeOut" } }}
-                className="group rounded-xl border border-border bg-card p-3 shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
-              >
-                <div className="overflow-hidden rounded-lg bg-muted">
-                  <img
-                    src={image}
-                    alt={name}
-                    loading="lazy"
-                    width={720}
-                    height={620}
-                    className="aspect-square w-full object-cover transition-transform duration-500 ease-out group-hover:scale-108"
-                  />
-                </div>
-                <h3 className="mt-3 text-sm font-bold group-hover:text-primary transition-colors">
-                  {name}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">{cat}</p>
-              </motion.article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="projects" className="scroll-mt-24 bg-brand-deep py-12 text-primary-foreground">
+      {/* Turnkey Projects Spotlight */}
+      <section id="projects" className="scroll-mt-24 bg-brand-deep py-14 text-primary-foreground">
         <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
           <div>
             <span className="text-xs font-bold uppercase text-brand-warm">Our Projects</span>
             <h2 className="mt-2 font-display text-3xl font-black md:text-4xl">
-              Real Safety Solutions
+              Real Safety Engineering
               <br />
-              for Real Industries
+              for Critical Infrastructure
             </h2>
-            <p className="mt-3 text-sm text-primary-foreground/75">
-              Professional fire protection and workplace safety applications across demanding
-              environments.
+            <p className="mt-3 text-sm text-primary-foreground/75 leading-relaxed">
+              Turnkey installations across automotive vendor parks, cold chain complexes, and high-density industrial corridors in Andhra Pradesh.
             </p>
             <a href="/projects" className="mt-6 inline-block">
-              <Button className="bg-background text-primary hover:bg-background/90">
-                View Our Projects <ArrowRight className="size-4" />
+              <Button className="bg-background text-primary hover:bg-background/90 font-bold">
+                View Turnkey Project Portfolio <ArrowRight className="size-4" />
               </Button>
             </a>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2.5">
             {[
-              ["/src/assets/images/project_fire_pump_1790949771594.jpg", "Fire pump installation"],
-              ["/src/assets/images/project_industrial_cctv_1790949816614.jpg", "CCTV systems"],
-              ["/src/assets/images/project_cable_management_1790949831946.jpg", "Cable management"],
-              [
-                "/src/assets/images/project_hydrant_network_1790949784743.jpg",
-                "Hydrant installation",
-              ],
+              [projectPump, "Fire pump skids"],
+              [projectCctv, "CCTV surveillance"],
+              [projectCable, "Cable management"],
+              [projectHydrant, "Hydrant networks"],
             ].map(([image, label], index) => (
               <motion.figure
                 key={label}
                 initial={{ opacity: 0, x: 24 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
+                viewport={{ once: true }}
                 transition={{ duration: 0.48, delay: index * 0.07 }}
-                className="relative overflow-hidden rounded-md border-2 border-primary-foreground/70"
+                className="relative overflow-hidden rounded-lg border-2 border-primary-foreground/70 shadow-md"
               >
                 <img
                   src={image}
                   alt={label}
                   loading="lazy"
-                  referrerPolicy="no-referrer"
-                  width={720}
-                  height={520}
                   className="aspect-[0.85] w-full object-cover"
                 />
-                <figcaption className="absolute inset-x-0 bottom-0 bg-ink/80 p-2 text-[10px] font-bold">
+                <figcaption className="absolute inset-x-0 bottom-0 bg-ink/85 p-2 text-[10px] font-bold text-center">
                   {label}
                 </figcaption>
               </motion.figure>
@@ -672,27 +781,28 @@ function Index() {
         </div>
       </section>
 
+      {/* Get in Touch & Request a Quote Section */}
       <section id="contact" className="scroll-mt-24 bg-soft py-16 md:py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
           <div>
             <SectionHeading
               eyebrow="Get in Touch"
-              title="Request a Quote"
-              copy="Tell us about your requirement and our team will get back to you with the right solution."
+              title="Request a Quote or Site Survey"
+              copy="Tell us about your facility requirements. Our licensed safety engineers will provide technical specs and formal quotation within 24 hours."
             />
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1 mt-6">
               {[
-                [Phone, "Call Primary", "+91 8639858221", "tel:+918639858221"],
-                [Phone, "Call Secondary", "+91 9030609171", "tel:+919030609171"],
+                [Phone, "Primary Dispatch Hotline", "+91 8639858221", "tel:+918639858221"],
+                [Phone, "Secondary Technical Desk", "+91 9030609171", "tel:+919030609171"],
                 [
                   Mail,
-                  "Email Us",
+                  "Official Email",
                   "sriudharchienterprises@gmail.com",
                   "mailto:sriudharchienterprises@gmail.com",
                 ],
                 [
                   MapPin,
-                  "Our Office",
+                  "Office & Logistics Depot",
                   "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
                   "https://www.google.com/maps/search/?api=1&query=Kubera+Hills+Palasamudram+Andhra+Pradesh+515241",
                 ],
@@ -704,15 +814,15 @@ function Index() {
                     href={String(href)}
                     target={String(href).startsWith("http") ? "_blank" : undefined}
                     rel="noreferrer"
-                    className="grid grid-cols-[auto_1fr] gap-4"
+                    className="grid grid-cols-[auto_1fr] gap-4 p-3 rounded-xl border border-border/60 bg-card hover:border-primary/40 transition-colors shadow-xs"
                   >
-                    <span className="grid size-11 place-items-center rounded-md bg-primary text-primary-foreground">
+                    <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
                       <I className="size-5" />
                     </span>
-                    <span>
-                      <strong className="block text-sm">{String(label)}</strong>
-                      <span className="text-sm text-muted-foreground">{String(value)}</span>
-                    </span>
+                    <div>
+                      <strong className="block text-xs text-muted-foreground">{String(label)}</strong>
+                      <span className="text-sm font-bold text-foreground">{String(value)}</span>
+                    </div>
                   </a>
                 );
               })}
@@ -726,6 +836,19 @@ function Index() {
           </div>
         </div>
       </section>
+
+      {/* Floating Emergency WhatsApp & Call Hotline Button */}
+      <div className="fixed bottom-6 left-6 z-40 hidden sm:flex items-center gap-2">
+        <a
+          href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20need%20urgent%20fire%20safety%20assistance."
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xl hover:bg-emerald-700 hover:scale-105 transition-all"
+        >
+          <MessageCircle className="size-4" />
+          <span>WhatsApp Hotline</span>
+        </a>
+      </div>
 
       <SiteFooter />
     </main>

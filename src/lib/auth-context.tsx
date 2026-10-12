@@ -16,22 +16,38 @@ import {
 } from "./firebase";
 import type { UserItem } from "./types";
 
+export interface UserRegistrationMeta {
+  phone?: string | undefined;
+  company?: string | undefined;
+}
+
 interface AuthContextType {
   user: FirebaseUser | null;
   userProfile: UserItem | null;
   isAdmin: boolean;
+  isStaff: boolean;
+  isCustomer: boolean;
   loading: boolean;
   authConfigError: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, name?: string) => Promise<void>;
+  registerWithEmail: (
+    email: string,
+    pass: string,
+    name?: string,
+    metadata?: UserRegistrationMeta,
+  ) => Promise<void>;
+  loginAsDemo: (role: "admin" | "customer") => void;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Primary project administrator emails recognized by the system
-const SUPER_ADMIN_EMAILS = ["sriudharchienterprises@gmail.com", "venkateshchop14@gmail.com"];
+export const SUPER_ADMIN_EMAILS = [
+  "sriudharchienterprises@gmail.com",
+  "venkateshchop14@gmail.com",
+];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -47,19 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribeAuth = onAuthStateChanged(
         auth,
         async (currentUser) => {
-          setUser(currentUser);
-          if (unsubscribeDoc) {
-            unsubscribeDoc();
-            unsubscribeDoc = null;
-          }
-
           if (currentUser) {
+            setUser(currentUser);
+            if (unsubscribeDoc) {
+              unsubscribeDoc();
+              unsubscribeDoc = null;
+            }
+
             const userDocRef = doc(db, "users", currentUser.uid);
+            const now = new Date().toISOString();
 
             try {
               const snap = await getDoc(userDocRef);
               const isSuperAdmin =
-                !!currentUser.email && SUPER_ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
+                !!currentUser.email &&
+                SUPER_ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
 
               if (!snap.exists()) {
                 // First-time user sign in: create document in Firestore users collection
@@ -67,21 +85,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: currentUser.uid,
                   email: currentUser.email || "",
                   displayName:
-                    currentUser.displayName || currentUser.email?.split("@")[0] || "User",
+                    currentUser.displayName ||
+                    currentUser.email?.split("@")[0] ||
+                    "User",
                   role: isSuperAdmin ? "admin" : "customer",
-                  createdAt: new Date().toISOString(),
+                  createdAt: now,
+                  updatedAt: now,
+                  lastLoginAt: now,
                 };
                 await setDoc(userDocRef, initialProfile);
                 setUserProfile(initialProfile);
-              } else if (isSuperAdmin && snap.data()?.["role"] !== "admin") {
-                // Ensure super administrator email retains the admin role
-                await setDoc(userDocRef, { role: "admin" }, { merge: true });
+              } else {
+                // Returning user: Record active login timestamp in Firestore database
+                const updates: Partial<UserItem> = {
+                  lastLoginAt: now,
+                  updatedAt: now,
+                };
+                if (isSuperAdmin && snap.data()?.["role"] !== "admin") {
+                  updates.role = "admin";
+                }
+                await setDoc(userDocRef, updates, { merge: true });
                 setUserProfile({
                   ...(snap.data() as UserItem),
-                  role: "admin",
+                  ...updates,
                 });
-              } else {
-                setUserProfile(snap.data() as UserItem);
               }
             } catch (e) {
               console.warn("Firestore user profile verification notice:", e);
@@ -104,12 +131,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               },
             );
           } else {
-            setUserProfile(null);
-            setLoading(false);
+            // If no active Firebase user, check for saved interactive demo session
+            let restored = false;
+            if (typeof window !== "undefined") {
+              try {
+                const savedDemo = localStorage.getItem("sue_demo_session");
+                if (savedDemo) {
+                  const parsed = JSON.parse(savedDemo);
+                  if (parsed?.role === "admin" || parsed?.role === "customer") {
+                    loginAsDemo(parsed.role);
+                    restored = true;
+                  }
+                }
+              } catch {}
+            }
+            if (!restored) {
+              setUser(null);
+              setUserProfile(null);
+              setLoading(false);
+            }
           }
         },
         (error) => {
-          // If Identity Platform / Firebase Auth provider is not yet activated in console
           console.warn("Firebase Auth state callback notice:", error.message);
           const errCode = (error as { code?: string }).code;
           if (
@@ -118,15 +161,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ) {
             setAuthConfigError(true);
           }
-          setUser(null);
-          setUserProfile(null);
-          setLoading(false);
+          let restored = false;
+          if (typeof window !== "undefined") {
+            try {
+              const savedDemo = localStorage.getItem("sue_demo_session");
+              if (savedDemo) {
+                const parsed = JSON.parse(savedDemo);
+                if (parsed?.role === "admin" || parsed?.role === "customer") {
+                  loginAsDemo(parsed.role);
+                  restored = true;
+                }
+              }
+            } catch {}
+          }
+          if (!restored) {
+            setUser(null);
+            setUserProfile(null);
+            setLoading(false);
+          }
         },
       );
     } catch (err: unknown) {
       console.warn("Firebase onAuthStateChanged setup error:", err);
       setAuthConfigError(true);
-      setLoading(false);
+      let restored = false;
+      if (typeof window !== "undefined") {
+        try {
+          const savedDemo = localStorage.getItem("sue_demo_session");
+          if (savedDemo) {
+            const parsed = JSON.parse(savedDemo);
+            if (parsed?.role === "admin" || parsed?.role === "customer") {
+              loginAsDemo(parsed.role);
+              restored = true;
+            }
+          }
+        } catch {}
+      }
+      if (!restored) {
+        setUser(null);
+        setUserProfile(null);
+        setLoading(false);
+      }
     }
 
     return () => {
@@ -137,7 +212,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const cred = await signInWithPopup(auth, googleProvider);
+      if (cred.user) {
+        const userDocRef = doc(db, "users", cred.user.uid);
+        const now = new Date().toISOString();
+        const isSuperAdmin =
+          !!cred.user.email &&
+          SUPER_ADMIN_EMAILS.includes(cred.user.email.toLowerCase());
+
+        try {
+          const snap = await getDoc(userDocRef);
+          if (!snap.exists()) {
+            const initialProfile: UserItem = {
+              id: cred.user.uid,
+              email: cred.user.email || "",
+              displayName:
+                cred.user.displayName ||
+                cred.user.email?.split("@")[0] ||
+                "Google User",
+              role: isSuperAdmin ? "admin" : "customer",
+              createdAt: now,
+              updatedAt: now,
+              lastLoginAt: now,
+            };
+            await setDoc(userDocRef, initialProfile);
+            setUserProfile(initialProfile);
+          } else {
+            const updates: Partial<UserItem> = {
+              lastLoginAt: now,
+              updatedAt: now,
+            };
+            if (isSuperAdmin && snap.data()?.["role"] !== "admin") {
+              updates.role = "admin";
+            }
+            await setDoc(userDocRef, updates, { merge: true });
+            setUserProfile({
+              ...(snap.data() as UserItem),
+              ...updates,
+            });
+          }
+        } catch (dbErr) {
+          console.warn("Error recording Google login to Firestore:", dbErr);
+        }
+      }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       if (
@@ -155,7 +272,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithEmail = async (email: string, pass: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      if (cred.user) {
+        const userDocRef = doc(db, "users", cred.user.uid);
+        const now = new Date().toISOString();
+        try {
+          await setDoc(
+            userDocRef,
+            {
+              lastLoginAt: now,
+              updatedAt: now,
+            },
+            { merge: true },
+          );
+        } catch (dbErr) {
+          console.warn("Error recording login timestamp to Firestore:", dbErr);
+        }
+      }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       if (
@@ -171,17 +304,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string, name?: string) => {
+  const registerWithEmail = async (
+    email: string,
+    pass: string,
+    name?: string,
+    metadata?: UserRegistrationMeta,
+  ) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+      const now = new Date().toISOString();
+
       const newProfile: UserItem = {
         id: cred.user.uid,
         email,
         displayName: name || email.split("@")[0] || "User",
         role: isSuperAdmin ? "admin" : "customer",
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: now,
       };
+
+      if (metadata?.phone?.trim()) {
+        newProfile.phone = metadata.phone.trim();
+      }
+      if (metadata?.company?.trim()) {
+        newProfile.company = metadata.company.trim();
+      }
+
       try {
         await setDoc(doc(db, "users", cred.user.uid), newProfile);
       } catch (e) {
@@ -203,18 +353,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginAsDemo = (role: "admin" | "customer") => {
+    const isSuperAdmin = role === "admin";
+    const demoProfile: UserItem = {
+      id: isSuperAdmin ? "demo-admin-id" : "demo-client-id",
+      email: isSuperAdmin ? "sriudharchienterprises@gmail.com" : "purchasing@industrialclient.in",
+      displayName: isSuperAdmin ? "Sri Udharchi Admin" : "Rajesh Kumar (Industrial Facility)",
+      role: role,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+      company: isSuperAdmin ? "Sri Udharchi Enterprises" : "Apex Heavy Manufacturing Corp",
+      phone: isSuperAdmin ? "+91 8639858221" : "+91 9876543210",
+    };
+    const mockUser = {
+      uid: demoProfile.id,
+      email: demoProfile.email,
+      displayName: demoProfile.displayName,
+      emailVerified: true,
+      isAnonymous: false,
+    } as unknown as FirebaseUser;
+
+    setUser(mockUser);
+    setUserProfile(demoProfile);
+    setLoading(false);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("sue_demo_session", JSON.stringify({ role }));
+      } catch {}
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
     } catch (e) {
-      console.warn("Sign out error:", e);
+      console.warn("Sign out notice:", e);
+    }
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("sue_demo_session");
+      } catch {}
     }
     setUser(null);
     setUserProfile(null);
   };
 
-  // Authoritative admin verification: strictly requires an active user and role === "admin" in Firestore
+  // Authoritative admin verification: strictly requires an active user and role === "admin"
   const isAdmin = Boolean(user && userProfile?.role === "admin");
+  const isStaff = Boolean(
+    user && (userProfile?.role === "staff" || userProfile?.role === "admin"),
+  );
+  const isCustomer = Boolean(user && userProfile?.role === "customer");
 
   return (
     <AuthContext.Provider
@@ -222,11 +412,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         userProfile,
         isAdmin,
+        isStaff,
+        isCustomer,
         loading,
         authConfigError,
         loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
+        loginAsDemo,
         logout,
       }}
     >

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ProductItem, InquiryItem, UserItem, CategoryItem } from "@/lib/types";
+import type { ProductItem, InquiryItem, UserItem, CategoryItem, OrderItem } from "@/lib/types";
 import { Button } from "@/components/button";
 import {
   BarChart3,
@@ -16,6 +16,7 @@ import {
   PieChart,
   Plus,
   ShieldCheck,
+  ShoppingBag,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -25,7 +26,8 @@ interface AdminAnalyticsProps {
   inquiries: InquiryItem[];
   usersList: UserItem[];
   categories: CategoryItem[];
-  onNavigateTab: (tab: "products" | "inquiries" | "users" | "analytics") => void;
+  orders?: OrderItem[];
+  onNavigateTab: (tab: "products" | "inquiries" | "users" | "analytics" | "orders" | "system") => void;
   onOpenAddProduct?: () => void;
 }
 
@@ -34,6 +36,7 @@ export function AdminAnalytics({
   inquiries,
   usersList,
   categories,
+  orders = [],
   onNavigateTab,
   onOpenAddProduct,
 }: AdminAnalyticsProps) {
@@ -66,6 +69,18 @@ export function AdminAnalytics({
 
     return { total, newCount, contactedCount, closedCount, conversionRate, responseRate };
   }, [filteredInquiries]);
+
+  // Customer Orders Stats from Firestore
+  const orderStats = useMemo(() => {
+    const list = orders || [];
+    const total = list.length;
+    const pending = list.filter((o) => o.status === "pending").length;
+    const confirmed = list.filter(
+      (o) => o.status === "confirmed" || o.status === "dispatched" || o.status === "delivered",
+    ).length;
+    const revenue = list.reduce((sum, o) => sum + (o.total || 0), 0);
+    return { total, pending, confirmed, revenue };
+  }, [orders]);
 
   // Lead Activity Trend (Last 7 Days)
   const activityTrend = useMemo(() => {
@@ -150,7 +165,7 @@ export function AdminAnalytics({
     const inStock = products.filter((p) => p.inStock !== false).length;
     const outOfStock = total - inStock;
     const featured = products.filter((p) => p.featured === true).length;
-    const inStockPct = total > 0 ? Math.round((inStock / total) * 100) : 100;
+    const inStockPct = total > 0 ? Math.round((inStock / total) * 100) : 0;
 
     return { total, inStock, outOfStock, featured, inStockPct };
   }, [products]);
@@ -259,28 +274,36 @@ export function AdminAnalytics({
           </div>
         </div>
 
-        {/* KPI 2: Conversion Rate */}
+        {/* KPI 2: Customer Orders & Invoiced Revenue */}
         <div
-          onClick={() => onNavigateTab("inquiries")}
-          className="group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-success/40 hover:shadow-md"
+          onClick={() => onNavigateTab("orders")}
+          className="group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-emerald-500/40 hover:shadow-md"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Lead Conversion
+              Customer Orders
             </span>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-success/10 text-success transition-transform group-hover:scale-110">
-              <TrendingUp className="size-4" />
+            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 transition-transform group-hover:scale-110">
+              <ShoppingBag className="size-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-3xl font-black text-foreground">
-              {inquiryStats.conversionRate}%
+              {orderStats.total}
             </span>
-            <span className="text-xs text-muted-foreground">Won Deals</span>
+            {orderStats.pending > 0 ? (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-500">
+                {orderStats.pending} Pending
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">Orders</span>
+            )}
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Closed Leads:</span>
-            <span className="font-bold text-success">{inquiryStats.closedCount} deals</span>
+            <span>Invoiced Volume:</span>
+            <span className="font-bold text-foreground">
+              ₹{orderStats.revenue.toLocaleString("en-IN")}
+            </span>
           </div>
         </div>
 
@@ -324,7 +347,7 @@ export function AdminAnalytics({
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-3xl font-black text-foreground">
-              {usersList.length || 1}
+              {usersList.length}
             </span>
             <span className="text-xs text-muted-foreground">Members</span>
           </div>
@@ -488,7 +511,10 @@ export function AdminAnalytics({
 
           <div className="mt-6 flex h-48 items-end justify-between gap-2 pt-6">
             {activityTrend.bars.map((bar) => {
-              const heightPct = Math.max(Math.round((bar.count / activityTrend.maxVal) * 100), 8);
+              const heightPct =
+                bar.count > 0
+                  ? Math.max(Math.round((bar.count / activityTrend.maxVal) * 100), 8)
+                  : 0;
               return (
                 <div
                   key={bar.label}
@@ -586,7 +612,7 @@ export function AdminAnalytics({
           <div className="mt-5 space-y-3.5">
             {categoryStats.entries.length === 0 ? (
               <div className="py-12 text-center text-xs text-muted-foreground">
-                Catalog empty. Seed default products from Products tab.
+                Catalog empty. Add products from the Products tab.
               </div>
             ) : (
               categoryStats.entries.map(([category, count]) => {
@@ -670,6 +696,10 @@ export function AdminAnalytics({
             <Button size="sm" onClick={() => onNavigateTab("products")}>
               <Boxes className="size-3.5" />
               <span>Products Catalog</span>
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onNavigateTab("orders")}>
+              <ShoppingBag className="size-3.5" />
+              <span>Customer Orders</span>
             </Button>
             <Button size="sm" variant="outline" onClick={() => onNavigateTab("inquiries")}>
               <Mail className="size-3.5" />

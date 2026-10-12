@@ -11,33 +11,30 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
+import consultationImg from "@/assets/images/service_consultation_1790861559415.jpg";
+import { NanoIcon } from "@/components/nano-icon";
+import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/services/consultation")({
-  head: () => ({
-    meta: [
-      { title: "Fire Safety Consultation & Audits | Sri Udharchi Enterprises" },
-      {
-        name: "description",
-        content:
-          "Professional fire safety risk assessment, NBC 2016 compliance consultation, fire department NOC approvals, and emergency evacuation plans.",
-      },
-      { property: "og:title", content: "Fire Safety Consultation | Sri Udharchi Enterprises" },
-      {
-        property: "og:description",
-        content:
-          "Professional fire safety risk assessment, NBC 2016 compliance consultation, and fire department NOC approvals.",
-      },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Fire Safety Consultation & NOC Advisory" },
-      {
-        name: "twitter:description",
-        content:
-          "Professional fire safety risk assessment, NBC 2016 compliance consultation, and fire department NOC approvals.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "Fire Safety Consultation & Audits | Sri Udharchi Enterprises",
+      description:
+        "Professional fire safety risk assessment, NBC 2016 compliance consultation, fire department NOC approvals, and emergency evacuation plans.",
+      path: "/services/consultation",
+      jsonLd: [
+        schemas.breadcrumbs([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+          { name: "Consultation & Audits", path: "/services/consultation" },
+        ]),
+        schemas.service(
+          "Fire Safety Consultation, NBC Compliance & NOC Advisory",
+          "Professional fire safety risk assessments (HIRA), NBC 2016 alignment, hydraulic calculations, and statutory Fire Department NOC approvals.",
+          "/services/consultation"
+        ),
+      ],
+    }),
   component: ConsultationServicePage,
 });
 
@@ -79,13 +76,16 @@ export function ConsultationServicePage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl border border-border shadow-2xl">
               <img
-                src="/src/assets/images/service_consultation_1790861559415.jpg"
+                src={consultationImg}
                 alt="Fire safety consultant reviewing architectural blueprints"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />
+              <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
+                <NanoIcon name="fire" size="md" />
+              </div>
             </div>
           </div>
         </div>

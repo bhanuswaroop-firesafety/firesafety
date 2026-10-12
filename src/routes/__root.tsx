@@ -10,6 +10,9 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { AuthProvider } from "../lib/auth-context";
+import { CartProvider } from "../lib/cart-context";
+import { CartDrawer } from "../components/cart-drawer";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { logAppError } from "../lib/error-logger";
@@ -79,12 +82,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sri Udharchi Enterprises | Fire & Industrial Safety Solutions" },
+      { title: "Sri Udharchi Enterprises | Certified Fire Safety Products & Systems" },
       {
         name: "description",
         content:
-          "Leading fire fighting engineering contractor and industrial safety distributor in Andhra Pradesh. Turnkey hydrant networks, automated sprinklers, hydro-testing, and AMC maintenance.",
+          "Leading distributor of certified fire safety products and turnkey fire protection engineering in Andhra Pradesh & India. Buy fire extinguishers, hydrants, fire pumps, and industrial PPE gear.",
       },
+      {
+        name: "keywords",
+        content:
+          "fire safety products, fire safety product, fire safety equipment, fire extinguishers, fire protection systems, industrial safety products, Sri Udharchi Enterprises",
+      },
+      { name: "theme-color", content: "#1e3a5f" },
+      { name: "geo.region", content: "IN-AP" },
+      { name: "geo.placename", content: "Palasamudram, Andhra Pradesh" },
+      { name: "geo.position", content: "14.6519;77.6006" },
+      { name: "ICBM", content: "14.6519, 77.6006" },
       { property: "og:site_name", content: "Sri Udharchi Enterprises" },
       { property: "og:title", content: "Sri Udharchi Enterprises | Fire & Industrial Safety" },
       {
@@ -92,9 +105,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Turnkey fire fighting systems, statutory inspections, hydro-testing, AMC maintenance, and certified industrial safety supplies.",
       },
-      { property: "og:image", content: "/sri-udharchi-enterprises-logo.png" },
-      { name: "author", content: "Sri Udharchi Enterprises" },
+      { property: "og:image", content: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png" },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "en_IN" },
+      { name: "author", content: "Sri Udharchi Enterprises" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Sri Udharchi Enterprises | Fire & Safety" },
       {
@@ -102,9 +116,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Turnkey fire fighting systems, statutory inspections, hydro-testing, and certified industrial safety equipment.",
       },
-      { name: "twitter:image", content: "/sri-udharchi-enterprises-logo.png" },
+      { name: "twitter:image", content: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png" },
     ],
     links: [
+      { rel: "canonical", href: "https://sriudharchi.com/" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -123,31 +138,60 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          name: "Sri Udharchi Enterprises",
-          image: "/sri-udharchi-enterprises-logo.png",
-          description:
-            "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and turnkey AMC maintenance in Andhra Pradesh and Pan-India.",
-          telephone: "+918639858221",
-          email: "sriudharchienterprises@gmail.com",
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: "H-7, Kubera Hills",
-            addressLocality: "Palasamudram",
-            addressRegion: "Andhra Pradesh",
-            postalCode: "515241",
-            addressCountry: "IN",
-          },
-          openingHoursSpecification: [
+          "@graph": [
             {
-              "@type": "OpeningHoursSpecification",
-              dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-              opens: "09:00",
-              closes: "19:00",
+              "@type": "WebSite",
+              "@id": "https://sriudharchi.com/#website",
+              url: "https://sriudharchi.com",
+              name: "Sri Udharchi Enterprises",
+              description:
+                "Leading fire fighting engineering contractor and industrial safety distributor in Andhra Pradesh.",
+              publisher: {
+                "@id": "https://sriudharchi.com/#business",
+              },
+            },
+            {
+              "@type": "LocalBusiness",
+              "@id": "https://sriudharchi.com/#business",
+              name: "Sri Udharchi Enterprises",
+              image: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png",
+              description:
+                "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and turnkey AMC maintenance in Andhra Pradesh and Pan-India.",
+              telephone: "+918639858221",
+              email: "sriudharchienterprises@gmail.com",
+              url: "https://sriudharchi.com",
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: "H-7, Kubera Hills",
+                addressLocality: "Palasamudram",
+                addressRegion: "Andhra Pradesh",
+                postalCode: "515241",
+                addressCountry: "IN",
+              },
+              geo: {
+                "@type": "GeoCoordinates",
+                latitude: 14.6519,
+                longitude: 77.6006,
+              },
+              openingHoursSpecification: [
+                {
+                  "@type": "OpeningHoursSpecification",
+                  dayOfWeek: [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                  ],
+                  opens: "09:00",
+                  closes: "19:00",
+                },
+              ],
+              areaServed: ["Andhra Pradesh", "Telangana", "Odisha", "India"],
+              priceRange: "$$",
             },
           ],
-          areaServed: ["Andhra Pradesh", "Telangana", "Odisha", "India"],
-          priceRange: "$$",
         }),
       },
     ],
@@ -185,8 +229,12 @@ function RootComponent() {
     >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <CartProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <CartDrawer />
+            <Toaster richColors position="top-right" />
+          </CartProvider>
         </AuthProvider>
       </QueryClientProvider>
     </MotionConfig>

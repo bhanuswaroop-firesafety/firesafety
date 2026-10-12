@@ -13,10 +13,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
-    // Bootstrap check allowed ONLY for initial document provisioning
+    // Bootstrap check allowed ONLY for initial document provisioning with verified email
     function isDesignatedBootstrapAdmin() {
       return isSignedIn() &&
         request.auth.token.email != null &&
+        request.auth.token.email_verified == true &&
         (
           request.auth.token.email.lower() == "sriudharchienterprises@gmail.com" ||
           request.auth.token.email.lower() == "venkateshchop14@gmail.com"
@@ -34,7 +35,7 @@ service cloud.firestore {
       allow create, update: if isAdmin() &&
         request.resource.data.keys().hasOnly([
           'id', 'name', 'category', 'image', 'description', 'specs',
-          'price', 'unit', 'sku', 'inStock', 'featured', 'createdAt', 'updatedAt'
+          'price', 'unit', 'sku', 'minOrderQty', 'inStock', 'featured', 'createdAt', 'updatedAt'
         ]) &&
         request.resource.data.name is string &&
         request.resource.data.name.size() > 0 &&
@@ -99,16 +100,38 @@ service cloud.firestore {
         (isDesignatedBootstrapAdmin() && request.resource.data.role == "admin") ||
         request.resource.data.role == "customer"
       ) &&
-      request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt']);
+      request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt', 'phone', 'company', 'lastLoginAt']);
 
       allow update: if (isAdmin() && request.resource.data.role in ['admin', 'staff', 'customer']) || (
         isSignedIn() &&
         request.auth.uid == userId &&
         request.resource.data.role == resource.data.role &&
-        request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt', 'phone', 'company', 'lastLoginAt'])
       );
 
       allow delete: if isAdmin();
+    }
+
+    // Orders:
+    // - Customers can create their own order, or read their own orders.
+    // - Admins can read, update status, and delete orders.
+    match /orders/{orderId} {
+      allow create: if request.resource.data.keys().hasOnly([
+          'orderId', 'orderDate', 'customerName', 'customerPhone', 'customerEmail',
+          'customerId', 'shippingAddress', 'companyName', 'gstin', 'paymentMethod',
+          'items', 'subtotal', 'discount', 'gst', 'shipping', 'total', 'status', 'createdAt'
+        ]) &&
+        request.resource.data.customerName is string &&
+        request.resource.data.customerPhone is string &&
+        request.resource.data.customerEmail is string &&
+        request.resource.data.items is list &&
+        request.resource.data.total is number;
+
+      allow read: if isAdmin() || (
+        isSignedIn() && resource.data.customerId == request.auth.uid
+      );
+
+      allow update, delete: if isAdmin();
     }
   }
 }
