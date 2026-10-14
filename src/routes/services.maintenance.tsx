@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
 import { ArrowRight, Clock, Gauge, Phone, ShieldCheck, Wrench, Zap } from "lucide-react";
-import maintenanceImg from "@/assets/images/service_maintenance_1790861611461.jpg";
+import maintenanceImg from "@/assets/services/amc-maintenance.jpg";
 import { NanoIcon } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 

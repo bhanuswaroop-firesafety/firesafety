@@ -18,14 +18,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/button";
 
-import hydrantImg from "@/assets/fire-hydrant-system.jpg";
-import installationImg from "@/assets/images/service_installation_1790861578577.jpg";
-import consultationImg from "@/assets/images/service_consultation_1790861559415.jpg";
-import inspectionImg from "@/assets/images/service_inspection_1790861596452.jpg";
-import maintenanceImg from "@/assets/images/service_maintenance_1790861611461.jpg";
-import supplyImg from "@/assets/images/service_supply_1790861624690.jpg";
-import cctvImg from "@/assets/cctv-camera.jpg";
-import cableImg from "@/assets/cable-management.jpg";
+import hydrantImg from "@/assets/services/fire-hydrant-riser.jpg";
+import installationImg from "@/assets/services/sprinkler-gas-flooding.jpg";
+import consultationImg from "@/assets/services/safety-audit-noc.jpg";
+import inspectionImg from "@/assets/services/hydro-testing.jpg";
+import maintenanceImg from "@/assets/services/amc-maintenance.jpg";
+import supplyImg from "@/assets/services/ppe-supply.jpg";
+import cctvImg from "@/assets/services/explosion-proof-cctv.jpg";
+import cableImg from "@/assets/services/firestop-cable-tray.jpg";
 
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 

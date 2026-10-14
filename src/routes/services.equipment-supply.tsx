@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Truck,
 } from "lucide-react";
-import supplyImg from "@/assets/images/service_supply_1790861624690.jpg";
+import supplyImg from "@/assets/services/ppe-supply.jpg";
 import { NanoIcon } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 

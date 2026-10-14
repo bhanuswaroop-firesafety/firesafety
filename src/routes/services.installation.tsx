@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
 import { ArrowRight, Boxes, CheckCircle2, HardHat, Phone, ShieldCheck, Wrench } from "lucide-react";
-import installationImg from "@/assets/images/service_installation_1790861578577.jpg";
+import installationImg from "@/assets/services/sprinkler-gas-flooding.jpg";
 import { NanoIcon } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 

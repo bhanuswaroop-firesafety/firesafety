@@ -11,7 +11,7 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
-import consultationImg from "@/assets/images/service_consultation_1790861559415.jpg";
+import consultationImg from "@/assets/services/safety-audit-noc.jpg";
 import { NanoIcon } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 

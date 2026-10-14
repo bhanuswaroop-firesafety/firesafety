@@ -13,11 +13,11 @@ import {
   ShieldCheck,
   Wrench,
 } from "lucide-react";
-import consultationImg from "@/assets/images/service_consultation_1790861559415.jpg";
-import installationImg from "@/assets/images/service_installation_1790861578577.jpg";
-import inspectionImg from "@/assets/images/service_inspection_1790861596452.jpg";
-import maintenanceImg from "@/assets/images/service_maintenance_1790861611461.jpg";
-import supplyImg from "@/assets/images/service_supply_1790861624690.jpg";
+import consultationImg from "@/assets/services/safety-audit-noc.jpg";
+import installationImg from "@/assets/services/sprinkler-gas-flooding.jpg";
+import inspectionImg from "@/assets/services/hydro-testing.jpg";
+import maintenanceImg from "@/assets/services/amc-maintenance.jpg";
+import supplyImg from "@/assets/services/ppe-supply.jpg";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 

@@ -11,7 +11,7 @@ import {
   Phone,
   ShieldCheck,
 } from "lucide-react";
-import inspectionImg from "@/assets/images/service_inspection_1790861596452.jpg";
+import inspectionImg from "@/assets/services/hydro-testing.jpg";
 import { NanoIcon } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 
