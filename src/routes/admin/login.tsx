@@ -1,23 +1,18 @@
+'use client';
+
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, type FormEvent } from "react";
-import { useAuth } from "@/lib/auth-context";
-import { BrandLogo } from "@/components/brand-logo";
-import { Button } from "@/components/button";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { Eye, EyeOff, ArrowLeft, RefreshCw, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useAuth, SUPER_ADMIN_EMAILS } from "@/lib/auth-context";
 import {
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  RefreshCw,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  ArrowRight,
-  ExternalLink,
-  ChevronDown,
-  CheckCircle2,
-  AlertTriangle,
-} from "lucide-react";
+  auth,
+  googleProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut,
+} from "@/lib/firebase";
+import adminHeroImg from "@/assets/admin-login-hero.jpg";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
@@ -30,47 +25,132 @@ export const Route = createFileRoute("/admin/login")({
 });
 
 export function AdminLoginPage() {
-  const {
-    user,
-    userProfile,
-    isAdmin,
-    loading,
-    authConfigError,
-    loginWithGoogle,
-    loginWithEmail,
-    loginAsDemo,
-    logout,
-  } = useAuth();
   const navigate = useNavigate();
+  const { user, isAdmin, loading } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [showFirebaseGuide, setShowFirebaseGuide] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    rememberMe: true,
+  });
 
-  // If already logged in and verified as admin, redirect directly to dashboard
+  const [submitting, setSubmitting] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  // Restore remembered email on initial load
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const rememberedEmail = localStorage.getItem("sue_admin_remember_email");
+        if (rememberedEmail) {
+          setFormData((prev) => ({
+            ...prev,
+            email: rememberedEmail,
+            rememberMe: true,
+          }));
+        } else {
+          // Helpful default hint for Bhanu
+          setFormData((prev) => ({
+            ...prev,
+            email: "bhanuswaroop04@gmail.com",
+          }));
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Redirect to admin dashboard if already signed in with admin privileges
   useEffect(() => {
     if (!loading && user && isAdmin) {
       navigate({ to: "/admin" });
     }
   }, [user, isAdmin, loading, navigate]);
 
-  const handleEmailLogin = async (e: FormEvent) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    setSuccessMsg("");
+
+    const targetEmail = formData.email.trim();
+    if (!targetEmail) {
+      setErrorMsg("Please enter your admin email address.");
+      return;
+    }
+
+    if (!formData.password) {
+      setErrorMsg("Please enter your password.");
+      return;
+    }
+
+    // Security check: Only the sole authorized administrator is allowed
+    const isSoleAdmin =
+      targetEmail.toLowerCase() === "bhanuswaroop04@gmail.com" ||
+      SUPER_ADMIN_EMAILS.includes(targetEmail.toLowerCase());
+
+    if (!isSoleAdmin) {
+      setErrorMsg(
+        "Access Denied: bhanuswaroop04@gmail.com is the only authorized administrator for this portal.",
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await loginWithEmail(email, password);
+      // Authenticate via Firebase SDK with live user-entered credentials (NO hardcoded password)
+      const credential = await signInWithEmailAndPassword(auth, targetEmail, formData.password);
+
+      if (credential.user) {
+        const authenticatedEmail = credential.user.email?.toLowerCase();
+        if (authenticatedEmail !== "bhanuswaroop04@gmail.com") {
+          await signOut(auth);
+          setErrorMsg(
+            "Access Denied: Only bhanuswaroop04@gmail.com is authorized to access the Administrator Portal.",
+          );
+          return;
+        }
+
+        // Save email preference if rememberMe is enabled
+        if (typeof window !== "undefined") {
+          try {
+            if (formData.rememberMe) {
+              localStorage.setItem("sue_admin_remember_email", targetEmail);
+            } else {
+              localStorage.removeItem("sue_admin_remember_email");
+            }
+          } catch {}
+        }
+
+        // Successfully authenticated! Navigate to /admin
+        navigate({ to: "/admin" });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(
-        msg
-          .replace("Firebase: ", "")
-          .replace(/\(auth\/[^)]+\)/, "")
-          .trim(),
-      );
+      let userFriendlyError = msg
+        .replace("Firebase: ", "")
+        .replace(/\(auth\/[^)]+\)/, "")
+        .trim();
+
+      if (msg.includes("auth/invalid-credential") || msg.includes("invalid-credential")) {
+        userFriendlyError = "Invalid email or password. Please verify and try again.";
+      } else if (msg.includes("auth/user-not-found")) {
+        userFriendlyError =
+          "No Firebase user found with this email. You can sign in using 'Continue with Google' or register your password in Firebase.";
+      } else if (msg.includes("auth/wrong-password")) {
+        userFriendlyError = "Incorrect password. You can use 'Forgot password?' to reset it.";
+      }
+
+      setErrorMsg(userFriendlyError);
     } finally {
       setSubmitting(false);
     }
@@ -78,9 +158,22 @@ export function AdminLoginPage() {
 
   const handleGoogleLogin = async () => {
     setErrorMsg("");
+    setSuccessMsg("");
     setSubmitting(true);
     try {
-      await loginWithGoogle();
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleEmail = result.user?.email?.toLowerCase();
+
+      // Enforce strict sole-admin authorization
+      if (googleEmail !== "bhanuswaroop04@gmail.com") {
+        await signOut(auth);
+        setErrorMsg(
+          `Access Denied: Account (${googleEmail || "unknown"}) is not authorized. bhanuswaroop04@gmail.com is the only authorized administrator.`,
+        );
+        return;
+      }
+
+      navigate({ to: "/admin" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(
@@ -94,278 +187,257 @@ export function AdminLoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const targetEmail = formData.email.trim();
+    if (!targetEmail) {
+      setErrorMsg("Please enter your admin email address first, then click 'Forgot password?'.");
+      return;
+    }
+
+    setErrorMsg("");
+    setSuccessMsg("");
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, targetEmail);
+      setSuccessMsg(
+        `Password reset instructions have been dispatched to ${targetEmail}. Please check your inbox and spam folder.`,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(
+        "Could not send password reset email: " +
+          msg
+            .replace("Firebase: ", "")
+            .replace(/\(auth\/[^)]+\)/, "")
+            .trim(),
+      );
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-slate-950 text-slate-100 p-4 sm:p-6">
-      {/* Background Ambient Glow & Grid Pattern */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 size-[650px] rounded-full bg-red-600/15 blur-[140px]" />
-        <div className="absolute -bottom-40 right-10 size-[450px] rounded-full bg-amber-500/10 blur-[130px]" />
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)`,
-            backgroundSize: "24px 24px",
-          }}
-        />
-      </div>
-
-      <div className="relative z-10 w-full max-w-lg">
-        {/* Top Branding Badge */}
-        <div className="mb-6 text-center">
-          <div className="flex justify-center">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-3 shadow-xl backdrop-blur-md">
-              <BrandLogo />
-            </div>
-          </div>
-
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-xs font-bold tracking-wide text-red-400 backdrop-blur-sm">
-            <span className="size-2 rounded-full bg-red-500 animate-pulse" />
-            <Shield className="size-3.5" />
-            <span>SECURE EXECUTIVE ADMIN PORTAL</span>
-          </div>
-
-          <h1 className="mt-3 font-display text-2xl font-black text-white sm:text-3xl tracking-tight">
-            Enterprise Command Center
-          </h1>
-          <p className="mt-1.5 text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-            Restricted to authorized safety administrators and inventory managers of Sri Udharchi
-            Enterprises.
-          </p>
-        </div>
-
-        {/* Main Glass Card */}
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/80 p-6 sm:p-8 shadow-2xl backdrop-blur-xl ring-1 ring-white/5">
-          {/* Firebase Configuration Notice */}
-          {authConfigError && (
-            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-300">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 font-bold text-amber-200">
-                  <ShieldAlert className="size-4 shrink-0 text-amber-400" />
-                  <span>Firebase Authentication Setup Required</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowFirebaseGuide(!showFirebaseGuide)}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-amber-300 hover:text-white"
-                >
-                  <span>{showFirebaseGuide ? "Hide Guide" : "Setup Guide"}</span>
-                  <ChevronDown
-                    className={`size-3 transition-transform ${showFirebaseGuide ? "rotate-180" : ""}`}
-                  />
-                </button>
-              </div>
-
-              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-300/90">
-                Live Firebase Authentication is not yet activated in the Firebase Console for
-                project{" "}
-                <code className="rounded bg-amber-400/20 px-1 py-0.5 font-mono font-bold text-white">
-                  sri-udharchi-enterprises-c3be7
-                </code>
-                . Please follow the setup guide below to enable sign-in providers in the console.
-              </p>
-
-              {showFirebaseGuide && (
-                <div className="mt-3 pt-3 border-t border-amber-500/20 text-[11px] space-y-1.5 text-amber-200/90">
-                  <div className="font-semibold text-white">To activate in Firebase Console:</div>
-                  <div className="flex items-start gap-1.5">
-                    <span className="font-bold text-amber-400">1.</span>
-                    <span>
-                      Go to console.firebase.google.com &gt; Select project{" "}
-                      <strong>sri-udharchi-enterprises-c3be7</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-1.5">
-                    <span className="font-bold text-amber-400">2.</span>
-                    <span>
-                      Navigate to <strong>Build &gt; Authentication</strong> &gt; Click{" "}
-                      <strong>Get Started</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-1.5">
-                    <span className="font-bold text-amber-400">3.</span>
-                    <span>
-                      Enable <strong>Email/Password</strong> and/or <strong>Google</strong> under
-                      Sign-in method tab
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-3.5 pt-3 border-t border-amber-500/20 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold text-amber-200/90">
-                  Preview Admin Command Center:
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => loginAsDemo("admin")}
-                  className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold h-8 gap-1.5 shadow-md shadow-red-950"
-                >
-                  <ShieldCheck className="size-3.5" />
-                  <span>Launch Demo Admin Session</span>
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Logged in but non-admin warning */}
-          {user && !isAdmin && (
-            <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-200">
-              <div className="flex items-center gap-2 font-bold text-red-300">
-                <AlertTriangle className="size-4 text-red-400 shrink-0" />
-                <span>Unauthorized Role: {userProfile?.role || "customer"}</span>
-              </div>
-              <p className="mt-1.5 text-[11px] text-red-200/80 leading-relaxed">
-                Signed in as <strong className="text-white">{user.email}</strong>, but this account
-                lacks the required{" "}
-                <code className="font-mono font-bold text-red-300">role: "admin"</code> in
-                Firestore.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7 border-red-500/30 text-red-200 hover:bg-red-500/20"
-                  onClick={logout}
-                >
-                  Sign Out
-                </Button>
-                <a
-                  href="/login"
-                  className="text-xs self-center text-red-300 underline hover:text-white"
-                >
-                  Go to Client Portal
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Google Sign In */}
+    <div className="min-h-screen w-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col md:flex-row overflow-x-hidden">
+      {/* Left Panel - Image Section */}
+      <div className="w-full md:flex-1 relative min-h-[260px] md:min-h-screen overflow-hidden">
+        {/* Back Button */}
+        <div className="absolute top-6 left-6 z-20">
           <button
             type="button"
-            disabled={submitting}
-            onClick={handleGoogleLogin}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-700/80 bg-slate-800/80 py-2.5 px-4 text-xs font-bold text-white transition-all hover:bg-slate-700/80 hover:border-slate-600 disabled:opacity-50"
+            onClick={() => navigate({ to: "/" })}
+            aria-label="Return to Sri Udharchi Enterprises homepage"
+            className="size-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/60 transition-all border border-white/20 shadow-lg text-white group"
           >
-            <svg className="size-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-              />
-            </svg>
-            <span>Continue with Google Workspace</span>
+            <ArrowLeft className="size-5 transition-transform group-hover:-translate-x-0.5" />
           </button>
+        </div>
 
-          <div className="relative my-5 text-center text-xs text-slate-500">
-            <span className="relative z-10 bg-slate-900 px-3 uppercase text-[10px] tracking-wider font-semibold">
-              Or Sign In with Credentials
-            </span>
-            <div className="absolute inset-0 top-1/2 -z-0 border-t border-slate-800" />
+        {/* Hero Image */}
+        <div className="absolute inset-0">
+          <img
+            src={adminHeroImg}
+            alt="Sri Udharchi Enterprises Industrial Fire Safety Engineering"
+            className="w-full h-full object-cover object-center scale-100 transition-transform duration-1000 hover:scale-105"
+          />
+          {/* Subtle gradient overlay to enhance visual depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-slate-900/20" />
+        </div>
+
+        {/* Brand Caption Overlay */}
+        <div className="absolute bottom-6 left-6 right-6 z-10 hidden md:block text-white">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold backdrop-blur-md mb-2">
+            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+            <ShieldCheck className="size-3.5 text-emerald-400" />
+            <span>Industrial Safety Command</span>
+          </div>
+          <h2 className="text-xl font-bold tracking-tight text-white drop-shadow-md">
+            Sri Udharchi Enterprises
+          </h2>
+          <p className="text-xs text-slate-300 max-w-sm mt-0.5 leading-relaxed drop-shadow">
+            Authorized administrative access for real-time fire safety catalog, customer lead management, and live order tracking.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Panel - Form Section */}
+      <div className="flex-1 flex items-center justify-center bg-white p-6 sm:p-10 lg:p-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider mb-3">
+              <span>Admin Portal</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+              Welcome Back
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Sri Udharchi Enterprises Administration &middot;{" "}
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/login" })}
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Client Portal
+              </button>
+            </p>
           </div>
 
-          {/* Email / Password Form */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          {/* Feedback Alerts */}
+          {errorMsg && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700 flex items-start gap-2.5 animate-in fade-in duration-200">
+              <AlertCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
+              <div className="leading-relaxed">{errorMsg}</div>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 flex items-start gap-2.5 animate-in fade-in duration-200">
+              <CheckCircle2 className="size-4 shrink-0 text-emerald-600 mt-0.5" />
+              <div className="leading-relaxed">{successMsg}</div>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleEmailSubmit} className="space-y-5">
+            {/* Email Address */}
             <div>
-              <label className="text-xs font-semibold text-slate-300">Admin Email Address</label>
-              <div className="relative mt-1">
-                <input
-                  type="email"
-                  required
-                  placeholder="sriudharchienterprises@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                />
-                <Mail className="absolute right-3.5 top-3 size-4 text-slate-500" />
-              </div>
+              <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email Address
+              </label>
+              <input
+                id="admin-email"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="bhanuswaroop04@gmail.com"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 transition-all text-sm placeholder:text-gray-400"
+                required
+                autoComplete="email"
+              />
             </div>
 
+            {/* Password */}
             <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300">Password</label>
-                <span className="text-[11px] text-slate-500">IS 15683 Verified</span>
-              </div>
-              <div className="relative mt-1">
+              <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Password
+              </label>
+              <div className="relative">
                 <input
+                  id="admin-password"
                   type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Enter your admin password"
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 transition-all text-sm placeholder:text-gray-400"
                   required
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3 text-slate-500 hover:text-slate-300"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {errorMsg && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
-                {errorMsg}
-              </div>
-            )}
+            {/* Remember Me + Forgot Password */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span>Remember me</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50"
+              >
+                {resetLoading ? "Sending..." : "Forgot password?"}
+              </button>
+            </div>
 
-            <Button
+            {/* Submit Button */}
+            <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs h-10 shadow-lg shadow-red-950/50"
+              className="w-full bg-black text-white py-3.5 px-4 rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 cursor-pointer"
             >
               {submitting ? (
-                <div className="flex items-center gap-2">
+                <>
                   <RefreshCw className="size-4 animate-spin" />
                   <span>Verifying Credentials...</span>
-                </div>
+                </>
               ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <span>Sign In as Administrator</span>
-                  <ArrowRight className="size-4" />
-                </div>
+                <span>Sign In</span>
               )}
-            </Button>
-          </form>
+            </button>
 
-          {/* Security & RBAC Footer */}
-          <div className="mt-6 rounded-xl border border-slate-800/80 bg-slate-950/60 p-3.5 text-[11px] text-slate-400">
-            <div className="flex items-center gap-2 font-bold text-slate-300">
-              <Lock className="size-3.5 text-red-400" />
-              <span>Role-Based Access Control</span>
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="px-3 bg-white text-gray-500 font-semibold tracking-wider">
+                  or
+                </span>
+              </div>
             </div>
-            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
-              Only authorized staff & administrators with explicit database roles in{" "}
-              <code className="text-slate-400">/users</code> can view confidential quotes, client
-              leads, and alter the product catalog.
-            </p>
-          </div>
 
-          {/* Bottom navigation links */}
-          <div className="mt-6 flex flex-wrap items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-4">
-            <a href="/" className="hover:text-red-400 transition-colors">
-              ← Return to Main Website
-            </a>
-            <a
-              href="/login"
-              className="text-red-400 hover:text-red-300 font-semibold transition-colors"
-            >
-              Client Portal Sign In →
-            </a>
-          </div>
+            {/* Google Social Button */}
+            <div>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleGoogleLogin}
+                className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 text-gray-700 font-medium text-sm transition-colors shadow-2xs disabled:opacity-60 cursor-pointer"
+              >
+                {/* Google SVG */}
+                <svg className="w-5 h-5 mr-2.5 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                <span>Continue with Google Workspace</span>
+              </button>
+            </div>
+
+            {/* Sole Administrator Security Note */}
+            <div className="pt-2 text-center">
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Authorized Administrator: <span className="font-semibold text-gray-700">bhanuswaroop04@gmail.com</span>
+                <br />
+                Strict role-based access control enforced via Cloud Firestore security rules.
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>

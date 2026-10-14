@@ -6,22 +6,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Authoritative Admin Check: Checks the authenticated user's role in the Firestore users collection
+    // Authoritative Admin Check: bhanuswaroop04@gmail.com is designated sole admin or has role == "admin"
     function isAdmin() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      return isSignedIn() && (
+        (request.auth.token.email != null && request.auth.token.email.lower() == "bhanuswaroop04@gmail.com") ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin")
+      );
     }
 
-    // Bootstrap check allowed ONLY for initial document provisioning with verified email
+    // Bootstrap check allowed ONLY for sole designated admin email: bhanuswaroop04@gmail.com
     function isDesignatedBootstrapAdmin() {
       return isSignedIn() &&
         request.auth.token.email != null &&
-        request.auth.token.email_verified == true &&
-        (
-          request.auth.token.email.lower() == "sriudharchienterprises@gmail.com" ||
-          request.auth.token.email.lower() == "venkateshchop14@gmail.com"
-        );
+        request.auth.token.email.lower() == "bhanuswaroop04@gmail.com";
     }
 
     // Default Deny all unknown collections

@@ -45,8 +45,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Primary project administrator emails recognized by the system
 export const SUPER_ADMIN_EMAILS = [
-  "sriudharchienterprises@gmail.com",
-  "venkateshchop14@gmail.com",
+  "bhanuswaroop04@gmail.com",
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -357,8 +356,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isSuperAdmin = role === "admin";
     const demoProfile: UserItem = {
       id: isSuperAdmin ? "demo-admin-id" : "demo-client-id",
-      email: isSuperAdmin ? "sriudharchienterprises@gmail.com" : "purchasing@industrialclient.in",
-      displayName: isSuperAdmin ? "Sri Udharchi Admin" : "Rajesh Kumar (Industrial Facility)",
+      email: isSuperAdmin ? "bhanuswaroop04@gmail.com" : "purchasing@industrialclient.in",
+      displayName: isSuperAdmin ? "Bhanu Swaroop (Admin)" : "Rajesh Kumar (Industrial Facility)",
       role: role,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -399,8 +398,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(null);
   };
 
-  // Authoritative admin verification: strictly requires an active user and role === "admin"
-  const isAdmin = Boolean(user && userProfile?.role === "admin");
+  // Authoritative admin verification: strictly requires an active user and role === "admin" or designated super admin email
+  const isAdmin = Boolean(
+    user && (
+      userProfile?.role === "admin" ||
+      (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()))
+    ),
+  );
   const isStaff = Boolean(
     user && (userProfile?.role === "staff" || userProfile?.role === "admin"),
   );
