@@ -90,6 +90,13 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     }
   }, [initialMode]);
 
+  // When in signup mode and the user is authenticated, redirect to homepage immediately
+  useEffect(() => {
+    if (user && (mode === "signup" || initialMode === "signup")) {
+      navigate({ to: "/" });
+    }
+  }, [user, mode, initialMode, navigate]);
+
   // Password strength calculation
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { score: 0, label: "", color: "bg-muted" };
@@ -147,7 +154,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     try {
       const displayName = company ? `${name} (${company})` : name;
       await registerWithEmail(email, password, displayName, { phone, company });
-      setSuccessMsg("Account created successfully! Welcome to Sri Udharchi Enterprises.");
+      setSuccessMsg("Account created successfully! Redirecting to homepage...");
+      setTimeout(() => {
+        navigate({ to: "/" });
+      }, 400);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(
@@ -167,7 +177,14 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     setSubmitting(true);
     try {
       await loginWithGoogle();
-      setSuccessMsg("Authenticated via Google successfully!");
+      if (mode === "signup" || initialMode === "signup") {
+        setSuccessMsg("Signed up via Google! Redirecting to homepage...");
+        setTimeout(() => {
+          navigate({ to: "/" });
+        }, 400);
+      } else {
+        setSuccessMsg("Authenticated via Google successfully!");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(

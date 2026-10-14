@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { LoginPage } from "./login";
 import { seoHead } from "@/lib/seo";
 
@@ -15,5 +17,15 @@ export const Route = createFileRoute("/signup")({
 });
 
 export function SignupPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate({ to: "/" });
+    }
+  }, [user, navigate]);
+
   return <LoginPage initialMode="signup" />;
 }
+

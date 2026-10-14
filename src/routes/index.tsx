@@ -772,58 +772,58 @@ function Index() {
         </div>
       </section>
 
-      {/* Turnkey Projects Spotlight with 3D Curved Cylindrical Streaming Grid */}
+      {/* Turnkey Projects Spotlight with 3D Curved Cylindrical Streaming Grid (LIGHT MODE) */}
       <section
         id="projects"
-        className="scroll-mt-24 relative overflow-hidden bg-brand-deep text-primary-foreground"
+        className="scroll-mt-24 relative overflow-hidden bg-slate-50 border-y border-slate-200/90 text-foreground"
       >
         <TiltedGridHero
           images={PROJECT_CYLINDER_IMAGES}
-          className="relative min-h-[580px] sm:min-h-[640px] w-full border-y border-white/10 bg-slate-950/90 text-primary-foreground"
-          speed={3.5}
+          className="relative h-[600px] sm:h-[640px] w-full bg-slate-50 text-foreground"
+          speed={3.6}
           tileHeight={32}
           aspectRatio={16 / 9}
-          axis={64}
-          curve={80}
-          fade={15}
+          axis={62}
+          curve={78}
+          fade={14}
         >
-          <div className="relative z-10 flex min-h-[580px] sm:min-h-[640px] flex-col justify-between py-10 sm:py-14 px-4 sm:px-6 max-w-7xl mx-auto pointer-events-none">
-            {/* Top Section Header */}
+          <div className="relative z-10 flex h-full flex-col justify-between py-10 sm:py-12 px-4 sm:px-6 max-w-7xl mx-auto pointer-events-none">
+            {/* Top Section Header in Crisp Light Mode */}
             <div className="text-center max-w-3xl mx-auto pointer-events-auto">
-              <span className="inline-flex items-center gap-2 rounded-full border border-brand-warm/40 bg-brand-warm/15 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-brand-warm backdrop-blur-md">
-                <span className="size-2 rounded-full bg-brand-warm animate-pulse" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-primary shadow-xs">
+                <span className="size-2 rounded-full bg-primary animate-pulse" />
                 Our Projects
               </span>
-              <h2 className="mt-3 font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-xl">
+              <h2 className="mt-3 font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 drop-shadow-xs">
                 Real Safety Engineering
                 <br />
-                <span className="text-brand-warm">for Critical Infrastructure</span>
+                <span className="text-primary">for Critical Infrastructure</span>
               </h2>
-              <p className="mt-3 text-xs sm:text-base text-primary-foreground/90 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+              <p className="mt-3 text-xs sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
                 Turnkey installations across automotive vendor parks, cold chain complexes, and
                 high-density industrial corridors in Andhra Pradesh.
               </p>
             </div>
 
-            {/* Bottom Project Badges & Action */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/15 backdrop-blur-md pointer-events-auto">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-semibold text-primary-foreground/80">
+            {/* Bottom Project Badges & Action in Light Mode */}
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200/90 bg-white/70 backdrop-blur-md rounded-2xl px-5 py-3 shadow-sm pointer-events-auto">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-5 text-xs font-semibold text-slate-700">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4 text-brand-warm" /> Fire Pump Skids
+                  <CheckCircle2 className="size-4 text-emerald-600" /> Fire Pump Skids
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4 text-brand-warm" /> Hydrant Networks
+                  <CheckCircle2 className="size-4 text-emerald-600" /> Hydrant Networks
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4 text-brand-warm" /> CCTV Surveillance
+                  <CheckCircle2 className="size-4 text-emerald-600" /> CCTV Surveillance
                 </span>
                 <span className="hidden md:flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4 text-brand-warm" /> Cable Containment
+                  <CheckCircle2 className="size-4 text-emerald-600" /> Cable Containment
                 </span>
               </div>
 
               <a href="/projects" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto bg-background text-primary hover:bg-background/90 font-bold shadow-2xl">
+                <Button className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md">
                   View Turnkey Project Portfolio <ArrowRight className="size-4" />
                 </Button>
               </a>

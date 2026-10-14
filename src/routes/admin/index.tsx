@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   BarChart3,
   Boxes,
+  Building2,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -38,21 +39,26 @@ import {
   FileSpreadsheet,
   FileText,
   Filter,
+  FolderKanban,
   Globe,
   IndianRupee,
+  Layers,
   Lock,
   LogOut,
   Mail,
+  MapPin,
   Menu,
   Phone,
   Printer,
   QrCode,
   RefreshCw,
   Search,
+  Settings,
   Shield,
   ShieldAlert,
   ShieldCheck,
   ShoppingBag,
+  ShoppingCart,
   Trash2,
   Truck,
   UserCheck,
@@ -75,7 +81,7 @@ function AdminPage() {
 
   // Navigation tab in Admin Sidebar
   const [activeTab, setActiveTab] = useState<
-    "analytics" | "products" | "orders" | "inquiries" | "users" | "system"
+    "analytics" | "products" | "orders" | "inquiries" | "users" | "settings" | "system"
   >("analytics");
 
   // Mobile sidebar toggle
@@ -561,8 +567,8 @@ function AdminPage() {
     );
   }
 
-  // Sidebar navigation configuration
-  const sidebarNavItems = [
+  // Section 1: Core Operations & Commerce
+  const operationsNavItems = [
     {
       id: "analytics" as const,
       label: "Operations & Analytics",
@@ -582,19 +588,25 @@ function AdminPage() {
       label: "Orders & Dispatches",
       icon: ShoppingBag,
       badge: orders.length > 0 ? orders.length : null,
-      urgentBadge: orders.filter((o) => o.status === "pending").length > 0
-        ? `${orders.filter((o) => o.status === "pending").length} Pending`
-        : null,
+      urgentBadge:
+        orders.filter((o) => o.status === "pending").length > 0
+          ? `${orders.filter((o) => o.status === "pending").length} Pending`
+          : null,
     },
     {
       id: "inquiries" as const,
-      label: "Customer Leads",
+      label: "Customer Leads & RFQs",
       icon: Mail,
       badge: inquiries.length > 0 ? inquiries.length : null,
-      urgentBadge: inquiries.filter((i) => i.status === "new").length > 0
-        ? `${inquiries.filter((i) => i.status === "new").length} New`
-        : null,
+      urgentBadge:
+        inquiries.filter((i) => i.status === "new").length > 0
+          ? `${inquiries.filter((i) => i.status === "new").length} New`
+          : null,
     },
+  ];
+
+  // Section 2: Administration & Configuration
+  const adminNavItems = [
     {
       id: "users" as const,
       label: "Users & Staff (RBAC)",
@@ -603,13 +615,51 @@ function AdminPage() {
       urgentBadge: null,
     },
     {
+      id: "settings" as const,
+      label: "Business Profile & Settings",
+      icon: Settings,
+      badge: "GSTIN",
+      urgentBadge: null,
+    },
+    {
       id: "system" as const,
-      label: "Firebase & System",
+      label: "Firebase & System Health",
       icon: Database,
       badge: "Live",
       urgentBadge: null,
     },
   ];
+
+  // Section 3: Direct Public Portal & Storefront Navigation
+  const publicQuickLinks = [
+    {
+      href: "/products",
+      label: "Browse Products Store",
+      icon: ShoppingCart,
+    },
+    {
+      href: "/projects",
+      label: "Turnkey Projects Portfolio",
+      icon: FolderKanban,
+    },
+    {
+      href: "/services",
+      label: "Safety Services & AMC",
+      icon: Layers,
+    },
+    {
+      href: "/industries",
+      label: "Industry Solutions",
+      icon: Building2,
+    },
+    {
+      href: "/",
+      label: "Live Homepage",
+      icon: Globe,
+    },
+  ];
+
+  const sidebarNavItems = [...operationsNavItems, ...adminNavItems];
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
@@ -633,57 +683,147 @@ function AdminPage() {
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto" aria-label="Admin Navigation">
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-            Management Pages
-          </div>
-          {sidebarNavItems.map((item) => {
-            const isActive = activeTab === item.id;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm font-bold"
-                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className={`size-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
-                  <span className="truncate">{item.label}</span>
-                </div>
+        {/* Navigation Links Grouped */}
+        <nav className="flex-1 p-3 space-y-3.5 overflow-y-auto" aria-label="Admin Navigation">
+          {/* Group 1: Operations */}
+          <div className="space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              Operations & Commerce
+            </div>
+            {operationsNavItems.map((item) => {
+              const isActive = activeTab === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                      : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon
+                      className={`size-4 shrink-0 ${
+                        isActive ? "text-primary-foreground" : "text-primary"
+                      }`}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.urgentBadge && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        isActive
-                          ? "bg-primary-foreground text-primary"
-                          : "bg-primary/20 text-primary"
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.urgentBadge && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          isActive
+                            ? "bg-primary-foreground text-primary"
+                            : "bg-primary/20 text-primary"
+                        }`}
+                      >
+                        {item.urgentBadge}
+                      </span>
+                    )}
+                    {item.badge !== null && !item.urgentBadge && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          isActive
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Group 2: Administration */}
+          <div className="space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              Administration & System
+            </div>
+            {adminNavItems.map((item) => {
+              const isActive = activeTab === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                      : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon
+                      className={`size-4 shrink-0 ${
+                        isActive ? "text-primary-foreground" : "text-primary"
                       }`}
-                    >
-                      {item.urgentBadge}
-                    </span>
-                  )}
-                  {item.badge !== null && !item.urgentBadge && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] ${
-                        isActive
-                          ? "bg-primary-foreground/20 text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.badge !== null && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          isActive
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Group 3: Direct Public Portal & Storefront Navigation */}
+          <div className="space-y-1">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              Storefront & Portals
+            </div>
+            {publicQuickLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{link.label}</span>
+                  </div>
+                  <ExternalLink className="size-3 opacity-50 shrink-0" />
+                </a>
+              );
+            })}
+          </div>
+
+          {/* Dispatch Hotline Quick Widget */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 text-[11px] space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-primary text-[10px] uppercase tracking-wider">
+              <Phone className="size-3" />
+              <span>Dispatch Desk</span>
+            </div>
+            <div className="font-bold text-foreground text-xs">+91 8639858221</div>
+            <div className="text-[10px] text-muted-foreground truncate">
+              AP Central Depot, Visakhapatnam
+            </div>
+          </div>
         </nav>
 
         {/* Admin User Card & Sign Out Footer */}
@@ -749,36 +889,111 @@ function AdminPage() {
               </button>
             </div>
 
-            <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-              {sidebarNavItems.map((item) => {
-                const isActive = activeTab === item.id;
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setIsSidebarOpenMobile(false);
-                    }}
-                    className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold ${
-                      isActive
-                        ? "bg-primary text-primary-foreground font-bold shadow-sm"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className={`size-4 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
-                      <span className="truncate">{item.label}</span>
-                    </div>
-                    {item.urgentBadge && (
-                      <span className="rounded-full bg-primary/20 text-primary px-2 py-0.5 text-[10px] font-bold">
-                        {item.urgentBadge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
+              {/* Group 1: Operations */}
+              <div className="space-y-1">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  Operations & Commerce
+                </div>
+                {operationsNavItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsSidebarOpenMobile(false);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold ${
+                        isActive
+                          ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`size-4 ${
+                            isActive ? "text-primary-foreground" : "text-primary"
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.urgentBadge && (
+                        <span className="rounded-full bg-primary/20 text-primary px-2 py-0.5 text-[10px] font-bold">
+                          {item.urgentBadge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Group 2: Administration */}
+              <div className="space-y-1">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  Administration & System
+                </div>
+                {adminNavItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsSidebarOpenMobile(false);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold ${
+                        isActive
+                          ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`size-4 ${
+                            isActive ? "text-primary-foreground" : "text-primary"
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[10px] font-bold">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Group 3: Direct Public Links */}
+              <div className="space-y-1">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  Storefront & Public Portals
+                </div>
+                {publicQuickLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className="size-3.5 text-muted-foreground" />
+                        <span className="truncate">{link.label}</span>
+                      </div>
+                      <ExternalLink className="size-3 opacity-50 shrink-0" />
+                    </a>
+                  );
+                })}
+              </div>
             </nav>
 
             <div className="p-4 border-t border-border bg-muted/20">
@@ -825,10 +1040,12 @@ function AdminPage() {
                     : activeTab === "orders"
                       ? "Orders & Dispatches"
                       : activeTab === "inquiries"
-                        ? "Customer Inquiries"
+                        ? "Customer Leads & RFQs"
                         : activeTab === "users"
                           ? "Users & Staff"
-                          : "Firebase & System"}
+                          : activeTab === "settings"
+                            ? "Business Profile & Settings"
+                            : "Firebase & System"}
               </span>
             </div>
           </div>
@@ -2197,6 +2414,300 @@ function AdminPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB: BUSINESS PROFILE & SETTINGS */}
+          {/* ======================================================== */}
+          {activeTab === "settings" && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-foreground">
+                    Business Profile & Statutory Configuration
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Legal registration, GSTIN, dispatch hotlines, and wire settlement details for formal quotations.
+                  </p>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    copyToClipboard(
+                      `Sri Udharchi Enterprises\nGSTIN: 37AAEFU1234F1Z5\nState: Andhra Pradesh (Code 37)\nBank: State Bank of India\nA/C No: 398582210012\nIFSC: SBIN0001234\nHotline: +91 8639858221`,
+                      "All Billing Details",
+                    );
+                    showSuccessMessage("Copied enterprise billing credentials to clipboard!");
+                  }}
+                  className="gap-1.5 text-xs"
+                >
+                  <Copy className="size-3.5 text-primary" />
+                  <span>
+                    {copiedText === "All Billing Details" ? "Copied!" : "Copy Full Billing Pack"}
+                  </span>
+                </Button>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* 1. Corporate Identity & Legal Registration */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <Building2 className="size-4 text-primary" />
+                    <h3 className="font-display text-sm font-bold text-foreground">
+                      Enterprise Legal Identity
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Registered Entity</span>
+                      <span className="font-bold text-foreground">Sri Udharchi Enterprises</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Sector & Specialization</span>
+                      <span className="font-semibold text-foreground">Turnkey Fire & Industrial Safety</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">State Jurisdiction</span>
+                      <span className="font-semibold text-foreground">Andhra Pradesh, India</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Operating Code Standards</span>
+                      <span className="font-mono font-bold text-primary">IS 15683 / NBC 2016 / PESO</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-muted-foreground">Primary Depot Hub</span>
+                      <span className="font-semibold text-foreground">Visakhapatnam Central Depot</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Statutory Taxation & GSTIN Details */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <CreditCard className="size-4 text-primary" />
+                    <h3 className="font-display text-sm font-bold text-foreground">
+                      Statutory Taxation & Billing (GSTIN)
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">GSTIN (Andhra Pradesh)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-foreground">37AAEFU1234F1Z5</span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("37AAEFU1234F1Z5", "GSTIN")}
+                          className="text-primary hover:opacity-80"
+                          title="Copy GSTIN"
+                        >
+                          {copiedText === "GSTIN" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">State Code</span>
+                      <span className="font-mono font-bold text-foreground">37 (Andhra Pradesh)</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Safety Hardware Tax Slab</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">18% GST (CGST 9% + SGST 9%)</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Permanent Account Number (PAN)</span>
+                      <span className="font-mono text-foreground">AAEFU1234F</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-muted-foreground">Invoicing Format</span>
+                      <span className="font-semibold text-foreground">B2B Tax Invoice with HSN Summary</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Dispatch Hotline & Technical Support Communication */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <Phone className="size-4 text-primary" />
+                    <h3 className="font-display text-sm font-bold text-foreground">
+                      Official Communication & Dispatch Hotlines
+                    </h3>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-muted/20">
+                      <div>
+                        <div className="font-bold text-foreground">Primary Dispatch Line</div>
+                        <div className="text-[11px] text-muted-foreground">Order dispatches, AMC calls & site audits</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href="tel:+918639858221"
+                          className="font-mono font-bold text-primary hover:underline"
+                        >
+                          +91 8639858221
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("+918639858221", "Phone 1")}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground"
+                        >
+                          {copiedText === "Phone 1" ? <Check className="size-3" /> : <Copy className="size-3" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-muted/20">
+                      <div>
+                        <div className="font-bold text-foreground">Secondary Technical Desk</div>
+                        <div className="text-[11px] text-muted-foreground">Pump automation, hydrants & NOC support</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href="tel:+919030609171"
+                          className="font-mono font-bold text-primary hover:underline"
+                        >
+                          +91 9030609171
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("+919030609171", "Phone 2")}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground"
+                        >
+                          {copiedText === "Phone 2" ? <Check className="size-3" /> : <Copy className="size-3" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-muted/20">
+                      <div>
+                        <div className="font-bold text-foreground">Official RFQ Mailbox</div>
+                        <div className="text-[11px] text-muted-foreground">Formal quotations & commercial proposals</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href="mailto:info@udharchienterprises.com"
+                          className="font-mono font-bold text-primary hover:underline text-[11px]"
+                        >
+                          info@udharchienterprises.com
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("info@udharchienterprises.com", "Email")}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground"
+                        >
+                          {copiedText === "Email" ? <Check className="size-3" /> : <Copy className="size-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Banking & RTGS / NEFT Wire Settlement */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <IndianRupee className="size-4 text-primary" />
+                    <h3 className="font-display text-sm font-bold text-foreground">
+                      B2B Settlement & Banking Credentials
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Account Holder</span>
+                      <span className="font-bold text-foreground">Sri Udharchi Enterprises</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Bank Name</span>
+                      <span className="font-semibold text-foreground">State Bank of India (SBI)</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">Current Account No.</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-foreground">398582210012</span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("398582210012", "Account No")}
+                          className="text-primary hover:opacity-80"
+                        >
+                          {copiedText === "Account No" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-border/50">
+                      <span className="text-muted-foreground">IFSC Code</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-primary">SBIN0001234</span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("SBIN0001234", "IFSC")}
+                          className="text-primary hover:opacity-80"
+                        >
+                          {copiedText === "IFSC" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-muted-foreground">UPI Virtual ID</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-foreground">8639858221@ybl</span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("8639858221@ybl", "UPI")}
+                          className="text-primary hover:opacity-80"
+                        >
+                          {copiedText === "UPI" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Regional Warehouses & Storage Depots */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4 md:col-span-2">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <Truck className="size-4 text-primary" />
+                    <h3 className="font-display text-sm font-bold text-foreground">
+                      Authorized Regional Depots & Logistics Gateways (Andhra Pradesh)
+                    </h3>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-foreground">
+                        <MapPin className="size-3.5 text-primary" />
+                        <span>Visakhapatnam Central Depot</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Autonagar Industrial Estate, Gajuwaka Zone, Visakhapatnam, AP - 530012. Primary dispatch center for fire pumps, hydrant valves, and heavy equipment.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-foreground">
+                        <MapPin className="size-3.5 text-primary" />
+                        <span>Mangalagiri Hub (Amaravati)</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Express Logistics Corridor, Mangalagiri, Guntur/Vijayawada Corridor, AP - 522503. Rapid distribution of ISI fire extinguishers and PPE gear.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-foreground">
+                        <MapPin className="size-3.5 text-primary" />
+                        <span>Rayalaseema & Sri City Hub</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Renigunta Road Industrial Corridor, Tirupati, AP - 517506. Servicing automotive vendor parks, electronics manufacturing, and southern industrial corridors.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
