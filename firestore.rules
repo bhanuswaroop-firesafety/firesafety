@@ -6,6 +6,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Helper function to check authorized_admins collection using a parameter variable
+    function isEmailInAuthorizedAdmins(cleanEmail) {
+      return exists(/databases/$(database)/documents/authorized_admins/$(cleanEmail));
+    }
+
     // Authoritative Admin Check: bhanuswaroop04@gmail.com is designated super admin, OR role == "admin", OR exists in authorized_admins
     function isAdmin() {
       return isSignedIn() && (
@@ -13,7 +18,7 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin") ||
         (request.auth.token.email != null &&
-         exists(/databases/$(database)/documents/authorized_admins/$(request.auth.token.email.lower())))
+         isEmailInAuthorizedAdmins(request.auth.token.email.lower()))
       );
     }
 
@@ -106,7 +111,7 @@ service cloud.firestore {
         (request.auth.uid == userId && (
           (isDesignatedBootstrapAdmin() && request.resource.data.role == "admin") ||
           (request.auth.token.email != null &&
-           exists(/databases/$(database)/documents/authorized_admins/$(request.auth.token.email.lower())) &&
+           isEmailInAuthorizedAdmins(request.auth.token.email.lower()) &&
            request.resource.data.role == "admin") ||
           request.resource.data.role == "customer"
         )) ||
