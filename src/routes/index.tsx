@@ -67,7 +67,20 @@ import roadSafety from "@/assets/road-safety.jpg";
 import medicalSafety from "@/assets/medical-safety.jpg";
 import marineSafety from "@/assets/marine-safety.jpg";
 import cableManagement from "@/assets/cable-management.jpg";
+import { TiltedGridHero } from "@/components/ui/tilted-grid-hero";
 import { seoHead, schemas } from "@/lib/seo";
+
+const PROJECT_CYLINDER_IMAGES = [
+  { src: projectPump, alt: "Industrial Fire Pump Skids" },
+  { src: projectHydrant, alt: "High-Pressure Hydrant Networks" },
+  { src: projectCctv, alt: "Hazardous Area CCTV Surveillance" },
+  { src: projectCable, alt: "Fire-Rated Cable Containment" },
+  { src: manufacturing, alt: "Automotive & Manufacturing Facility Turnkey Protection" },
+  { src: warehouses, alt: "Cold Storage & High-Density Warehouses" },
+  { src: marineSafety, alt: "Marine Offshore Safety Engineering" },
+  { src: infrastructure, alt: "Public Infrastructure & Metro Life Safety" },
+  { src: commercial, alt: "Commercial Complex Fire Safety Systems" },
+];
 
 export const Route = createFileRoute("/")({
   head: () =>
@@ -759,57 +772,64 @@ function Index() {
         </div>
       </section>
 
-      {/* Turnkey Projects Spotlight */}
+      {/* Turnkey Projects Spotlight with 3D Curved Cylindrical Streaming Grid */}
       <section
         id="projects"
-        className="scroll-mt-24 bg-brand-deep py-12 sm:py-14 text-primary-foreground"
+        className="scroll-mt-24 relative overflow-hidden bg-brand-deep text-primary-foreground"
       >
-        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 sm:px-5 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
-          <div>
-            <span className="text-xs font-bold uppercase text-brand-warm">Our Projects</span>
-            <h2 className="mt-2 font-display text-2xl sm:text-3xl lg:text-4xl font-black">
-              Real Safety Engineering
-              <br />
-              for Critical Infrastructure
-            </h2>
-            <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-primary-foreground/80 leading-relaxed">
-              Turnkey installations across automotive vendor parks, cold chain complexes, and
-              high-density industrial corridors in Andhra Pradesh.
-            </p>
-            <a href="/projects" className="mt-4 sm:mt-6 inline-block w-full sm:w-auto">
-              <Button className="w-full sm:w-auto bg-background text-primary hover:bg-background/90 font-bold">
-                View Turnkey Project Portfolio <ArrowRight className="size-4" />
-              </Button>
-            </a>
+        <TiltedGridHero
+          images={PROJECT_CYLINDER_IMAGES}
+          className="relative min-h-[580px] sm:min-h-[640px] w-full border-y border-white/10 bg-slate-950/90 text-primary-foreground"
+          speed={3.5}
+          tileHeight={32}
+          aspectRatio={16 / 9}
+          axis={64}
+          curve={80}
+          fade={15}
+        >
+          <div className="relative z-10 flex min-h-[580px] sm:min-h-[640px] flex-col justify-between py-10 sm:py-14 px-4 sm:px-6 max-w-7xl mx-auto pointer-events-none">
+            {/* Top Section Header */}
+            <div className="text-center max-w-3xl mx-auto pointer-events-auto">
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand-warm/40 bg-brand-warm/15 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-brand-warm backdrop-blur-md">
+                <span className="size-2 rounded-full bg-brand-warm animate-pulse" />
+                Our Projects
+              </span>
+              <h2 className="mt-3 font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-xl">
+                Real Safety Engineering
+                <br />
+                <span className="text-brand-warm">for Critical Infrastructure</span>
+              </h2>
+              <p className="mt-3 text-xs sm:text-base text-primary-foreground/90 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+                Turnkey installations across automotive vendor parks, cold chain complexes, and
+                high-density industrial corridors in Andhra Pradesh.
+              </p>
+            </div>
+
+            {/* Bottom Project Badges & Action */}
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/15 backdrop-blur-md pointer-events-auto">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-semibold text-primary-foreground/80">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-brand-warm" /> Fire Pump Skids
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-brand-warm" /> Hydrant Networks
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-brand-warm" /> CCTV Surveillance
+                </span>
+                <span className="hidden md:flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-brand-warm" /> Cable Containment
+                </span>
+              </div>
+
+              <a href="/projects" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto bg-background text-primary hover:bg-background/90 font-bold shadow-2xl">
+                  View Turnkey Project Portfolio <ArrowRight className="size-4" />
+                </Button>
+              </a>
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
-            {[
-              [projectPump, "Fire pump skids"],
-              [projectCctv, "CCTV surveillance"],
-              [projectCable, "Cable management"],
-              [projectHydrant, "Hydrant networks"],
-            ].map(([image, label], index) => (
-              <motion.figure
-                key={label}
-                initial={{ opacity: 0, x: 24 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.48, delay: index * 0.07 }}
-                className="relative overflow-hidden rounded-xl border border-primary-foreground/40 shadow-md group"
-              >
-                <img
-                  src={image}
-                  alt={label}
-                  loading="lazy"
-                  className="aspect-[0.9] w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <figcaption className="absolute inset-x-0 bottom-0 bg-ink/85 backdrop-blur-xs p-1.5 text-[10px] font-bold text-center text-white">
-                  {label}
-                </figcaption>
-              </motion.figure>
-            ))}
-          </div>
-        </div>
+        </TiltedGridHero>
       </section>
 
       {/* Get in Touch & Request a Quote Section */}
