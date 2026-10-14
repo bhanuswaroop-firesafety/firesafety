@@ -118,5 +118,9 @@ export {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  initializeApp,
+  getApps,
+  getAuth,
 };
 export type { FirebaseUser };
+

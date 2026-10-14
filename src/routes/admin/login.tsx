@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { Eye, EyeOff, ArrowLeft, RefreshCw, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth, SUPER_ADMIN_EMAILS } from "@/lib/auth-context";
+import { isEmailAuthorizedAdmin } from "@/lib/db-service";
 import {
   auth,
   googleProvider,
@@ -93,29 +94,27 @@ export function AdminLoginPage() {
       return;
     }
 
-    // Security check: Only the sole authorized administrator is allowed
-    const isSoleAdmin =
-      targetEmail.toLowerCase() === "bhanuswaroop04@gmail.com" ||
-      SUPER_ADMIN_EMAILS.includes(targetEmail.toLowerCase());
-
-    if (!isSoleAdmin) {
-      setErrorMsg(
-        "Access Denied: bhanuswaroop04@gmail.com is the only authorized administrator for this portal.",
-      );
-      return;
-    }
-
     setSubmitting(true);
     try {
+      // Security check: Check if email is an authorized administrator (Super Admin or added in /authorized_admins)
+      const isAuthorized = await isEmailAuthorizedAdmin(targetEmail);
+      if (!isAuthorized) {
+        setErrorMsg(
+          "Access Denied: This email address is not an authorized administrator. Please contact your executive administrator to be provisioned.",
+        );
+        return;
+      }
+
       // Authenticate via Firebase SDK with live user-entered credentials (NO hardcoded password)
       const credential = await signInWithEmailAndPassword(auth, targetEmail, formData.password);
 
       if (credential.user) {
-        const authenticatedEmail = credential.user.email?.toLowerCase();
-        if (authenticatedEmail !== "bhanuswaroop04@gmail.com") {
+        const authenticatedEmail = credential.user.email?.toLowerCase() || "";
+        const verifyAuth = await isEmailAuthorizedAdmin(authenticatedEmail);
+        if (!verifyAuth) {
           await signOut(auth);
           setErrorMsg(
-            "Access Denied: Only bhanuswaroop04@gmail.com is authorized to access the Administrator Portal.",
+            "Access Denied: This account is not authorized to access the Executive Administration Portal.",
           );
           return;
         }
@@ -145,7 +144,7 @@ export function AdminLoginPage() {
         userFriendlyError = "Invalid email or password. Please verify and try again.";
       } else if (msg.includes("auth/user-not-found")) {
         userFriendlyError =
-          "No Firebase user found with this email. You can sign in using 'Continue with Google' or register your password in Firebase.";
+          "No Firebase user found with this email. You can sign in using 'Continue with Google' or request admin credentials.";
       } else if (msg.includes("auth/wrong-password")) {
         userFriendlyError = "Incorrect password. You can use 'Forgot password?' to reset it.";
       }
@@ -162,13 +161,14 @@ export function AdminLoginPage() {
     setSubmitting(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const googleEmail = result.user?.email?.toLowerCase();
+      const googleEmail = result.user?.email?.toLowerCase() || "";
 
-      // Enforce strict sole-admin authorization
-      if (googleEmail !== "bhanuswaroop04@gmail.com") {
+      // Enforce authorized administrator check
+      const isAuthorized = await isEmailAuthorizedAdmin(googleEmail);
+      if (!isAuthorized) {
         await signOut(auth);
         setErrorMsg(
-          `Access Denied: Account (${googleEmail || "unknown"}) is not authorized. bhanuswaroop04@gmail.com is the only authorized administrator.`,
+          `Access Denied: Account (${googleEmail || "unknown"}) is not registered as an authorized administrator. Please request executive provisioning.`,
         );
         return;
       }
@@ -429,10 +429,10 @@ export function AdminLoginPage() {
               </button>
             </div>
 
-            {/* Sole Administrator Security Note */}
+            {/* Administrator Security Note */}
             <div className="pt-2 text-center">
               <p className="text-[11px] text-gray-500 leading-relaxed">
-                Authorized Administrator: <span className="font-semibold text-gray-700">bhanuswaroop04@gmail.com</span>
+                Super Administrator: <span className="font-semibold text-gray-700">bhanuswaroop04@gmail.com</span> &amp; Authorized Personnel
                 <br />
                 Strict role-based access control enforced via Cloud Firestore security rules.
               </p>

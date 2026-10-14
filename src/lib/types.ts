@@ -69,3 +69,17 @@ export interface OrderItem {
   createdAt: string;
   estimatedDelivery?: string | undefined;
 }
+
+export interface AuthorizedAdminItem {
+  id: string; // Lowercase email or document id
+  email: string;
+  displayName?: string | undefined;
+  role: "admin";
+  department?: string | undefined;
+  phone?: string | undefined;
+  addedBy?: string | undefined;
+  createdAt: string;
+  updatedAt?: string | undefined;
+  initialPassword?: string | undefined;
+}
+

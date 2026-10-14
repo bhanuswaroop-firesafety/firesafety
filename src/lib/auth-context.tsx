@@ -15,6 +15,7 @@ import {
   type FirebaseUser,
 } from "./firebase";
 import type { UserItem } from "./types";
+import { isEmailAuthorizedAdmin } from "./db-service";
 
 export interface UserRegistrationMeta {
   phone?: string | undefined;
@@ -74,9 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             try {
               const snap = await getDoc(userDocRef);
-              const isSuperAdmin =
+              const isSuper =
                 !!currentUser.email &&
                 SUPER_ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
+              const isAuthAdmin =
+                isSuper ||
+                (currentUser.email ? await isEmailAuthorizedAdmin(currentUser.email) : false);
 
               if (!snap.exists()) {
                 // First-time user sign in: create document in Firestore users collection
@@ -87,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     currentUser.displayName ||
                     currentUser.email?.split("@")[0] ||
                     "User",
-                  role: isSuperAdmin ? "admin" : "customer",
+                  role: isAuthAdmin ? "admin" : "customer",
                   createdAt: now,
                   updatedAt: now,
                   lastLoginAt: now,
@@ -100,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   lastLoginAt: now,
                   updatedAt: now,
                 };
-                if (isSuperAdmin && snap.data()?.["role"] !== "admin") {
+                if (isAuthAdmin && snap.data()?.["role"] !== "admin") {
                   updates.role = "admin";
                 }
                 await setDoc(userDocRef, updates, { merge: true });
@@ -215,9 +219,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cred.user) {
         const userDocRef = doc(db, "users", cred.user.uid);
         const now = new Date().toISOString();
-        const isSuperAdmin =
+        const isSuper =
           !!cred.user.email &&
           SUPER_ADMIN_EMAILS.includes(cred.user.email.toLowerCase());
+        const isAuthAdmin =
+          isSuper ||
+          (cred.user.email ? await isEmailAuthorizedAdmin(cred.user.email) : false);
 
         try {
           const snap = await getDoc(userDocRef);
@@ -229,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 cred.user.displayName ||
                 cred.user.email?.split("@")[0] ||
                 "Google User",
-              role: isSuperAdmin ? "admin" : "customer",
+              role: isAuthAdmin ? "admin" : "customer",
               createdAt: now,
               updatedAt: now,
               lastLoginAt: now,
@@ -241,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               lastLoginAt: now,
               updatedAt: now,
             };
-            if (isSuperAdmin && snap.data()?.["role"] !== "admin") {
+            if (isAuthAdmin && snap.data()?.["role"] !== "admin") {
               updates.role = "admin";
             }
             await setDoc(userDocRef, updates, { merge: true });
@@ -311,14 +318,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+      const isSuper = SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+      const isAuthAdmin =
+        isSuper || (await isEmailAuthorizedAdmin(email));
       const now = new Date().toISOString();
 
       const newProfile: UserItem = {
         id: cred.user.uid,
         email,
         displayName: name || email.split("@")[0] || "User",
-        role: isSuperAdmin ? "admin" : "customer",
+        role: isAuthAdmin ? "admin" : "customer",
         createdAt: now,
         updatedAt: now,
         lastLoginAt: now,

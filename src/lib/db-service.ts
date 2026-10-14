@@ -2,6 +2,7 @@ import {
   db,
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   addDoc,
@@ -12,8 +13,21 @@ import {
   orderBy,
   handleFirestoreError,
   OperationType,
+  firebaseConfig,
+  initializeApp,
+  getApps,
+  getAuth,
+  createUserWithEmailAndPassword,
+  signOut,
 } from "./firebase";
-import type { ProductItem, UserItem, InquiryItem, CategoryItem, OrderItem } from "./types";
+import type {
+  ProductItem,
+  UserItem,
+  InquiryItem,
+  CategoryItem,
+  OrderItem,
+  AuthorizedAdminItem,
+} from "./types";
 import { OFFICIAL_CATALOG_PRODUCTS } from "./catalog-data";
 
 export const CATEGORIES: string[] = [
@@ -319,3 +333,193 @@ export async function seedOfficialCatalog(): Promise<number> {
     handleFirestoreError(error, OperationType.CREATE, "products/seed");
   }
 }
+
+// ========================================================
+// Authorized Administrators Management
+// ========================================================
+
+/**
+ * Subscribe to the real-time list of authorized administrators.
+ */
+export function subscribeAuthorizedAdmins(callback: (admins: AuthorizedAdminItem[]) => void) {
+  const colRef = collection(db, "authorized_admins");
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as AuthorizedAdminItem[];
+      callback(items);
+    },
+    (err) => {
+      console.warn("Authorized admins subscription warning:", err.message);
+      callback([]);
+    },
+  );
+}
+
+/**
+ * Creates Firebase Authentication account for a new admin using a secondary app
+ * so the current logged-in administrator is NOT logged out!
+ */
+export async function createAdminAuthAccount(
+  email: string,
+  pass: string,
+): Promise<{ success: boolean; uid?: string; error?: string }> {
+  try {
+    const secondaryAppName = "AdminProvisioning";
+    const existingApps = getApps();
+    let secondaryApp = existingApps.find((a) => a.name === secondaryAppName);
+    if (!secondaryApp) {
+      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+    }
+    const secondaryAuth = getAuth(secondaryApp);
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), pass);
+    const uid = cred.user.uid;
+    await signOut(secondaryAuth);
+    return { success: true, uid };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Adds an authorized administrator by email, optional password, and profile metadata.
+ */
+export async function addAuthorizedAdmin(data: {
+  email: string;
+  displayName?: string | undefined;
+  password?: string | undefined;
+  department?: string | undefined;
+  phone?: string | undefined;
+  addedBy: string;
+}): Promise<{ success: boolean; createdAuth: boolean; message: string }> {
+  const cleanEmail = data.email.trim().toLowerCase();
+  const now = new Date().toISOString();
+  let createdAuth = false;
+
+  // 1. If password provided, create real Firebase Auth account via secondary app
+  let authUid: string | undefined;
+  if (data.password && data.password.trim().length >= 6) {
+    const authRes = await createAdminAuthAccount(cleanEmail, data.password.trim());
+    if (authRes.success) {
+      createdAuth = true;
+      authUid = authRes.uid;
+    } else {
+      console.warn("Notice during admin auth provisioning:", authRes.error);
+    }
+  }
+
+  // 2. Persist in authorized_admins collection
+  const adminDocRef = doc(db, "authorized_admins", cleanEmail);
+  const adminRecord: AuthorizedAdminItem = {
+    id: cleanEmail,
+    email: cleanEmail,
+    displayName: data.displayName?.trim() || cleanEmail.split("@")[0],
+    role: "admin",
+    department: data.department?.trim() || "Operations",
+    phone: data.phone?.trim() || "",
+    addedBy: data.addedBy,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (data.password) {
+    adminRecord.initialPassword = data.password;
+  }
+  await setDoc(adminDocRef, adminRecord, { merge: true });
+
+  // 3. If a user document exists or UID was created, ensure their role is admin
+  try {
+    if (authUid) {
+      const userRef = doc(db, "users", authUid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        const userProfile: UserItem = {
+          id: authUid,
+          email: cleanEmail,
+          displayName: data.displayName?.trim() || cleanEmail.split("@")[0],
+          role: "admin",
+          createdAt: now,
+          updatedAt: now,
+          lastLoginAt: now,
+          company: "Sri Udharchi Enterprises (Admin)",
+          phone: data.phone?.trim() || "",
+        };
+        await setDoc(userRef, userProfile);
+      } else {
+        await updateDoc(userRef, { role: "admin", updatedAt: now });
+      }
+    } else {
+      // Find user by email in users collection
+      const usersSnap = await getDocs(collection(db, "users"));
+      const match = usersSnap.docs.find(
+        (d) => d.data()?.email?.toLowerCase() === cleanEmail,
+      );
+      if (match) {
+        await updateDoc(doc(db, "users", match.id), { role: "admin", updatedAt: now });
+      }
+    }
+  } catch (err) {
+    console.warn("Could not sync user role doc:", err);
+  }
+
+  return {
+    success: true,
+    createdAuth,
+    message: `Administrator ${cleanEmail} has been authorized with executive privileges.`,
+  };
+}
+
+/**
+ * Removes admin authorization for an email (protecting super admin).
+ */
+export async function removeAuthorizedAdmin(
+  email: string,
+  superAdmin = "bhanuswaroop04@gmail.com",
+): Promise<void> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (cleanEmail === superAdmin.toLowerCase()) {
+    throw new Error("Super Administrator bhanuswaroop04@gmail.com cannot be removed.");
+  }
+  const adminDocRef = doc(db, "authorized_admins", cleanEmail);
+  await deleteDoc(adminDocRef);
+
+  // Downgrade in users collection if present
+  try {
+    const usersSnap = await getDocs(collection(db, "users"));
+    const match = usersSnap.docs.find(
+      (d) => d.data()?.email?.toLowerCase() === cleanEmail,
+    );
+    if (match) {
+      await updateDoc(doc(db, "users", match.id), {
+        role: "customer",
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.warn("Error demoting user document:", err);
+  }
+}
+
+/**
+ * Helper to check if an email is an authorized administrator
+ */
+export async function isEmailAuthorizedAdmin(
+  email: string,
+  superAdminEmails = ["bhanuswaroop04@gmail.com"],
+): Promise<boolean> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (superAdminEmails.map((e) => e.toLowerCase()).includes(cleanEmail)) {
+    return true;
+  }
+  try {
+    const adminSnap = await getDoc(doc(db, "authorized_admins", cleanEmail));
+    if (adminSnap.exists() && adminSnap.data()?.role === "admin") {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+

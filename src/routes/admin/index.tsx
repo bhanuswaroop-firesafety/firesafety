@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, type FormEvent } from "react";
 import { AdminLoginPage } from "./login";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, SUPER_ADMIN_EMAILS } from "@/lib/auth-context";
 import { db, firebaseConfig, collection, getDocs } from "@/lib/firebase";
 import {
   subscribeProducts,
@@ -14,8 +14,18 @@ import {
   subscribeOrders,
   updateOrderStatus,
   deleteOrder,
+  subscribeAuthorizedAdmins,
+  addAuthorizedAdmin,
+  removeAuthorizedAdmin,
 } from "@/lib/db-service";
-import type { ProductItem, InquiryItem, UserItem, CategoryItem, OrderItem } from "@/lib/types";
+import type {
+  ProductItem,
+  InquiryItem,
+  UserItem,
+  CategoryItem,
+  OrderItem,
+  AuthorizedAdminItem,
+} from "@/lib/types";
 import { ProductManager } from "@/components/admin/product-manager";
 import { AdminAnalytics } from "@/components/admin/admin-analytics";
 import { BrandLogo } from "@/components/brand-logo";
@@ -32,16 +42,19 @@ import {
   Clock,
   Copy,
   CreditCard,
+  Crown,
   Database,
   Download,
   ExternalLink,
   Eye,
+  EyeOff,
   FileSpreadsheet,
   FileText,
   Filter,
   FolderKanban,
   Globe,
   IndianRupee,
+  Key,
   Layers,
   Lock,
   LogOut,
@@ -59,9 +72,11 @@ import {
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
+  Sparkles,
   Trash2,
   Truck,
   UserCheck,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -121,6 +136,26 @@ function AdminPage() {
     targetRole: "admin" | "staff" | "customer";
   } | null>(null);
 
+  // Authorized Admins State
+  const [authorizedAdmins, setAuthorizedAdmins] = useState<AuthorizedAdminItem[]>([]);
+  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [newAdminForm, setNewAdminForm] = useState({
+    email: "",
+    displayName: "",
+    password: "",
+    department: "Operations & Field Safety",
+    phone: "",
+  });
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  const [adminModalError, setAdminModalError] = useState("");
+  const [adminCreatedInfo, setAdminCreatedInfo] = useState<{
+    email: string;
+    password?: string;
+    displayName: string;
+  } | null>(null);
+  const [adminToDelete, setAdminToDelete] = useState<AuthorizedAdminItem | null>(null);
+
   // System Diagnostics State
   const [latencyTesting, setLatencyTesting] = useState(false);
   const [latencyResult, setLatencyResult] = useState<string | null>(null);
@@ -139,6 +174,7 @@ function AdminPage() {
     const unsubOrders = subscribeOrders((data) => setOrders(data));
     const unsubInquiries = subscribeInquiries((data) => setInquiries(data));
     const unsubUsers = subscribeUsers((data) => setUsersList(data));
+    const unsubAuthorizedAdmins = subscribeAuthorizedAdmins((data) => setAuthorizedAdmins(data));
 
     return () => {
       unsubProducts();
@@ -146,6 +182,7 @@ function AdminPage() {
       unsubOrders();
       unsubInquiries();
       unsubUsers();
+      unsubAuthorizedAdmins();
     };
   }, [user, isAdmin]);
 
@@ -158,11 +195,21 @@ function AdminPage() {
         else if (inquiryToDelete) setInquiryToDelete(null);
         else if (selectedInquiry) setSelectedInquiry(null);
         else if (selfDemotionWarning) setSelfDemotionWarning(null);
+        else if (adminToDelete) setAdminToDelete(null);
+        else if (isAddAdminModalOpen) setIsAddAdminModalOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [orderToDelete, selectedOrder, inquiryToDelete, selectedInquiry, selfDemotionWarning]);
+  }, [
+    orderToDelete,
+    selectedOrder,
+    inquiryToDelete,
+    selectedInquiry,
+    selfDemotionWarning,
+    adminToDelete,
+    isAddAdminModalOpen,
+  ]);
 
   const showSuccessMessage = (msg: string) => {
     setActionSuccess(msg);
@@ -446,6 +493,100 @@ function AdminPage() {
     }
   };
 
+  // Password Generator Helper for New Administrators
+  const generateSecurePassword = () => {
+    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
+    let pwd = "";
+    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowers = "abcdefghijkmnpqrstuvwxyz";
+    const nums = "23456789";
+    const specials = "!@#$%&*";
+    pwd += uppers[Math.floor(Math.random() * uppers.length)];
+    pwd += lowers[Math.floor(Math.random() * lowers.length)];
+    pwd += nums[Math.floor(Math.random() * nums.length)];
+    pwd += specials[Math.floor(Math.random() * specials.length)];
+    for (let i = 0; i < 8; i++) {
+      pwd += charset[Math.floor(Math.random() * charset.length)];
+    }
+    const shuffled = pwd
+      .split("")
+      .sort(() => 0.5 - Math.random())
+      .join("");
+    setNewAdminForm((prev) => ({ ...prev, password: shuffled }));
+    showSuccessMessage("Generated high-strength administrative password.");
+  };
+
+  // Create Administrator Account & Provision Login
+  const handleCreateAdminSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setAdminModalError("");
+
+    const email = newAdminForm.email.trim().toLowerCase();
+    if (!email) {
+      setAdminModalError("Please enter an email address for the administrator.");
+      return;
+    }
+    if (!email.includes("@") || !email.includes(".")) {
+      setAdminModalError("Please enter a valid email address (e.g. admin@sriudharchi.com).");
+      return;
+    }
+
+    if (newAdminForm.password && newAdminForm.password.trim().length < 6) {
+      setAdminModalError("Initial password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsCreatingAdmin(true);
+    try {
+      const res = await addAuthorizedAdmin({
+        email,
+        displayName: newAdminForm.displayName.trim() || email.split("@")[0],
+        password: newAdminForm.password.trim() || undefined,
+        department: newAdminForm.department.trim() || "Operations",
+        phone: newAdminForm.phone.trim() || undefined,
+        addedBy: user?.email || "Super Administrator",
+      });
+
+      if (!res.success) {
+        setAdminModalError(res.message || "Failed to authorize administrator.");
+        return;
+      }
+
+      showSuccessMessage(res.message);
+      setAdminCreatedInfo({
+        email,
+        password: newAdminForm.password.trim() || undefined,
+        displayName: newAdminForm.displayName.trim() || email.split("@")[0],
+      });
+      // Reset input form
+      setNewAdminForm({
+        email: "",
+        displayName: "",
+        password: "",
+        department: "Operations & Field Safety",
+        phone: "",
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setAdminModalError("Error authorizing administrator: " + msg);
+    } finally {
+      setIsCreatingAdmin(false);
+    }
+  };
+
+  // Revoke Administrator Privileges
+  const handleConfirmDeleteAdmin = async () => {
+    if (!adminToDelete) return;
+    try {
+      await removeAuthorizedAdmin(adminToDelete.email);
+      showSuccessMessage(`Administrator privileges revoked for ${adminToDelete.email}.`);
+      setAdminToDelete(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showSuccessMessage("Failed to revoke privileges: " + msg);
+    }
+  };
+
   // Delete lead handler
   const handleConfirmDeleteLead = async () => {
     if (!inquiryToDelete?.id) return;
@@ -611,7 +752,12 @@ function AdminPage() {
       id: "users" as const,
       label: "Users & Staff (RBAC)",
       icon: Users,
-      badge: usersList.length > 0 ? usersList.length : null,
+      badge:
+        authorizedAdmins.length > 0
+          ? `${1 + authorizedAdmins.filter((a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com").length} Admins`
+          : usersList.length > 0
+            ? usersList.length
+            : null,
       urgentBadge: null,
     },
     {
@@ -2164,12 +2310,194 @@ function AdminPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-display text-xl font-bold text-foreground">
-                    Users & Role Access Management
+                    Users & Executive Access Management
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Manage administrators, safety technicians, and staff authorized to access this portal.
+                    Create executive administrators, provision login accounts, and manage client and staff permissions.
                   </p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      setAdminModalError("");
+                      setAdminCreatedInfo(null);
+                      setIsAddAdminModalOpen(true);
+                    }}
+                    className="gap-2 text-xs h-9 bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90 cursor-pointer"
+                  >
+                    <UserPlus className="size-4" />
+                    <span>+ Add Administrator</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Executive Administrators & Command Staff Card */}
+              <div className="overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-b from-primary/5 via-card to-card p-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-xs">
+                      <ShieldCheck className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2">
+                        <span>Authorized Executive Administrators</span>
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          {1 + authorizedAdmins.filter((a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com").length} Active
+                        </span>
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Personnel granted executive command over catalog, order dispatch, RFQs, and access control.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setAdminModalError("");
+                      setAdminCreatedInfo(null);
+                      setIsAddAdminModalOpen(true);
+                    }}
+                    className="text-xs h-8 gap-1.5 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shrink-0 cursor-pointer"
+                  >
+                    <UserPlus className="size-3.5" />
+                    <span>Create Admin Login</span>
+                  </Button>
+                </div>
+
+                {/* Admins Grid / List */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Primary Super Administrator (Bhanu Swaroop) */}
+                  <div className="relative flex flex-col justify-between rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 transition-shadow hover:shadow-xs">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex size-9 items-center justify-center rounded-full bg-amber-500 text-white font-bold text-xs shadow-xs shrink-0">
+                            <Crown className="size-4.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 font-bold text-foreground text-xs">
+                              <span>Bhanu Swaroop</span>
+                              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-400">
+                                ROOT
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-muted-foreground font-mono truncate">
+                              bhanuswaroop04@gmail.com
+                            </div>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 shrink-0">
+                          Super Admin
+                        </span>
+                      </div>
+
+                      <div className="mt-3 space-y-1 text-[11px] text-muted-foreground border-t border-amber-500/10 pt-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-foreground/80">Department:</span>
+                          <span className="font-semibold text-primary">Platform & Security Root</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-foreground/80">Access Level:</span>
+                          <span className="font-semibold text-foreground">Unrestricted Command</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3.5 pt-2 border-t border-amber-500/15 flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground italic">Protected root administrator</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                        <ShieldCheck className="size-3" />
+                        <span>System Locked</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Provisioned Additional Administrators */}
+                  {authorizedAdmins
+                    .filter((a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com")
+                    .map((admin) => (
+                      <div
+                        key={admin.id || admin.email}
+                        className="relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-xs"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0">
+                                {(admin.displayName || admin.email).charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-foreground text-xs truncate">
+                                  {admin.displayName || admin.email.split("@")[0]}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground font-mono truncate">
+                                  {admin.email}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
+                              Admin
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-1 text-[11px] text-muted-foreground border-t border-border/60 pt-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-foreground/80">Unit:</span>
+                              <span className="font-semibold text-foreground truncate max-w-[140px]">
+                                {admin.department || "Operations"}
+                              </span>
+                            </div>
+                            {admin.phone && (
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-foreground/80">Phone:</span>
+                                <span className="font-mono text-muted-foreground">{admin.phone}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span>Added by:</span>
+                              <span className="truncate max-w-[120px] text-muted-foreground">
+                                {admin.addedBy || "Super Admin"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3.5 pt-2 border-t border-border/60 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyToClipboard(
+                                `Sri Udharchi Enterprises Admin Portal\nURL: ${typeof window !== "undefined" ? window.location.origin : ""}/admin/login\nEmail: ${admin.email}${admin.initialPassword ? `\nPassword: ${admin.initialPassword}` : ""}`,
+                                `Credentials for ${admin.email}`,
+                              )
+                            }
+                            className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Copy className="size-3" />
+                            <span>Copy Details</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setAdminToDelete(admin)}
+                            className="text-[11px] font-semibold text-destructive/80 hover:text-destructive flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Trash2 className="size-3" />
+                            <span>Revoke</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {authorizedAdmins.filter((a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com").length === 0 && (
+                  <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      No additional secondary administrators provisioned yet. Click{" "}
+                      <span className="font-semibold text-foreground">"+ Add Administrator"</span> above to grant administrative privileges to team members by entering their email address.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Users Filter Bar */}
@@ -2409,6 +2737,367 @@ function AdminPage() {
                       </Button>
                       <Button variant="destructive" size="sm" onClick={confirmSelfDemotion}>
                         Confirm Change
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Create Administrator Login Modal */}
+              {isAddAdminModalOpen && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+                  onClick={() => {
+                    if (!isCreatingAdmin) {
+                      setIsAddAdminModalOpen(false);
+                      setAdminCreatedInfo(null);
+                    }
+                  }}
+                >
+                  <div
+                    className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {!adminCreatedInfo ? (
+                      <form onSubmit={handleCreateAdminSubmit} className="space-y-4">
+                        <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                              <UserPlus className="size-5" />
+                            </div>
+                            <div>
+                              <h3 className="font-display text-base font-bold text-foreground">
+                                Add Executive Administrator
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                Provision a login account with full administrative privileges.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddAdminModalOpen(false)}
+                            className="text-muted-foreground hover:text-foreground cursor-pointer"
+                          >
+                            <X className="size-5" />
+                          </button>
+                        </div>
+
+                        {adminModalError && (
+                          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-start gap-2">
+                            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                            <span>{adminModalError}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-3 text-xs">
+                          {/* Administrator Email Address */}
+                          <div>
+                            <label className="block font-semibold text-foreground mb-1">
+                              Administrator Email Address <span className="text-destructive">*</span>
+                            </label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                              <input
+                                type="email"
+                                required
+                                placeholder="e.g. colleague@sriudharchi.com or colleague@gmail.com"
+                                value={newAdminForm.email}
+                                onChange={(e) =>
+                                  setNewAdminForm((prev) => ({ ...prev, email: e.target.value }))
+                                }
+                                className="w-full rounded-xl border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                              />
+                            </div>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              This email will have full executive portal access authorized.
+                            </p>
+                          </div>
+
+                          {/* Full Name */}
+                          <div>
+                            <label className="block font-semibold text-foreground mb-1">
+                              Full Name / Display Title
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Ramesh Kumar (Lead Safety Engineer)"
+                              value={newAdminForm.displayName}
+                              onChange={(e) =>
+                                setNewAdminForm((prev) => ({ ...prev, displayName: e.target.value }))
+                              }
+                              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                            />
+                          </div>
+
+                          {/* Initial Password */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="font-semibold text-foreground">
+                                Initial Password (Optional / Auto-provision)
+                              </label>
+                              <button
+                                type="button"
+                                onClick={generateSecurePassword}
+                                className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                              >
+                                <Sparkles className="size-3" />
+                                <span>Generate Password</span>
+                              </button>
+                            </div>
+                            <div className="relative">
+                              <Key className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                              <input
+                                type={showAdminPassword ? "text" : "password"}
+                                placeholder="Enter password or click 'Generate Password' (min 6 chars)"
+                                value={newAdminForm.password}
+                                onChange={(e) =>
+                                  setNewAdminForm((prev) => ({ ...prev, password: e.target.value }))
+                                }
+                                className="w-full rounded-xl border border-input bg-background pl-9 pr-10 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowAdminPassword(!showAdminPassword)}
+                                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                              >
+                                {showAdminPassword ? (
+                                  <EyeOff className="size-4" />
+                                ) : (
+                                  <Eye className="size-4" />
+                                )}
+                              </button>
+                            </div>
+                            <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                              If provided, a Firebase Auth account is created automatically so they can sign in via email and password. They can also use "Continue with Google" if this is a Google email.
+                            </p>
+                          </div>
+
+                          {/* Department / Operational Unit */}
+                          <div>
+                            <label className="block font-semibold text-foreground mb-1">
+                              Department / Branch
+                            </label>
+                            <select
+                              value={newAdminForm.department}
+                              onChange={(e) =>
+                                setNewAdminForm((prev) => ({ ...prev, department: e.target.value }))
+                              }
+                              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                            >
+                              <option value="Operations & Field Safety">Operations & Field Safety</option>
+                              <option value="Fire Protection Engineering">Fire Protection Engineering</option>
+                              <option value="Hydrant & Piping Systems">Hydrant & Piping Systems</option>
+                              <option value="Safety Audits & Compliance">Safety Audits & Compliance</option>
+                              <option value="Procurement & Depots">Procurement & Depots</option>
+                              <option value="Executive Management">Executive Management</option>
+                            </select>
+                          </div>
+
+                          {/* Contact Phone */}
+                          <div>
+                            <label className="block font-semibold text-foreground mb-1">
+                              Phone / WhatsApp (Optional)
+                            </label>
+                            <div className="relative">
+                              <Phone className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                              <input
+                                type="tel"
+                                placeholder="+91 98765 43210"
+                                value={newAdminForm.phone}
+                                onChange={(e) =>
+                                  setNewAdminForm((prev) => ({ ...prev, phone: e.target.value }))
+                                }
+                                className="w-full rounded-xl border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isCreatingAdmin}
+                            onClick={() => setIsAddAdminModalOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={isCreatingAdmin}
+                            className="bg-primary text-primary-foreground font-semibold hover:bg-primary/90 gap-1.5 cursor-pointer"
+                          >
+                            {isCreatingAdmin ? (
+                              <>
+                                <RefreshCw className="size-3.5 animate-spin" />
+                                <span>Authorizing Admin...</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck className="size-3.5" />
+                                <span>Authorize & Create Admin</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      /* Success Credentials Display */
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mb-2">
+                            <CheckCircle2 className="size-7" />
+                          </div>
+                          <h3 className="font-display text-base font-bold text-foreground">
+                            Administrator Login Created!
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {adminCreatedInfo.displayName} has been granted executive portal access.
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3 text-xs">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                              Admin Login Portal
+                            </span>
+                            <div className="flex items-center justify-between font-mono font-semibold text-foreground mt-0.5">
+                              <span className="truncate">
+                                {typeof window !== "undefined"
+                                  ? `${window.location.origin}/admin/login`
+                                  : "/admin/login"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    typeof window !== "undefined"
+                                      ? `${window.location.origin}/admin/login`
+                                      : "/admin/login",
+                                    "Portal URL",
+                                  )
+                                }
+                                className="text-primary hover:underline ml-2 cursor-pointer shrink-0"
+                              >
+                                <Copy className="size-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-emerald-500/15 pt-2">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                              Email Address
+                            </span>
+                            <div className="flex items-center justify-between font-mono font-semibold text-foreground mt-0.5">
+                              <span>{adminCreatedInfo.email}</span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(adminCreatedInfo.email, "Admin Email")}
+                                className="text-primary hover:underline ml-2 cursor-pointer shrink-0"
+                              >
+                                <Copy className="size-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {adminCreatedInfo.password && (
+                            <div className="border-t border-emerald-500/15 pt-2">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                                Temporary Password
+                              </span>
+                              <div className="flex items-center justify-between font-mono font-bold text-primary mt-0.5">
+                                <span>{adminCreatedInfo.password}</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    copyToClipboard(adminCreatedInfo.password!, "Admin Password")
+                                  }
+                                  className="text-primary hover:underline ml-2 cursor-pointer shrink-0"
+                                >
+                                  <Copy className="size-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const origin = typeof window !== "undefined" ? window.location.origin : "";
+                            const message = `*Sri Udharchi Enterprises - Administrator Login*\nPortal URL: ${origin}/admin/login\nEmail: ${adminCreatedInfo.email}${adminCreatedInfo.password ? `\nTemporary Password: ${adminCreatedInfo.password}` : "\nSign-in: Continue with Google using this email"}`;
+                            copyToClipboard(message, "All Login Credentials");
+                          }}
+                          className="w-full text-xs font-semibold gap-2 border-primary/30 text-primary hover:bg-primary/5 cursor-pointer"
+                        >
+                          <Copy className="size-3.5" />
+                          <span>Copy Complete Credentials Message</span>
+                        </Button>
+
+                        <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setAdminCreatedInfo(null);
+                              setIsAddAdminModalOpen(true);
+                            }}
+                          >
+                            + Add Another Admin
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setAdminCreatedInfo(null);
+                              setIsAddAdminModalOpen(false);
+                            }}
+                            className="bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+                          >
+                            Done
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Revoke Administrator Confirmation Modal */}
+              {adminToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                  <div className="w-full max-w-md rounded-2xl border border-destructive/40 bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-destructive/20 text-destructive shrink-0">
+                        <AlertTriangle className="size-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-display text-base font-bold text-foreground">
+                          Revoke Administrator Access?
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Are you sure you want to revoke administrative privileges for{" "}
+                          <strong className="text-foreground">{adminToDelete.email}</strong>? They will immediately lose access to this portal.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAdminToDelete(null)}
+                      >
+                        Keep Admin Access
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleConfirmDeleteAdmin}
+                      >
+                        Revoke Access
                       </Button>
                     </div>
                   </div>
