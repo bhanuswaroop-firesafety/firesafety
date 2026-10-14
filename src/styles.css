@@ -223,3 +223,12 @@
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+/* Horizontal scroll rail without ugly scrollbar for mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -268,7 +268,7 @@ export function ServiceShowcaseGrid({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {/* Category Tabs */}
           {showCategoryFilter && (
-            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-2 sm:pb-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 sm:pb-0 flex-nowrap sm:flex-wrap -mx-1 px-1">
               {CATEGORIES.map((cat) => {
                 const isSelected = selectedCategory === cat;
                 const count =

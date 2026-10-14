@@ -42,6 +42,7 @@ import { ContactForm } from "@/components/contact-form";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 import { useCart } from "@/lib/cart-context";
 import hero from "@/assets/udharchi-hero.jpg";
+import heroMobile from "@/assets/udharchi-hero-mobile.jpg";
 import hydrant from "@/assets/fire-hydrant-system.jpg";
 import trust from "@/assets/trusted-safety-partner.jpg";
 import extinguisher from "@/assets/fire-extinguisher.jpg";
@@ -290,23 +291,26 @@ function Index() {
   const { addToCart, setIsCartOpen, totalItems } = useCart();
 
   return (
-    <main id="home" className="overflow-hidden bg-background">
+    <main id="home" className="overflow-hidden bg-background pb-20 sm:pb-0">
       <SiteHeader />
 
       {/* Hero Section */}
-      <section className="relative isolate min-h-[660px] overflow-hidden bg-ink text-primary-foreground lg:min-h-[720px]">
+      <section className="relative isolate min-h-[580px] sm:min-h-[660px] lg:min-h-[720px] overflow-hidden bg-ink text-primary-foreground">
         {/* Background Hero Banner */}
         <div className="absolute inset-0 -z-20 overflow-hidden bg-ink">
-          <img
-            src={hero}
-            alt="Safety engineer inspecting industrial fire pump equipment"
-            className="h-full w-full object-cover object-[68%_center] transition-transform duration-1000 scale-100 hover:scale-105"
-            loading="eager"
-            fetchPriority="high"
-          />
+          <picture className="h-full w-full">
+            <source media="(max-width: 639px)" srcSet={heroMobile} />
+            <img
+              src={hero}
+              alt="Safety engineer inspecting industrial fire pump equipment"
+              className="h-full w-full object-cover object-[68%_center] sm:object-center transition-transform duration-1000 scale-100"
+              loading="eager"
+              fetchPriority="high"
+            />
+          </picture>
           {/* Deep Cinematic Gradient Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-r from-ink/95 via-ink/85 to-ink/45" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-transparent to-ink/50" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-ink/40 sm:bg-gradient-to-r sm:from-ink/95 sm:via-ink/85 sm:to-ink/45" />
+          <div className="absolute inset-0 bg-gradient-to-b from-ink/70 via-transparent to-ink/90 sm:hidden" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent pointer-events-none" />
         </div>
 
@@ -332,83 +336,61 @@ function Index() {
           </div>
         </motion.div>
 
-        <div className="mx-auto flex min-h-[660px] max-w-7xl items-center px-5 py-20 lg:min-h-[720px] lg:px-8">
+        <div className="mx-auto flex min-h-[560px] sm:min-h-[660px] lg:min-h-[720px] max-w-7xl items-center px-4 py-8 sm:px-6 sm:py-16 lg:px-8">
           <div className="max-w-3xl">
             {/* Top Pill */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full border border-brand-warm/30 bg-brand-warm/10 px-4 py-1.5 text-xs font-bold text-brand-warm backdrop-blur-md mb-5"
-            >
-              <Award className="size-3.5" />
-              <span>Certified Fire Safety Products & Turnkey Engineering</span>
-            </motion.div>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-brand-warm/30 bg-brand-warm/15 px-3 py-1 sm:px-4 sm:py-1.5 text-[11px] sm:text-xs font-bold text-brand-warm backdrop-blur-md mb-3 sm:mb-5">
+              <Award className="size-3 sm:size-3.5 shrink-0" />
+              <span>Certified Fire Safety Products & Engineering</span>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="font-display text-4xl font-black leading-[1.02] sm:text-6xl lg:text-7xl"
-            >
+            <h1 className="font-display text-3xl font-black leading-[1.08] sm:text-5xl lg:text-7xl">
               Protecting Lives,
               <br />
               Assets & <span className="text-brand-bright">Every Workplace</span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-6 max-w-2xl text-base leading-relaxed text-primary-foreground/85 md:text-lg"
-            >
-              Certified fire safety products, ISI extinguishers, turnkey hydrant networks, automated sprinkler arrays, diesel booster pumps, statutory inspections, hydro-testing, and industrial PPE gear.
-            </motion.p>
+            <p className="mt-3 sm:mt-6 max-w-2xl text-xs sm:text-base md:text-lg leading-relaxed text-primary-foreground/90">
+              Certified fire safety products, ISI extinguishers, turnkey hydrant networks, automated
+              sprinkler arrays, diesel booster pumps, statutory inspections, hydro-testing, and
+              industrial PPE gear.
+            </p>
 
             {/* Value checklist */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-primary-foreground/80"
-            >
-              <span className="flex items-center gap-1.5">
-                <Check className="size-4 text-emerald-400" /> NBC 2016 & BIS Certified
+            <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 text-[11px] sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-2 sm:text-xs font-semibold text-primary-foreground/90">
+              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
+                <Check className="size-3.5 text-emerald-400 shrink-0" /> NBC 2016 & BIS Certified
               </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="size-4 text-emerald-400" /> 24/7 Rapid Emergency Response
+              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
+                <Check className="size-3.5 text-emerald-400 shrink-0" /> 24/7 Rapid Dispatch
               </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="size-4 text-emerald-400" /> 18% GST Input Tax Credit (ITC)
+              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
+                <Check className="size-3.5 text-emerald-400 shrink-0" /> 18% GST Input Credit
               </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="size-4 text-emerald-400" /> Pan-India Direct Logistics
+              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
+                <Check className="size-3.5 text-emerald-400 shrink-0" /> Pan-India Logistics
               </span>
-            </motion.div>
+            </div>
 
             {/* CTAs */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-8 flex flex-wrap items-center gap-3"
-            >
-              <a href="/products">
-                <Button className="h-12 px-7 text-sm font-bold shadow-lg">
-                  <ShoppingBag className="size-4" /> Shop Safety Catalog
+            <div className="mt-5 sm:mt-8 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+              <a href="/products" className="w-full sm:w-auto">
+                <Button className="h-11 sm:h-12 w-full px-2 sm:px-7 text-xs sm:text-sm font-bold shadow-lg shadow-primary/25">
+                  <ShoppingBag className="size-3.5 sm:size-4 mr-1 sm:mr-2" /> Shop Catalog
                 </Button>
               </a>
 
-              <a href="#contact">
+              <a href="#contact" className="w-full sm:w-auto">
                 <Button
                   variant="outline"
-                  className="h-12 border-primary-foreground/40 bg-white/10 px-5 text-sm font-bold text-white hover:bg-white/20 backdrop-blur-md"
+                  className="h-11 sm:h-12 w-full border-white/25 bg-white/10 px-2 sm:px-5 text-xs sm:text-sm font-bold text-white hover:bg-white/20 backdrop-blur-md"
                 >
-                  <FileText className="size-4 text-brand-warm" /> Request Formal Quote
+                  <FileText className="size-3.5 sm:size-4 mr-1 sm:mr-2 text-brand-warm" /> Formal
+                  Quote
                 </Button>
               </a>
 
-              <a href="tel:+918639858221">
+              <a href="tel:+918639858221" className="hidden sm:inline-block">
                 <Button
                   variant="outline"
                   className="h-12 border-primary-foreground/30 bg-transparent px-5 text-sm font-bold text-white hover:bg-white/10"
@@ -416,36 +398,42 @@ function Index() {
                   <Phone className="size-4" /> 8639858221
                 </Button>
               </a>
-            </motion.div>
+            </div>
           </div>
         </div>
 
         {/* Live Operational Metrics Ribbon */}
-        <div className="border-t border-white/10 bg-black/40 backdrop-blur-md py-4">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-5 sm:grid-cols-4 lg:px-8">
-            <div className="text-center sm:text-left">
-              <span className="block font-display text-2xl font-black text-brand-warm sm:text-3xl">
+        <div className="border-t border-white/10 bg-black/50 backdrop-blur-md py-3 sm:py-4">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-3 sm:grid-cols-4 sm:gap-4 sm:px-5 lg:px-8">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-center sm:border-0 sm:bg-transparent sm:p-0 sm:text-left backdrop-blur-xs">
+              <span className="block font-display text-xl font-black text-brand-warm sm:text-3xl">
                 500+
               </span>
-              <span className="text-xs text-white/70">Industrial Turnkey Projects</span>
+              <span className="text-[10px] sm:text-xs text-white/70">
+                Industrial Turnkey Projects
+              </span>
             </div>
-            <div className="text-center sm:text-left">
-              <span className="block font-display text-2xl font-black text-white sm:text-3xl">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-center sm:border-0 sm:bg-transparent sm:p-0 sm:text-left backdrop-blur-xs">
+              <span className="block font-display text-xl font-black text-white sm:text-3xl">
                 15+ Yrs
               </span>
-              <span className="text-xs text-white/70">Engineering Experience</span>
+              <span className="text-[10px] sm:text-xs text-white/70">Engineering Experience</span>
             </div>
-            <div className="text-center sm:text-left">
-              <span className="block font-display text-2xl font-black text-emerald-400 sm:text-3xl">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-center sm:border-0 sm:bg-transparent sm:p-0 sm:text-left backdrop-blur-xs">
+              <span className="block font-display text-xl font-black text-emerald-400 sm:text-3xl">
                 100%
               </span>
-              <span className="text-xs text-white/70">NBC 2016 Audit Compliance</span>
+              <span className="text-[10px] sm:text-xs text-white/70">
+                NBC 2016 Audit Compliance
+              </span>
             </div>
-            <div className="text-center sm:text-left">
-              <span className="block font-display text-2xl font-black text-brand-bright sm:text-3xl">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-center sm:border-0 sm:bg-transparent sm:p-0 sm:text-left backdrop-blur-xs">
+              <span className="block font-display text-xl font-black text-brand-bright sm:text-3xl">
                 24/7
               </span>
-              <span className="text-xs text-white/70">Emergency Spares Dispatch</span>
+              <span className="text-[10px] sm:text-xs text-white/70">
+                Emergency Spares Dispatch
+              </span>
             </div>
           </div>
         </div>
@@ -453,10 +441,10 @@ function Index() {
 
       {/* Key Strengths Bar */}
       <section className="border-b border-border bg-soft" aria-label="Our strengths">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-border px-3 lg:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 p-3 sm:gap-4 sm:p-4 lg:grid-cols-4 lg:divide-x lg:divide-border lg:gap-0 lg:p-0 lg:px-8">
           {[
             ["shield", "Certified Equipment", "IS 15683 & BIS compliant"],
-            ["wrench", "Professional Installation", "Turnkey piping & manifolds"],
+            ["wrench", "Turnkey Installation", "Piping, valves & manifolds"],
             ["boxes", "Complete Safety Store", "Direct distributor pricing"],
             ["map", "Across Andhra Pradesh", "Rapid site dispatch & AMC"],
           ].map(([iconKey, title, copy], index) => {
@@ -467,24 +455,24 @@ function Index() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-20px" }}
                 transition={{ duration: 0.5, delay: index * 0.08 }}
-                className="flex min-w-0 items-center gap-3.5 px-3 py-5 transition-colors hover:bg-muted/40 md:px-6 group"
+                className="flex min-w-0 items-center gap-2.5 sm:gap-3.5 rounded-xl border border-border/80 bg-card p-3 shadow-xs transition-colors hover:bg-muted/40 lg:border-0 lg:bg-transparent lg:rounded-none lg:shadow-none lg:px-6 lg:py-5 group"
               >
-                <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 border border-primary/20 shadow-xs transition-transform duration-300 group-hover:scale-110">
+                <div className="grid size-10 sm:size-12 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/20 shadow-xs transition-transform duration-300 group-hover:scale-110">
                   <NanoIcon name={iconKey as NanoIconName} size="md" />
                 </div>
-                <span>
-                  <strong className="block text-sm leading-tight text-foreground group-hover:text-primary transition-colors">
+                <span className="truncate">
+                  <strong className="block text-xs sm:text-sm font-bold leading-tight text-foreground group-hover:text-primary transition-colors truncate">
                     {String(title)}
                   </strong>
-                  <span className="text-xs text-muted-foreground">{String(copy)}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground truncate block">
+                    {String(copy)}
+                  </span>
                 </span>
               </motion.div>
             );
           })}
         </div>
       </section>
-
-
 
       {/* ACTIONABLE FEATURED PRODUCTS WITH ADD TO CART */}
       <section id="featured-products" className="py-16 md:py-24">
@@ -502,11 +490,11 @@ function Index() {
             }
           />
 
-          <div className="mt-8 sm:mt-10 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
+          <div className="mt-6 sm:mt-10 grid grid-cols-2 gap-2.5 sm:gap-6 lg:grid-cols-3">
             {FEATURED_ACTIONABLE_PRODUCTS.map((prod) => (
               <div
                 key={prod.id}
-                className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-sm transition-all hover:border-primary/50 hover:shadow-xl"
+                className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-primary/50 hover:shadow-xl"
               >
                 <div className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted">
                   <img
@@ -522,30 +510,36 @@ function Index() {
                   </span>
                 </div>
 
-                <div className="flex flex-1 flex-col p-3 sm:p-5">
+                <div className="flex flex-1 flex-col p-2.5 sm:p-5">
                   <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
                     {prod.name}
                   </h3>
-                  <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground line-clamp-1">{prod.specs}</p>
+                  <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
+                    {prod.specs}
+                  </p>
 
-                  <div className="mt-2.5 sm:mt-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-t border-border pt-2 sm:pt-3 gap-0.5">
+                  <div className="mt-2 sm:mt-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-t border-border pt-1.5 sm:pt-3 gap-0.5">
                     <div>
                       <span className="font-display text-sm sm:text-xl font-black text-primary">
                         {prod.priceDisplay}
                       </span>
-                      <span className="text-[10px] sm:text-xs text-muted-foreground ml-1">/ {prod.unit}</span>
+                      <span className="text-[9px] sm:text-xs text-muted-foreground ml-1">
+                        / {prod.unit}
+                      </span>
                     </div>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground">Excl. 18% GST</span>
+                    <span className="text-[9px] sm:text-[11px] text-muted-foreground">
+                      Excl. 18% GST
+                    </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                  <div className="mt-2.5 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => addToCart(prod, 1)}
-                      className="h-8 sm:h-9 w-full px-2 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground"
+                      className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground"
                     >
-                      <ShoppingBag className="size-3 sm:size-3.5 mr-1" /> Add<span className="hidden sm:inline">&nbsp;to Cart</span>
+                      <ShoppingBag className="size-3 mr-1 shrink-0" /> + Cart
                     </Button>
                     <Button
                       size="sm"
@@ -553,7 +547,7 @@ function Index() {
                         addToCart(prod, 1);
                         window.location.href = "/checkout";
                       }}
-                      className="h-8 sm:h-9 w-full px-2 text-[10px] sm:text-xs font-bold"
+                      className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold"
                     >
                       Buy Now
                     </Button>
@@ -563,9 +557,9 @@ function Index() {
             ))}
           </div>
 
-          <div className="mt-10 text-center">
+          <div className="mt-8 sm:mt-10 text-center">
             <a href="/products">
-              <Button size="lg">
+              <Button size="lg" className="w-full sm:w-auto">
                 View All Products & Specifications <ArrowRight className="size-4" />
               </Button>
             </a>
@@ -574,18 +568,52 @@ function Index() {
       </section>
 
       {/* Complete Product Categories Overview Grid */}
-      <section id="categories" className="scroll-mt-24 bg-soft py-16 md:py-20 border-y border-border">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+      <section
+        id="categories"
+        className="scroll-mt-24 bg-soft py-12 md:py-20 border-y border-border"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-5 lg:px-8">
           <SectionHeading
             eyebrow="Wide Range of Categories"
             title="Specialized Industrial Protection Categories"
             copy="Comprehensive safety systems engineered for manufacturing plants, high-rises, warehouses, and institutions."
           />
 
-          <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-5 mt-10">
-            {PRODUCT_CATEGORIES.map(({ name, desc, image, nanoIcon }, index) => (
-              <motion.article
+          {/* Mobile Swipeable Category Rail */}
+          <div className="mt-6 flex gap-3 overflow-x-auto no-scrollbar pb-2 sm:hidden snap-x snap-mandatory -mx-4 px-4">
+            {PRODUCT_CATEGORIES.map(({ name, desc, image, nanoIcon }) => (
+              <a
                 key={name}
+                href="/products"
+                className="group flex min-w-[160px] max-w-[170px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs active:scale-[0.98] transition-transform"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                  <img src={image} alt={name} loading="lazy" className="size-full object-cover" />
+                  <div className="absolute right-1.5 top-1.5 rounded-lg bg-background/85 p-1 shadow-xs backdrop-blur-md border border-border/60">
+                    <NanoIcon name={nanoIcon} size="sm" />
+                  </div>
+                </div>
+                <div className="p-2.5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2">
+                      {name}
+                    </h3>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">{desc}</p>
+                  </div>
+                  <span className="mt-2 text-[10px] font-bold text-primary flex items-center gap-0.5">
+                    View &rarr;
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {/* Desktop/Tablet Grid */}
+          <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 mt-10">
+            {PRODUCT_CATEGORIES.map(({ name, desc, image, nanoIcon }, index) => (
+              <motion.a
+                key={name}
+                href="/products"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
@@ -612,7 +640,7 @@ function Index() {
                   </h3>
                   <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{desc}</p>
                 </div>
-              </motion.article>
+              </motion.a>
             ))}
           </div>
         </div>
@@ -655,7 +683,8 @@ function Index() {
               Trusted by Facility Directors & EHS Leaders
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Real testimonials from industrial clients who rely on our certified engineering and fast turnaround.
+              Real testimonials from industrial clients who rely on our certified engineering and
+              fast turnaround.
             </p>
           </div>
 
@@ -671,9 +700,7 @@ function Index() {
                       <Star key={i} className="size-4 fill-amber-500" />
                     ))}
                   </div>
-                  <p className="text-xs text-foreground/90 leading-relaxed italic">
-                    "{t.quote}"
-                  </p>
+                  <p className="text-xs text-foreground/90 leading-relaxed italic">"{t.quote}"</p>
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-border/80">
@@ -695,7 +722,7 @@ function Index() {
             title="Engineered for Diverse Industrial Corridors"
             copy="Customized protection systems designed for manufacturing plants, pharmaceutical zones, high-rises, and institutional facilities."
           />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8 mt-8">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-8 mt-6 sm:mt-8">
             {industries.map(([name, image], index) => (
               <motion.article
                 key={name}
@@ -716,15 +743,15 @@ function Index() {
                     className="aspect-[1.1] w-full rounded-lg object-cover transition-transform duration-500 ease-out group-hover:scale-108"
                   />
                 </div>
-                <h3 className="mt-2 text-center text-xs font-bold leading-tight group-hover:text-primary transition-colors">
+                <h3 className="mt-1.5 text-center text-[11px] sm:text-xs font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2">
                   {name}
                 </h3>
               </motion.article>
             ))}
           </div>
-          <div className="mt-8 text-center">
+          <div className="mt-6 sm:mt-8 text-center">
             <a href="/industries">
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 Explore Industry Specific Solutions <ArrowRight className="size-4" />
               </Button>
             </a>
@@ -733,25 +760,29 @@ function Index() {
       </section>
 
       {/* Turnkey Projects Spotlight */}
-      <section id="projects" className="scroll-mt-24 bg-brand-deep py-14 text-primary-foreground">
-        <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+      <section
+        id="projects"
+        className="scroll-mt-24 bg-brand-deep py-12 sm:py-14 text-primary-foreground"
+      >
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 sm:px-5 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
           <div>
             <span className="text-xs font-bold uppercase text-brand-warm">Our Projects</span>
-            <h2 className="mt-2 font-display text-3xl font-black md:text-4xl">
+            <h2 className="mt-2 font-display text-2xl sm:text-3xl lg:text-4xl font-black">
               Real Safety Engineering
               <br />
               for Critical Infrastructure
             </h2>
-            <p className="mt-3 text-sm text-primary-foreground/75 leading-relaxed">
-              Turnkey installations across automotive vendor parks, cold chain complexes, and high-density industrial corridors in Andhra Pradesh.
+            <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-primary-foreground/80 leading-relaxed">
+              Turnkey installations across automotive vendor parks, cold chain complexes, and
+              high-density industrial corridors in Andhra Pradesh.
             </p>
-            <a href="/projects" className="mt-6 inline-block">
-              <Button className="bg-background text-primary hover:bg-background/90 font-bold">
+            <a href="/projects" className="mt-4 sm:mt-6 inline-block w-full sm:w-auto">
+              <Button className="w-full sm:w-auto bg-background text-primary hover:bg-background/90 font-bold">
                 View Turnkey Project Portfolio <ArrowRight className="size-4" />
               </Button>
             </a>
           </div>
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
             {[
               [projectPump, "Fire pump skids"],
               [projectCctv, "CCTV surveillance"],
@@ -764,15 +795,15 @@ function Index() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.48, delay: index * 0.07 }}
-                className="relative overflow-hidden rounded-lg border-2 border-primary-foreground/70 shadow-md"
+                className="relative overflow-hidden rounded-xl border border-primary-foreground/40 shadow-md group"
               >
                 <img
                   src={image}
                   alt={label}
                   loading="lazy"
-                  className="aspect-[0.85] w-full object-cover"
+                  className="aspect-[0.9] w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <figcaption className="absolute inset-x-0 bottom-0 bg-ink/85 p-2 text-[10px] font-bold text-center">
+                <figcaption className="absolute inset-x-0 bottom-0 bg-ink/85 backdrop-blur-xs p-1.5 text-[10px] font-bold text-center text-white">
                   {label}
                 </figcaption>
               </motion.figure>
@@ -782,15 +813,15 @@ function Index() {
       </section>
 
       {/* Get in Touch & Request a Quote Section */}
-      <section id="contact" className="scroll-mt-24 bg-soft py-16 md:py-20">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+      <section id="contact" className="scroll-mt-24 bg-soft py-14 md:py-20">
+        <div className="mx-auto grid max-w-7xl gap-8 sm:gap-10 px-4 sm:px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
           <div>
             <SectionHeading
               eyebrow="Get in Touch"
               title="Request a Quote or Site Survey"
               copy="Tell us about your facility requirements. Our licensed safety engineers will provide technical specs and formal quotation within 24 hours."
             />
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1 mt-6">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-1 mt-6">
               {[
                 [Phone, "Primary Dispatch Hotline", "+91 8639858221", "tel:+918639858221"],
                 [Phone, "Secondary Technical Desk", "+91 9030609171", "tel:+919030609171"],
@@ -814,14 +845,18 @@ function Index() {
                     href={String(href)}
                     target={String(href).startsWith("http") ? "_blank" : undefined}
                     rel="noreferrer"
-                    className="grid grid-cols-[auto_1fr] gap-4 p-3 rounded-xl border border-border/60 bg-card hover:border-primary/40 transition-colors shadow-xs"
+                    className="grid grid-cols-[auto_1fr] gap-3 sm:gap-4 p-3 rounded-xl border border-border/60 bg-card hover:border-primary/40 active:bg-muted/40 transition-colors shadow-xs"
                   >
-                    <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-                      <I className="size-5" />
+                    <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
+                      <I className="size-4 sm:size-5" />
                     </span>
-                    <div>
-                      <strong className="block text-xs text-muted-foreground">{String(label)}</strong>
-                      <span className="text-sm font-bold text-foreground">{String(value)}</span>
+                    <div className="truncate">
+                      <strong className="block text-[11px] text-muted-foreground">
+                        {String(label)}
+                      </strong>
+                      <span className="text-xs sm:text-sm font-bold text-foreground truncate block">
+                        {String(value)}
+                      </span>
                     </div>
                   </a>
                 );
@@ -837,7 +872,7 @@ function Index() {
         </div>
       </section>
 
-      {/* Floating Emergency WhatsApp & Call Hotline Button */}
+      {/* Floating Emergency WhatsApp Hotline Button for Tablet/Desktop */}
       <div className="fixed bottom-6 left-6 z-40 hidden sm:flex items-center gap-2">
         <a
           href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20need%20urgent%20fire%20safety%20assistance."
@@ -849,6 +884,68 @@ function Index() {
           <span>WhatsApp Hotline</span>
         </a>
       </div>
+
+      {/* Refined Mobile Sticky Bottom Action Bar */}
+      <nav
+        aria-label="Mobile quick actions"
+        className="fixed bottom-0 inset-x-0 z-40 sm:hidden bg-background/95 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,0.12)] px-3 py-2 flex items-center justify-around gap-2"
+        style={{ paddingBottom: "max(0.6rem, env(safe-area-inset-bottom))" }}
+      >
+        {/* Direct Call Hotline */}
+        <a
+          href="tel:+918639858221"
+          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-card border border-border py-1.5 text-foreground shadow-xs active:scale-95 transition-all"
+          aria-label="Direct Phone Call"
+        >
+          <div className="flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <Phone className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <span className="text-[10px] font-bold">Call Now</span>
+        </a>
+
+        {/* WhatsApp Chat */}
+        <a
+          href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20need%20urgent%20fire%20safety%20assistance."
+          target="_blank"
+          rel="noreferrer"
+          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-emerald-600 text-white py-1.5 shadow-sm active:scale-95 transition-all"
+          aria-label="WhatsApp Hotline"
+        >
+          <MessageCircle className="size-3.5" />
+          <span className="text-[10px] font-bold">WhatsApp</span>
+        </a>
+
+        {/* Quick Cart Trigger */}
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-card border border-border py-1.5 text-foreground shadow-xs active:scale-95 transition-all"
+          aria-label="Open Shopping Cart"
+        >
+          <div className="relative">
+            <ShoppingCart className="size-3.5 text-primary" />
+            {totalItems > 0 && (
+              <span className="absolute -top-1.5 -right-2 flex size-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-black text-white">
+                {totalItems}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-bold">
+            Cart {totalItems > 0 ? `(${totalItems})` : ""}
+          </span>
+        </button>
+
+        {/* Get Instant Quote */}
+        <a
+          href="#contact"
+          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-primary text-primary-foreground py-1.5 shadow-sm active:scale-95 transition-all"
+          aria-label="Get Instant Quote"
+        >
+          <FileText className="size-3.5" />
+          <span className="text-[10px] font-bold">Get Quote</span>
+        </a>
+      </nav>
 
       <SiteFooter />
     </main>

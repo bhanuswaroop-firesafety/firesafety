@@ -74,17 +74,19 @@ export function SiteHeader() {
   return (
     <>
       {/* Top Utility & Emergency Ticker Bar */}
-      <div className="border-b border-border/80 bg-ink text-white/90 text-xs py-1.5 px-4">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div className="flex items-center gap-3 overflow-hidden text-[11px] sm:text-xs">
-            <span className="flex items-center gap-1.5 font-bold text-brand-warm shrink-0">
+      <div className="border-b border-border/80 bg-ink text-white/90 text-xs py-1.5 px-3 sm:px-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-hidden text-[11px] sm:text-xs w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-1.5 font-bold text-brand-warm shrink-0">
               <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-              24/7 Safety Dispatch:
-            </span>
+              <span className="hidden sm:inline">24/7 Safety Dispatch:</span>
+              <span className="sm:hidden">24/7 Hotline:</span>
+            </div>
             <a
               href="tel:+918639858221"
-              className="font-mono hover:text-brand-warm transition-colors hidden sm:inline"
+              className="font-mono font-bold text-white hover:text-brand-warm transition-colors flex items-center gap-1 shrink-0"
             >
+              <Phone className="size-3 text-emerald-400 sm:hidden" />
               +91 8639858221
             </a>
             <span className="text-white/40 hidden sm:inline">•</span>
@@ -95,8 +97,11 @@ export function SiteHeader() {
               +91 9030609171
             </a>
             <span className="text-white/40 hidden md:inline">•</span>
-            <span className="text-white/70 truncate">
+            <span className="text-white/70 truncate hidden sm:inline">
               NBC 2016 & IS Certified Industrial Contractor • Pan-India Logistics
+            </span>
+            <span className="text-[10px] text-emerald-400 font-semibold sm:hidden shrink-0">
+              NBC 2016 Certified
             </span>
           </div>
 
@@ -123,7 +128,7 @@ export function SiteHeader() {
 
       {/* Main Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-3 px-5 lg:px-8">
+        <div className="mx-auto flex h-16 sm:h-[72px] lg:h-[76px] max-w-7xl items-center justify-between gap-2 sm:gap-3 px-3.5 sm:px-5 lg:px-8">
           <BrandLogo />
 
           {/* Desktop Navigation */}
@@ -283,16 +288,26 @@ export function SiteHeader() {
               </a>
             </div>
 
+            {/* Quick Mobile Call Button */}
+            <a
+              href="tel:+918639858221"
+              className="flex size-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 lg:hidden shadow-xs active:scale-95 transition-transform"
+              aria-label="Call Emergency Hotline"
+              title="Call Hotline"
+            >
+              <Phone className="size-4 text-emerald-600 dark:text-emerald-400" />
+            </a>
+
             {/* Mobile Cart Trigger Icon */}
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="relative flex size-10 items-center justify-center rounded-xl border border-border bg-card text-foreground lg:hidden"
+              className="relative flex size-10 items-center justify-center rounded-xl border border-border bg-card text-foreground lg:hidden shadow-xs active:scale-95 transition-transform"
               aria-label="Cart"
             >
               <ShoppingCart className="size-4" />
               {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-black text-primary-foreground">
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-black text-primary-foreground animate-scale-in">
                   {totalItems}
                 </span>
               )}
@@ -301,12 +316,12 @@ export function SiteHeader() {
             {/* Mobile Menu Hamburger */}
             <Button
               variant="ghost"
-              className="size-11 px-0 lg:hidden"
+              className="size-10 px-0 rounded-xl lg:hidden active:scale-95 transition-transform"
               aria-label="Open menu"
               aria-expanded={open}
               onClick={() => setOpen(true)}
             >
-              <Menu />
+              <Menu className="size-5" />
             </Button>
           </div>
         </div>
@@ -318,7 +333,7 @@ export function SiteHeader() {
               <motion.button
                 type="button"
                 aria-label="Close menu"
-                className="fixed inset-0 top-[110px] z-40 bg-ink/65 backdrop-blur-xs lg:hidden"
+                className="fixed inset-0 z-50 bg-ink/75 backdrop-blur-xs lg:hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
