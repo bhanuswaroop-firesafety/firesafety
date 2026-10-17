@@ -12,8 +12,11 @@ import { uploadProductImage, MAX_IMAGE_SIZE_MB } from "@/lib/image-upload";
 import { Button } from "@/components/button";
 import {
   AlertCircle,
+  ArrowLeft,
+  Calendar,
   Check,
   ChevronDown,
+  Clock,
   Edit2,
   ExternalLink,
   Eye,
@@ -27,6 +30,8 @@ import {
   Plus,
   RefreshCw,
   Search,
+  ShieldCheck,
+  Sparkles,
   Star,
   Tag,
   Trash2,
@@ -68,6 +73,59 @@ const PRICING_UNITS = [
   "custom quote",
 ];
 
+/**
+ * Format relative time (e.g. "Just now", "5m ago", "2h ago", "Yesterday", "3d ago")
+ */
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return "Catalog item";
+  try {
+    const now = Date.now();
+    const target = new Date(dateStr).getTime();
+    if (isNaN(target)) return "Catalog item";
+    const diffSec = Math.floor((now - target) / 1000);
+    if (diffSec < 60) return "Just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(dateStr));
+  } catch {
+    return "Catalog item";
+  }
+}
+
+/**
+ * Format exact human-readable date and time in IST (Asia/Kolkata)
+ * Example: "18 Oct 2026, 04:30 AM"
+ */
+function formatExactDateTime(dateStr?: string): string {
+  if (!dateStr) return "Official Catalog Entry";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+  } catch {
+    return dateStr;
+  }
+}
+
 interface ProductManagerProps {
   products: ProductItem[];
   categories: CategoryItem[];
@@ -81,17 +139,24 @@ export function ProductManager({
   onNotify,
   initialCreateOpen = false,
 }: ProductManagerProps) {
-  // Filters & State
+  // Navigation View: "catalog" (list/grid view) or "editor" (separate full-width page)
+  const [currentView, setCurrentView] = useState<"catalog" | "editor">(
+    initialCreateOpen ? "editor" : "catalog",
+  );
+
+  // Filters & Sorting State
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [stockFilter, setStockFilter] = useState<"all" | "inStock" | "outOfStock" | "featured">(
     "all",
   );
-  const [sortBy, setSortBy] = useState<"name" | "price-asc" | "price-desc" | "newest">("newest");
+  const [dateFilter, setDateFilter] = useState<"all" | "7days" | "30days">("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name" | "price-asc" | "price-desc">(
+    "newest",
+  );
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
-  // Product Modals
-  const [isModalOpen, setIsModalOpen] = useState(initialCreateOpen);
+  // Active Editing Product & Deletion Modals
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isDeleting, setIsDeleting] = useState<ProductItem | null>(null);
   const [previewProduct, setPreviewProduct] = useState<ProductItem | null>(null);
@@ -117,6 +182,7 @@ export function ProductManager({
     image: extinguisherImg,
     inStock: true,
     featured: false,
+    renewalMonths: undefined,
   });
 
   const [currentSpec, setCurrentSpec] = useState("");
@@ -133,24 +199,41 @@ export function ProductManager({
   } | null>(null);
   const [urlInput, setUrlInput] = useState("");
 
-  // Escape key handler for dismissing open modals
+  // Trigger editor view if initialCreateOpen changes
+  useEffect(() => {
+    if (initialCreateOpen) {
+      openCreateEditor();
+    }
+  }, [initialCreateOpen]);
+
+  // Escape key handler for dismissing open dialogs
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (isDeleting) setIsDeleting(null);
         else if (previewProduct) setPreviewProduct(null);
         else if (isCategoryModalOpen) setIsCategoryModalOpen(false);
-        else if (isModalOpen) setIsModalOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDeleting, previewProduct, isCategoryModalOpen, isModalOpen]);
+  }, [isDeleting, previewProduct, isCategoryModalOpen]);
 
   // Available category names
   const categoryNames = useMemo(() => {
     return Array.from(new Set(categories.map((c) => c.name)));
   }, [categories]);
+
+  // Recently Added Products (Top 4 latest items by createdAt)
+  const recentlyAddedProducts = useMemo(() => {
+    return [...products]
+      .sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tB - tA;
+      })
+      .slice(0, 4);
+  }, [products]);
 
   // Filtered & Sorted products
   const filteredProducts = useMemo(() => {
@@ -168,7 +251,22 @@ export function ProductManager({
         if (stockFilter === "outOfStock") matchesStock = p.inStock === false;
         if (stockFilter === "featured") matchesStock = !!p.featured;
 
-        return matchesCategory && matchesSearch && matchesStock;
+        let matchesDate = true;
+        if (dateFilter === "7days") {
+          if (!p.createdAt) matchesDate = false;
+          else {
+            const diffDays = (Date.now() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+            matchesDate = diffDays <= 7;
+          }
+        } else if (dateFilter === "30days") {
+          if (!p.createdAt) matchesDate = false;
+          else {
+            const diffDays = (Date.now() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+            matchesDate = diffDays <= 30;
+          }
+        }
+
+        return matchesCategory && matchesSearch && matchesStock && matchesDate;
       })
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -177,13 +275,18 @@ export function ProductManager({
           const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return tB - tA;
         }
+        if (sortBy === "oldest") {
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tA - tB;
+        }
         const numA = Number(a.price?.replace(/[^0-9.]/g, "") || 0);
         const numB = Number(b.price?.replace(/[^0-9.]/g, "") || 0);
         if (sortBy === "price-asc") return numA - numB;
         if (sortBy === "price-desc") return numB - numA;
         return 0;
       });
-  }, [products, selectedCategory, searchTerm, stockFilter, sortBy]);
+  }, [products, selectedCategory, searchTerm, stockFilter, dateFilter, sortBy]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -194,8 +297,8 @@ export function ProductManager({
     return { total, inStock, featured, totalCategories };
   }, [products, categoryNames]);
 
-  // Open Create Modal
-  const openCreateModal = () => {
+  // Open Full-Page Create Editor
+  const openCreateEditor = () => {
     setEditingProduct(null);
     setFormError("");
     setUploadStats(null);
@@ -216,15 +319,19 @@ export function ProductManager({
       renewalMonths: undefined,
     });
     setCurrentSpec("");
-    setIsModalOpen(true);
+    setCurrentView("editor");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Open Edit Modal
-  const openEditModal = (product: ProductItem) => {
+  // Open Full-Page Edit Editor
+  const openEditEditor = (product: ProductItem) => {
     setEditingProduct(product);
     setFormError("");
     setUploadStats(null);
-    const isUrl = !!(product.image && (product.image.startsWith("http://") || product.image.startsWith("https://")));
+    const isUrl = !!(
+      product.image &&
+      (product.image.startsWith("http://") || product.image.startsWith("https://"))
+    );
     setImageMode(isUrl ? "url" : "upload");
     setUrlInput(isUrl ? product.image : "");
     setFormData({
@@ -242,7 +349,8 @@ export function ProductManager({
       renewalMonths: product.renewalMonths,
     });
     setCurrentSpec("");
-    setIsModalOpen(true);
+    setCurrentView("editor");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Handle Form Image File Upload (supports up to 10 MB with auto-compression)
@@ -315,8 +423,8 @@ export function ProductManager({
   };
 
   // Submit Product Form (Create or Update)
-  const handleSubmitProduct = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmitProduct = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
     setFormError("");
     if (!formData.name?.trim() || !formData.category?.trim()) {
       setFormError("Product name and category are required.");
@@ -347,7 +455,8 @@ export function ProductManager({
         await addProduct(payload);
         onNotify(`Added new product "${payload.name}" to Firestore.`);
       }
-      setIsModalOpen(false);
+      setCurrentView("catalog");
+      setEditingProduct(null);
     } catch (err: unknown) {
       setFormError("Error saving product: " + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -435,6 +544,733 @@ export function ProductManager({
     }
   };
 
+  // =========================================================================
+  // VIEW: DEDICATED FULL-PAGE PRODUCT EDITOR (REPLACES THE CRAMPED POPUP MODAL)
+  // =========================================================================
+  if (currentView === "editor") {
+    return (
+      <div className="w-full space-y-6 animate-in fade-in-50 duration-200">
+        {/* Top Sticky/Header Bar */}
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCurrentView("catalog");
+                  setEditingProduct(null);
+                }}
+                className="gap-2 shrink-0 border-border hover:bg-muted"
+              >
+                <ArrowLeft className="size-4" />
+                <span>Back to Products</span>
+              </Button>
+              <div className="h-6 w-px bg-border hidden sm:block" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+                    {editingProduct ? <Edit2 className="size-3" /> : <Plus className="size-3" />}
+                    {editingProduct ? "Product Editor" : "New Product Creation"}
+                  </span>
+                  {editingProduct?.createdAt && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5 hidden md:flex">
+                      <Clock className="size-3 text-muted-foreground" />
+                      Added: {formatExactDateTime(editingProduct.createdAt)} (
+                      {formatRelativeTime(editingProduct.createdAt)})
+                    </span>
+                  )}
+                </div>
+                <h1 className="mt-1 font-display text-xl sm:text-2xl font-bold text-foreground">
+                  {editingProduct
+                    ? `Editing: ${formData.name || editingProduct.name}`
+                    : "Add New Product to Catalog"}
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Full-page dedicated editor. Fill in specifications, images up to 10 MB, and pricing.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2.5 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCurrentView("catalog");
+                  setEditingProduct(null);
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleSubmitProduct()}
+                disabled={isSubmitting}
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+              >
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="size-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-4" />
+                    <span>{editingProduct ? "Save Changes" : "Publish to Catalog"}</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {formError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive flex items-center gap-2.5 shadow-sm">
+            <AlertCircle className="size-5 shrink-0" />
+            <span className="font-semibold">{formError}</span>
+          </div>
+        )}
+
+        {/* Responsive 2-Column Full Width Grid */}
+        <form onSubmit={handleSubmitProduct} className="grid gap-6 lg:grid-cols-12">
+          {/* LEFT COLUMN: Main Product Details (8 cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* 1. Basic Information Card */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+              <div className="border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                  <Package className="size-4 text-primary" />
+                  <span>General Information</span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Specify the product title, category segmentation, and SKU code.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {/* Product Name */}
+                <div>
+                  <label className="text-xs font-bold text-foreground">
+                    Product Name / Title <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 50kg ABC Stored Pressure Fire Extinguisher (IS 15683)"
+                    value={formData.name || ""}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="mt-1.5 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                  />
+                </div>
+
+                {/* Category & SKU in 2 columns */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-foreground">
+                        Category <span className="text-destructive">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsCategoryModalOpen(true)}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        + Manage Categories
+                      </button>
+                    </div>
+                    {categoryNames.length === 0 ? (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter category name"
+                        value={formData.category || ""}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="mt-1.5 w-full rounded-xl border border-input bg-background px-3.5 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                      />
+                    ) : (
+                      <select
+                        required
+                        value={formData.category || ""}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="mt-1.5 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                      >
+                        <option value="">Select a category</option>
+                        {categoryNames.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-foreground">
+                      SKU / Model Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. SUE-FE-ABC50"
+                      value={formData.sku || ""}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs font-mono text-foreground focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Price, Pricing Unit, and Min Order Qty in 3 columns */}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="text-xs font-bold text-foreground">Price in ₹ (INR)</label>
+                    <div className="relative mt-1.5">
+                      <input
+                        type="text"
+                        placeholder="e.g. 18,500 (or leave empty)"
+                        value={formData.price || ""}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        className="w-full rounded-xl border border-input bg-background pl-8 pr-3.5 py-2.5 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
+                      />
+                      <IndianRupee className="absolute left-2.5 top-3 size-3.5 text-muted-foreground" />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground mt-1 block">
+                      Empty = Quote on Request
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-foreground">Pricing Unit</label>
+                    <select
+                      value={formData.unit || "per piece"}
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                    >
+                      {PRICING_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-foreground">Minimum Order Qty</label>
+                    <input
+                      type="text"
+                      placeholder="1"
+                      value={formData.minOrderQty || "1"}
+                      onChange={(e) => setFormData({ ...formData, minOrderQty: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Product Description Card */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-3">
+              <div className="border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Product Description & Technical Narrative <span className="text-destructive">*</span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Detailed product description, industrial compliance, certifications, and target applications.
+                </p>
+              </div>
+
+              <textarea
+                required
+                rows={5}
+                placeholder="Comprehensive description of product specifications, fire ratings (Class A, B, C), BIS/PESO certifications, operating temperatures, and installation requirements..."
+                value={formData.description || ""}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full rounded-xl border border-input bg-background p-4 text-xs text-foreground leading-relaxed focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              />
+            </div>
+
+            {/* 3. Technical Specifications & Compliance Tags Card */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-3">
+              <div className="border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-success" />
+                  <span>Technical Specifications & Compliance Tags</span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Press enter or click "Add Tag" to add bullet points and compliance certifications.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. BIS / IS 15683 Certified or Hydro-Tested to 35 bar"
+                  value={currentSpec}
+                  onChange={(e) => setCurrentSpec(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSpec();
+                    }
+                  }}
+                  className="flex-1 rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={handleAddSpec} className="px-4">
+                  <Plus className="size-3.5" />
+                  <span>Add Tag</span>
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                {(formData.specs || []).length === 0 ? (
+                  <span className="text-xs text-muted-foreground italic">
+                    No specifications added yet. Add key ratings (e.g. "IS:15683 Certified", "Discharge Range 6m").
+                  </span>
+                ) : (
+                  formData.specs?.map((spec, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/80 px-3 py-1 text-xs font-medium text-foreground shadow-xs"
+                    >
+                      <span>{spec}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSpec(idx)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 4. Refill / Maintenance AMC Alert Cycle */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-3">
+              <div className="border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                  <Clock className="size-4 text-accent" />
+                  <span>Refill & Maintenance Renewal Cycle (AMC Alert)</span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Configures automated inspection and refill reminder alerts for customer orders.
+                </p>
+              </div>
+
+              <select
+                value={formData.renewalMonths ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({
+                    ...formData,
+                    renewalMonths: val ? (Number(val) as 3 | 6 | 9 | 12) : undefined,
+                  });
+                }}
+                className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+              >
+                <option value="">No reminder (One-time equipment or consumable)</option>
+                <option value="3">Every 3 Months (Quarterly inspection alert)</option>
+                <option value="6">Every 6 Months (Semi-annual recharge & check)</option>
+                <option value="9">Every 9 Months (Periodic maintenance schedule)</option>
+                <option value="12">Every 12 Months (Annual hydro-test & certificate renewal)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Media, Live Card Preview & Settings (4 cols) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* 1. Product Image & Media Card */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+              <div className="border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                  <ImageIcon className="size-4 text-primary" />
+                  <span>Product Image & Media</span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Upload photos up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> or paste any image URL.
+                </p>
+              </div>
+
+              {/* Mode Switcher Tabs */}
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-muted/50 p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setImageMode("upload")}
+                  className={`rounded-lg py-1.5 font-bold transition-all ${
+                    imageMode === "upload"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageMode("url")}
+                  className={`rounded-lg py-1.5 font-bold transition-all ${
+                    imageMode === "url"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Image URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageMode("presets")}
+                  className={`rounded-lg py-1.5 font-bold transition-all ${
+                    imageMode === "presets"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Presets
+                </button>
+              </div>
+
+              {/* Live Preview Display */}
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted/60 shadow-xs flex items-center justify-center">
+                {formData.image ? (
+                  <img
+                    src={formData.image}
+                    alt="Product preview"
+                    className="size-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = extinguisherImg;
+                    }}
+                  />
+                ) : (
+                  <div className="text-center p-4">
+                    <ImageIcon className="mx-auto size-8 text-muted-foreground/40" />
+                    <span className="text-xs text-muted-foreground mt-1 block">No image selected</span>
+                  </div>
+                )}
+                {isUploadingImage && (
+                  <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 text-xs font-bold text-primary">
+                    <RefreshCw className="size-5 animate-spin" />
+                    <span>Compressing image...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Mode Controls */}
+              {imageMode === "upload" && (
+                <div className="space-y-2">
+                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 cursor-pointer transition-all">
+                    <Upload className="size-6 text-primary" />
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-foreground block">
+                        {isUploadingImage ? "Processing..." : "Select File or Drag & Drop"}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 block">
+                        Accepts JPG, PNG, WebP up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong>. Auto-compressed
+                        to ~50–150 KB for blazing fast loads.
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+
+                  {uploadStats && (
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
+                      <div className="flex items-center gap-2 truncate">
+                        <Check className="size-4 text-emerald-600 shrink-0" />
+                        <span className="font-semibold truncate">{uploadStats.name}</span>
+                      </div>
+                      <span className="shrink-0 text-[11px] font-mono ml-2">
+                        {uploadStats.originalKB} KB →{" "}
+                        <strong className="text-emerald-600 dark:text-emerald-400">
+                          {uploadStats.compressedKB} KB
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {imageMode === "url" && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="url"
+                      placeholder="https://images.unsplash.com/... or cloud storage URL"
+                      value={urlInput}
+                      onChange={(e) => handleUrlApply(e.target.value)}
+                      className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                    />
+                    {urlInput && (
+                      <button
+                        type="button"
+                        onClick={() => handleUrlApply("")}
+                        className="rounded-xl border border-border px-3 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Direct public links from CDNs, Unsplash, suppliers, or Cloud Storage.
+                  </p>
+                </div>
+              )}
+
+              {imageMode === "presets" && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {PRESET_IMAGES.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, image: preset.src }));
+                          setUploadStats(null);
+                        }}
+                        className={`group relative aspect-square rounded-xl overflow-hidden border p-1 transition-all ${
+                          formData.image === preset.src
+                            ? "border-primary ring-2 ring-primary/40 bg-primary/10"
+                            : "border-border hover:border-muted-foreground/50 bg-muted/40"
+                        }`}
+                        title={preset.name}
+                      >
+                        <img
+                          src={preset.src}
+                          alt={preset.name}
+                          className="size-full object-cover rounded-lg"
+                        />
+                        <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-[9px] text-white text-center truncate">
+                          {preset.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Select from official Sri Udharchi catalog equipment photographs.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Inventory & Visibility Card */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+              <div className="border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Inventory & Storefront Visibility
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors">
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Stock Availability</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {formData.inStock ?? true ? "Currently Available for Instant Order" : "Marked Out of Stock"}
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.inStock ?? true}
+                    onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+                    className="size-5 rounded border-input text-primary focus:ring-primary"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors">
+                  <div>
+                    <span className="text-xs font-bold text-foreground block flex items-center gap-1.5">
+                      <Star className="size-3.5 text-accent fill-accent" />
+                      <span>Featured Product</span>
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Show in homepage spotlight carousel
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.featured ?? false}
+                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                    className="size-5 rounded border-input text-primary focus:ring-primary"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* 3. Live Customer Storefront Card Preview */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-3">
+              <div className="border-b border-border pb-2 flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Eye className="size-3.5 text-primary" />
+                  <span>Live Storefront Preview</span>
+                </h4>
+                <span className="text-[10px] text-success font-semibold">Real-time render</span>
+              </div>
+
+              <div className="rounded-xl border border-border bg-background p-3 shadow-xs space-y-2.5">
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                  <img
+                    src={formData.image || extinguisherImg}
+                    alt="Preview"
+                    className="size-full object-cover"
+                  />
+                  <span className="absolute left-2 top-2 rounded bg-background/90 px-2 py-0.5 text-[10px] font-bold text-foreground">
+                    {formData.category || "Fire Safety"}
+                  </span>
+                  {formData.featured && (
+                    <span className="absolute right-2 top-2 rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground flex items-center gap-0.5">
+                      <Star className="size-2.5 fill-current" /> Featured
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="font-display text-xs font-bold text-foreground line-clamp-1">
+                    {formData.name || "Product Name Display"}
+                  </h4>
+                  {formData.sku && (
+                    <span className="font-mono text-[10px] text-muted-foreground">SKU: {formData.sku}</span>
+                  )}
+                  <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">
+                    {formData.description || "Product description preview will appear here."}
+                  </p>
+                </div>
+
+                <div className="flex items-baseline justify-between border-t border-border pt-2 text-xs">
+                  <span className="font-display font-black text-primary text-sm">
+                    {formData.price
+                      ? formData.price.startsWith("₹")
+                        ? formData.price
+                        : `₹${formData.price}`
+                      : "Quote on Request"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {formData.unit ? `/ ${formData.unit}` : ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Action Buttons */}
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-2.5">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 py-3 shadow-md text-sm font-bold"
+              >
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="size-4 animate-spin" />
+                    <span>Saving to Firestore...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-4" />
+                    <span>{editingProduct ? "Save Changes" : "Publish to Catalog"}</span>
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCurrentView("catalog");
+                  setEditingProduct(null);
+                }}
+                className="w-full text-xs"
+              >
+                Discard & Return
+              </Button>
+            </div>
+          </div>
+        </form>
+
+        {/* CATEGORIES MANAGEMENT MODAL (Inside editor as well) */}
+        {isCategoryModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="font-display text-base font-bold text-foreground">Product Categories</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(false)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateCategory} className="mt-4 space-y-3">
+                {categoryError && (
+                  <div className="rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive flex items-center gap-2">
+                    <AlertCircle className="size-4 shrink-0" />
+                    <span>{categoryError}</span>
+                  </div>
+                )}
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Category Name"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Short Description"
+                    value={newCategoryDesc}
+                    onChange={(e) => setNewCategoryDesc(e.target.value)}
+                    className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit" size="sm">
+                    <Plus className="size-3.5" />
+                    <span>Add Category</span>
+                  </Button>
+                </div>
+              </form>
+
+              <div className="mt-4 max-h-60 overflow-y-auto space-y-2 border-t border-border pt-4">
+                <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                  Existing Categories
+                </span>
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-2.5 text-xs"
+                  >
+                    <span className="font-semibold text-foreground">{cat.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                      className="rounded p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW: MAIN PRODUCTS CATALOG LIST & RECENTLY ADDED DASHBOARD
+  // =========================================================================
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Metrics */}
@@ -494,6 +1330,101 @@ export function ProductManager({
         </div>
       </div>
 
+      {/* =================================================================== */}
+      {/* SECTION: RECENTLY ADDED PRODUCTS SHELF (WHAT & WHEN ADDED)           */}
+      {/* =================================================================== */}
+      {recentlyAddedProducts.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3.5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
+                <Clock className="size-4" />
+              </div>
+              <div>
+                <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
+                  <span>Recently Added Products</span>
+                  <span className="rounded-full bg-primary/15 px-2 py-0.2 text-[10px] font-bold text-primary">
+                    Live Feed
+                  </span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Latest products added to your catalog with exact creation timestamps.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={openCreateEditor}
+              className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs shadow-xs self-start sm:self-auto"
+            >
+              <Plus className="size-3.5" />
+              <span>Add Another Product</span>
+            </Button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {recentlyAddedProducts.map((prod) => (
+              <div
+                key={prod.id || prod.name}
+                className="group relative flex flex-col rounded-xl border border-border bg-background/60 p-3 hover:border-primary/50 hover:bg-background transition-all shadow-2xs"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                    <img
+                      src={prod.image}
+                      alt={prod.name}
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = extinguisherImg;
+                      }}
+                    />
+                    <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-semibold text-white text-center py-0.5 truncate">
+                      {prod.category}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-xs text-foreground truncate group-hover:text-primary transition-colors">
+                      {prod.name}
+                    </h4>
+                    <span className="block font-display font-bold text-xs text-primary mt-0.5">
+                      {prod.price
+                        ? prod.price.startsWith("₹")
+                          ? prod.price
+                          : `₹${prod.price}`
+                        : "Quote on Request"}
+                    </span>
+
+                    {/* Prominent Timestamp Badge */}
+                    <div className="mt-1.5 flex items-center gap-1 rounded bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground w-fit">
+                      <Clock className="size-3 text-primary shrink-0" />
+                      <span className="font-semibold text-foreground">
+                        {formatRelativeTime(prod.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span className="truncate" title={formatExactDateTime(prod.createdAt)}>
+                    {formatExactDateTime(prod.createdAt)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openEditEditor(prod)}
+                    className="font-semibold text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Edit2 className="size-2.5" />
+                    <span>Edit</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main Action Bar */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -513,7 +1444,7 @@ export function ProductManager({
               <span>Categories</span>
             </Button>
 
-            <Button size="sm" onClick={openCreateModal}>
+            <Button size="sm" onClick={openCreateEditor} className="gap-1.5">
               <Plus className="size-4" />
               <span>Add Product</span>
             </Button>
@@ -523,7 +1454,7 @@ export function ProductManager({
         {/* Filter Controls Row */}
         <div className="grid gap-3 pt-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12">
           {/* Search */}
-          <div className="relative sm:col-span-2 md:col-span-2 lg:col-span-4">
+          <div className="relative sm:col-span-2 md:col-span-2 lg:col-span-3">
             <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
             <input
               type="text"
@@ -535,7 +1466,7 @@ export function ProductManager({
           </div>
 
           {/* Category Filter */}
-          <div className="sm:col-span-1 md:col-span-1 lg:col-span-3">
+          <div className="sm:col-span-1 md:col-span-1 lg:col-span-2">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
@@ -566,16 +1497,32 @@ export function ProductManager({
             </select>
           </div>
 
+          {/* Date Filter: All vs Recently Added (7/30 days) */}
+          <div className="sm:col-span-1 md:col-span-1 lg:col-span-2">
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as "all" | "7days" | "30days")}
+              className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="all">All Dates</option>
+              <option value="7days">Added in Last 7 Days</option>
+              <option value="30days">Added in Last 30 Days</option>
+            </select>
+          </div>
+
           {/* Sort By */}
           <div className="sm:col-span-1 md:col-span-1 lg:col-span-2">
             <select
               value={sortBy}
               onChange={(e) =>
-                setSortBy(e.target.value as "name" | "price-asc" | "price-desc" | "newest")
+                setSortBy(
+                  e.target.value as "newest" | "oldest" | "name" | "price-asc" | "price-desc",
+                )
               }
               className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
             >
-              <option value="newest">Sort: Newest Added</option>
+              <option value="newest">Sort: Recently Added</option>
+              <option value="oldest">Sort: Oldest Added</option>
               <option value="name">Sort: Name (A-Z)</option>
               <option value="price-asc">Sort: Price (Low to High)</option>
               <option value="price-desc">Sort: Price (High to Low)</option>
@@ -620,12 +1567,12 @@ export function ProductManager({
             No Products Found
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-            {searchTerm || selectedCategory !== "All"
+            {searchTerm || selectedCategory !== "All" || dateFilter !== "all"
               ? "No products match your active search filters. Try resetting the filters."
               : "Your Firestore products collection is currently empty."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {searchTerm || selectedCategory !== "All" ? (
+            {searchTerm || selectedCategory !== "All" || dateFilter !== "all" ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -633,14 +1580,15 @@ export function ProductManager({
                   setSearchTerm("");
                   setSelectedCategory("All");
                   setStockFilter("all");
+                  setDateFilter("all");
                 }}
               >
                 Clear Filters
               </Button>
             ) : null}
-            <Button size="sm" onClick={openCreateModal}>
+            <Button size="sm" onClick={openCreateEditor}>
               <Plus className="size-3.5" />
-              <span>Add Custom Product</span>
+              <span>Add Product</span>
             </Button>
             {products.length === 0 && (
               <Button
@@ -661,7 +1609,7 @@ export function ProductManager({
           </div>
         </div>
       ) : viewMode === "table" ? (
-        /* TABLE VIEW */
+        /* TABLE VIEW WITH DATE ADDED COLUMN */
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -673,6 +1621,7 @@ export function ProductManager({
                   <th className="px-3 py-3">Pricing (INR)</th>
                   <th className="px-3 py-3 text-center">Stock</th>
                   <th className="px-3 py-3 text-center">Featured</th>
+                  <th className="px-3 py-3">Date Added</th>
                   <th className="py-3 pl-3 pr-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -686,6 +1635,9 @@ export function ProductManager({
                           src={prod.image}
                           alt={prod.name}
                           className="size-11 shrink-0 rounded-lg object-cover border border-border"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = extinguisherImg;
+                          }}
                         />
                         <div className="min-w-0 max-w-xs">
                           <strong className="block truncate font-semibold text-foreground">
@@ -768,6 +1720,24 @@ export function ProductManager({
                       </button>
                     </td>
 
+                    {/* Date Added (What was added & When it was added) */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                          <Clock className="size-3 text-primary shrink-0" />
+                          {formatRelativeTime(prod.createdAt)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatExactDateTime(prod.createdAt)}
+                        </span>
+                        {prod.updatedAt && prod.updatedAt !== prod.createdAt && (
+                          <span className="text-[9px] text-muted-foreground/75 italic">
+                            Edited {formatRelativeTime(prod.updatedAt)}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
                     {/* Action buttons */}
                     <td className="py-3 pl-3 pr-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
@@ -790,9 +1760,9 @@ export function ProductManager({
                         </button>
                         <button
                           type="button"
-                          onClick={() => openEditModal(prod)}
+                          onClick={() => openEditEditor(prod)}
                           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-primary"
-                          title="Edit Product"
+                          title="Edit Product (Opens dedicated editor)"
                         >
                           <Edit2 className="size-3.5" />
                         </button>
@@ -813,7 +1783,7 @@ export function ProductManager({
           </div>
         </div>
       ) : (
-        /* GRID VIEW */
+        /* GRID VIEW WITH DATE ADDED BADGE */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProducts.map((prod) => (
             <div
@@ -825,6 +1795,9 @@ export function ProductManager({
                   src={prod.image}
                   alt={prod.name}
                   className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = extinguisherImg;
+                  }}
                 />
                 <span className="absolute left-2.5 top-2.5 rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-bold text-foreground backdrop-blur">
                   {prod.category}
@@ -853,6 +1826,12 @@ export function ProductManager({
                   >
                     {prod.inStock !== false ? "In Stock" : "Out of Stock"}
                   </button>
+                </div>
+
+                {/* Date Added pill */}
+                <div className="absolute bottom-2 left-2 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur flex items-center gap-1">
+                  <Clock className="size-2.5 text-primary" />
+                  <span>Added {formatRelativeTime(prod.createdAt)}</span>
                 </div>
               </div>
 
@@ -902,9 +1881,9 @@ export function ProductManager({
                     </a>
                     <button
                       type="button"
-                      onClick={() => openEditModal(prod)}
+                      onClick={() => openEditEditor(prod)}
                       className="rounded-lg border border-border p-1.5 text-muted-foreground hover:border-primary hover:text-primary"
-                      title="Edit"
+                      title="Edit Product"
                     >
                       <Edit2 className="size-3.5" />
                     </button>
@@ -921,437 +1900,6 @@ export function ProductManager({
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* CREATE / EDIT PRODUCT MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="my-8 w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h3 className="font-display text-lg font-bold text-foreground">
-                  {editingProduct ? "Edit Product Details" : "Upload New Product"}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {editingProduct
-                    ? `Update Firestore document for "${editingProduct.name}"`
-                    : "Fill in product specifications, category, and pricing details."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitProduct} className="mt-4 space-y-4">
-              {formError && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
-                  <AlertCircle className="size-4 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Product Name */}
-                <div className="sm:col-span-2">
-                  <label className="text-xs font-semibold text-foreground">Product Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 50kg ABC Stored Pressure Fire Extinguisher"
-                    value={formData.name || ""}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                  />
-                </div>
-
-                {/* Category Selection */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-foreground">Category *</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsCategoryModalOpen(true)}
-                      className="text-[11px] text-primary hover:underline"
-                    >
-                      + Add Category
-                    </button>
-                  </div>
-                  {categoryNames.length === 0 ? (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter category name (e.g. Fire Safety)"
-                      value={formData.category || ""}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                    />
-                  ) : (
-                    <select
-                      required
-                      value={formData.category || ""}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                    >
-                      <option value="">Select a category</option>
-                      {categoryNames.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* SKU */}
-                <div>
-                  <label className="text-xs font-semibold text-foreground">
-                    SKU / Model Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. SUE-FE-ABC50"
-                    value={formData.sku || ""}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                  />
-                </div>
-
-                {/* Price (INR) */}
-                <div>
-                  <label className="text-xs font-semibold text-foreground">Price in ₹ (INR)</label>
-                  <div className="relative mt-1">
-                    <input
-                      type="text"
-                      placeholder="e.g. 18,500 (or leave empty for Quote on Request)"
-                      value={formData.price || ""}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full rounded-lg border border-input bg-background pl-8 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                    />
-                    <IndianRupee className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-                  </div>
-                </div>
-
-                {/* Pricing Unit */}
-                <div>
-                  <label className="text-xs font-semibold text-foreground">Pricing Unit</label>
-                  <select
-                    value={formData.unit || "per piece"}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                  >
-                    {PRICING_UNITS.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Product Image Selection & Upload */}
-              <div className="space-y-3 border-t border-border pt-4">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <label className="text-xs font-bold text-foreground">Product Image *</label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Upload from device (up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong>) or paste any image URL.
-                    </p>
-                  </div>
-                  {/* Mode Tabs */}
-                  <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5 text-[11px] self-start sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => setImageMode("upload")}
-                      className={`rounded px-2.5 py-1 font-semibold transition-all ${
-                        imageMode === "upload"
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Upload File
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImageMode("url")}
-                      className={`rounded px-2.5 py-1 font-semibold transition-all ${
-                        imageMode === "url"
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Image URL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImageMode("presets")}
-                      className={`rounded px-2.5 py-1 font-semibold transition-all ${
-                        imageMode === "presets"
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Presets
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3.5 sm:flex-row sm:items-start">
-                  {/* Image Preview Box */}
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-xl border border-border bg-muted/60 shadow-xs flex items-center justify-center">
-                    {formData.image ? (
-                      <img
-                        src={formData.image}
-                        alt="Product preview"
-                        className="size-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = extinguisherImg;
-                        }}
-                      />
-                    ) : (
-                      <ImageIcon className="size-8 text-muted-foreground/40" />
-                    )}
-                    {isUploadingImage && (
-                      <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-primary">
-                        <RefreshCw className="size-4 animate-spin" />
-                        <span>Compressing...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Mode-Specific Input Controls */}
-                  <div className="flex-1 min-w-0 space-y-2">
-                    {imageMode === "upload" && (
-                      <div className="space-y-2">
-                        <label className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-3.5 cursor-pointer transition-all">
-                          <Upload className="size-5 text-primary" />
-                          <div className="text-center">
-                            <span className="text-xs font-bold text-foreground">
-                              {isUploadingImage ? "Processing image..." : "Choose Image or Drag & Drop"}
-                            </span>
-                            <span className="block text-[10px] text-muted-foreground mt-0.5">
-                              Supports JPG, PNG, WebP up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> (auto-compressed for fast loading)
-                            </span>
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/png, image/jpeg, image/jpg, image/webp"
-                            className="hidden"
-                            onChange={handleFileUpload}
-                            disabled={isUploadingImage}
-                          />
-                        </label>
-
-                        {uploadStats && (
-                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1.5 text-[11px] text-emerald-800 dark:text-emerald-300">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <Check className="size-3.5 text-emerald-600 shrink-0" />
-                              <span className="font-semibold truncate">{uploadStats.name}</span>
-                            </div>
-                            <span className="shrink-0 text-[10px] font-mono ml-2">
-                              {uploadStats.originalKB} KB → <span className="font-bold text-emerald-600 dark:text-emerald-400">{uploadStats.compressedKB} KB</span>
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {imageMode === "url" && (
-                      <div className="space-y-1.5">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            inputMode="url"
-                            placeholder="https://example.com/fire-safety-equipment.jpg"
-                            value={urlInput}
-                            onChange={(e) => handleUrlApply(e.target.value)}
-                            className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                          />
-                          {urlInput && (
-                            <button
-                              type="button"
-                              onClick={() => handleUrlApply("")}
-                              className="rounded-lg border border-border px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Enter any public image URL (from suppliers, Unsplash, CDN, or Cloud Storage).
-                        </p>
-                      </div>
-                    )}
-
-                    {imageMode === "presets" && (
-                      <div className="space-y-1.5">
-                        <div className="grid grid-cols-5 sm:grid-cols-9 gap-1.5">
-                          {PRESET_IMAGES.map((preset) => (
-                            <button
-                              key={preset.name}
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({ ...prev, image: preset.src }));
-                                setUploadStats(null);
-                              }}
-                              className={`group relative aspect-square rounded-lg overflow-hidden border p-0.5 transition-all ${
-                                formData.image === preset.src
-                                  ? "border-primary ring-2 ring-primary/40 bg-primary/10"
-                                  : "border-border hover:border-muted-foreground/50 bg-muted/40"
-                              }`}
-                              title={preset.name}
-                            >
-                              <img
-                                src={preset.src}
-                                alt={preset.name}
-                                className="size-full object-cover rounded"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Click to select from certified Sri Udharchi equipment imagery.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="border-t border-border pt-3">
-                <label className="text-xs font-semibold text-foreground">Description *</label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Comprehensive description of product specifications, certifications, and industrial applications..."
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-input bg-background p-3 text-xs text-foreground focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              {/* Technical Specifications */}
-              <div className="border-t border-border pt-3">
-                <label className="text-xs font-semibold text-foreground">
-                  Technical Specifications & Compliance Tags
-                </label>
-                <div className="mt-1 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. BIS / IS 15683 Certified"
-                    value={currentSpec}
-                    onChange={(e) => setCurrentSpec(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddSpec();
-                      }
-                    }}
-                    className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddSpec}>
-                    <Plus className="size-3.5" />
-                    <span>Add Tag</span>
-                  </Button>
-                </div>
-
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(formData.specs || []).map((spec, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[11px] text-foreground"
-                    >
-                      <span>{spec}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSpec(idx)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Task E: Refill / Renewal Interval */}
-              <div className="border-t border-border pt-3">
-                <label className="text-xs font-semibold text-foreground block">
-                  Refill / Maintenance Renewal Cycle (AMC Alert)
-                </label>
-                <p className="text-[11px] text-muted-foreground mb-1.5">
-                  Periodic alert interval (3, 6, 9, or 12 months) automatically scheduled when equipment is delivered.
-                </p>
-                <select
-                  value={formData.renewalMonths ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData({
-                      ...formData,
-                      renewalMonths: val ? (Number(val) as 3 | 6 | 9 | 12) : undefined,
-                    });
-                  }}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                >
-                  <option value="">No reminder (One-time equipment or consumable)</option>
-                  <option value="3">Every 3 Months (Quarterly inspection)</option>
-                  <option value="6">Every 6 Months (Semi-annual refill/recharge)</option>
-                  <option value="9">Every 9 Months (Periodic maintenance)</option>
-                  <option value="12">Every 12 Months (Annual hydro-test & refill)</option>
-                </select>
-              </div>
-
-              {/* Flags: In Stock & Featured */}
-              <div className="flex flex-wrap items-center gap-6 border-t border-border pt-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.inStock ?? true}
-                    onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
-                    className="size-4 rounded border-input text-primary focus:ring-primary"
-                  />
-                  <span className="text-xs font-semibold text-foreground">In Stock</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.featured ?? false}
-                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                    className="size-4 rounded border-input text-primary focus:ring-primary"
-                  />
-                  <span className="text-xs font-semibold text-foreground">
-                    Featured on Homepage
-                  </span>
-                </label>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex justify-end gap-2 border-t border-border pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" size="sm" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <RefreshCw className="size-3.5 animate-spin" />
-                  ) : (
-                    <span>{editingProduct ? "Save Changes" : "Create Product"}</span>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 
@@ -1499,6 +2047,9 @@ export function ProductManager({
                   src={previewProduct.image}
                   alt={previewProduct.name}
                   className="size-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = extinguisherImg;
+                  }}
                 />
                 <span className="absolute left-2.5 top-2.5 rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-bold">
                   {previewProduct.category}
@@ -1546,6 +2097,15 @@ export function ProductManager({
                   ))}
                 </div>
               </div>
+
+              {/* Timestamp in preview */}
+              <div className="border-t border-border pt-2 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <Clock className="size-3 text-primary" />
+                <span>
+                  Added on {formatExactDateTime(previewProduct.createdAt)} (
+                  {formatRelativeTime(previewProduct.createdAt)})
+                </span>
+              </div>
             </div>
 
             <div className="mt-6 flex items-center justify-between gap-2">
@@ -1564,7 +2124,7 @@ export function ProductManager({
                 onClick={() => {
                   const p = previewProduct;
                   setPreviewProduct(null);
-                  openEditModal(p);
+                  openEditEditor(p);
                 }}
               >
                 <Edit2 className="size-3.5" />
