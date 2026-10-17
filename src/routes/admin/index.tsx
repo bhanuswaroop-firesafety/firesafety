@@ -919,6 +919,76 @@ function AdminPage() {
     }
   };
 
+  // Task D & E Computations
+  const avgRating = useMemo(() => {
+    if (!feedbackList || feedbackList.length === 0) return 0;
+    const total = feedbackList.reduce((acc, curr) => acc + (curr.rating || 0), 0);
+    return total / feedbackList.length;
+  }, [feedbackList]);
+
+  const ratingCounts = useMemo(() => {
+    const counts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    for (const f of feedbackList) {
+      if (f.rating >= 1 && f.rating <= 5) {
+        counts[f.rating] = (counts[f.rating] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [feedbackList]);
+
+  const dueRemindersCount = useMemo(() => {
+    const today = getKolkataDateString();
+    return remindersList.filter((r) => r.status === "pending" && r.alertDate <= today).length;
+  }, [remindersList]);
+
+  const filteredReminders = useMemo(() => {
+    const today = getKolkataDateString();
+    return remindersList.filter((r) => {
+      const daysDiff = getDaysDiff(today, r.renewalDate);
+      const isOverdue = daysDiff < 0 && r.status !== "completed";
+      const isDue = r.alertDate <= today && r.status === "pending";
+
+      if (renewalFilter === "due" && !isDue) return false;
+      if (renewalFilter === "overdue" && !isOverdue) return false;
+      if (renewalFilter === "completed" && r.status !== "completed") return false;
+
+      if (renewalSearch.trim()) {
+        const q = renewalSearch.toLowerCase();
+        const mProduct = r.productName?.toLowerCase().includes(q);
+        const mCustomer = r.customerName?.toLowerCase().includes(q);
+        const mPhone = r.customerPhone?.replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+        const mEmail = r.customerEmail?.toLowerCase().includes(q);
+        const mOrder = r.orderId?.toLowerCase().includes(q);
+        return mProduct || mCustomer || mPhone || mEmail || mOrder;
+      }
+      return true;
+    });
+  }, [remindersList, renewalFilter, renewalSearch]);
+
+  const filteredFeedback = useMemo(() => {
+    return feedbackList.filter((f) => {
+      if (feedbackRatingFilter !== "all" && String(f.rating) !== feedbackRatingFilter) {
+        return false;
+      }
+      if (feedbackProductFilter !== "all" && !f.productIds?.includes(feedbackProductFilter)) {
+        return false;
+      }
+      if (feedbackDateFilter !== "all") {
+        const createdMs = new Date(f.createdAt).getTime();
+        const nowMs = Date.now();
+        const days = feedbackDateFilter === "7d" ? 7 : feedbackDateFilter === "30d" ? 30 : 90;
+        if (nowMs - createdMs > days * 24 * 60 * 60 * 1000) return false;
+      }
+      if (feedbackSearch.trim()) {
+        const q = feedbackSearch.toLowerCase();
+        const matchesComment = f.comment?.toLowerCase().includes(q);
+        const matchesOrder = f.orderId?.toLowerCase().includes(q);
+        return matchesComment || matchesOrder;
+      }
+      return true;
+    });
+  }, [feedbackList, feedbackRatingFilter, feedbackProductFilter, feedbackDateFilter, feedbackSearch]);
+
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -1005,76 +1075,6 @@ function AdminPage() {
       </div>
     );
   }
-
-  // Task D & E Computations
-  const avgRating = useMemo(() => {
-    if (!feedbackList || feedbackList.length === 0) return 0;
-    const total = feedbackList.reduce((acc, curr) => acc + (curr.rating || 0), 0);
-    return total / feedbackList.length;
-  }, [feedbackList]);
-
-  const ratingCounts = useMemo(() => {
-    const counts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    for (const f of feedbackList) {
-      if (f.rating >= 1 && f.rating <= 5) {
-        counts[f.rating] = (counts[f.rating] || 0) + 1;
-      }
-    }
-    return counts;
-  }, [feedbackList]);
-
-  const dueRemindersCount = useMemo(() => {
-    const today = getKolkataDateString();
-    return remindersList.filter((r) => r.status === "pending" && r.alertDate <= today).length;
-  }, [remindersList]);
-
-  const filteredReminders = useMemo(() => {
-    const today = getKolkataDateString();
-    return remindersList.filter((r) => {
-      const daysDiff = getDaysDiff(today, r.renewalDate);
-      const isOverdue = daysDiff < 0 && r.status !== "completed";
-      const isDue = r.alertDate <= today && r.status === "pending";
-
-      if (renewalFilter === "due" && !isDue) return false;
-      if (renewalFilter === "overdue" && !isOverdue) return false;
-      if (renewalFilter === "completed" && r.status !== "completed") return false;
-
-      if (renewalSearch.trim()) {
-        const q = renewalSearch.toLowerCase();
-        const mProduct = r.productName?.toLowerCase().includes(q);
-        const mCustomer = r.customerName?.toLowerCase().includes(q);
-        const mPhone = r.customerPhone?.replace(/\D/g, "").includes(q.replace(/\D/g, ""));
-        const mEmail = r.customerEmail?.toLowerCase().includes(q);
-        const mOrder = r.orderId?.toLowerCase().includes(q);
-        return mProduct || mCustomer || mPhone || mEmail || mOrder;
-      }
-      return true;
-    });
-  }, [remindersList, renewalFilter, renewalSearch]);
-
-  const filteredFeedback = useMemo(() => {
-    return feedbackList.filter((f) => {
-      if (feedbackRatingFilter !== "all" && String(f.rating) !== feedbackRatingFilter) {
-        return false;
-      }
-      if (feedbackProductFilter !== "all" && !f.productIds?.includes(feedbackProductFilter)) {
-        return false;
-      }
-      if (feedbackDateFilter !== "all") {
-        const createdMs = new Date(f.createdAt).getTime();
-        const nowMs = Date.now();
-        const days = feedbackDateFilter === "7d" ? 7 : feedbackDateFilter === "30d" ? 30 : 90;
-        if (nowMs - createdMs > days * 24 * 60 * 60 * 1000) return false;
-      }
-      if (feedbackSearch.trim()) {
-        const q = feedbackSearch.toLowerCase();
-        const matchesComment = f.comment?.toLowerCase().includes(q);
-        const matchesOrder = f.orderId?.toLowerCase().includes(q);
-        return matchesComment || matchesOrder;
-      }
-      return true;
-    });
-  }, [feedbackList, feedbackRatingFilter, feedbackProductFilter, feedbackDateFilter, feedbackSearch]);
 
   // Section 1: Core Operations & Commerce
   const operationsNavItems = [
