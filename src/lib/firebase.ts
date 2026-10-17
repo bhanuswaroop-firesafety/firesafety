@@ -33,13 +33,27 @@ import {
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 export const firebaseConfig = {
-  apiKey: import.meta.env["VITE_FIREBASE_API_KEY"] || "",
-  authDomain: import.meta.env["VITE_FIREBASE_AUTH_DOMAIN"] || "",
-  projectId: import.meta.env["VITE_FIREBASE_PROJECT_ID"] || "",
-  storageBucket: import.meta.env["VITE_FIREBASE_STORAGE_BUCKET"] || "",
-  messagingSenderId: import.meta.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] || "",
-  appId: import.meta.env["VITE_FIREBASE_APP_ID"] || "",
-  measurementId: import.meta.env["VITE_FIREBASE_MEASUREMENT_ID"] || "",
+  apiKey:
+    import.meta.env["VITE_FIREBASE_API_KEY"] ||
+    "AIzaSyCD5cGRqDx98aWvC4Xh_I38gMXIzRsvp1M",
+  authDomain:
+    import.meta.env["VITE_FIREBASE_AUTH_DOMAIN"] ||
+    "sri-udharchi-enterprises-c3be7.firebaseapp.com",
+  projectId:
+    import.meta.env["VITE_FIREBASE_PROJECT_ID"] ||
+    "sri-udharchi-enterprises-c3be7",
+  storageBucket:
+    import.meta.env["VITE_FIREBASE_STORAGE_BUCKET"] ||
+    "sri-udharchi-enterprises-c3be7.firebasestorage.app",
+  messagingSenderId:
+    import.meta.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] ||
+    "157581310200",
+  appId:
+    import.meta.env["VITE_FIREBASE_APP_ID"] ||
+    "1:157581310200:web:f42f5d7f9180583748630d",
+  measurementId:
+    import.meta.env["VITE_FIREBASE_MEASUREMENT_ID"] ||
+    "G-3Z5222VMF9",
 };
 
 if (!firebaseConfig.apiKey && typeof window !== "undefined") {
