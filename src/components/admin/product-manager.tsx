@@ -8,6 +8,7 @@ import {
   seedOfficialCatalog,
 } from "@/lib/db-service";
 import type { ProductItem, CategoryItem } from "@/lib/types";
+import { uploadProductImage, MAX_IMAGE_SIZE_MB } from "@/lib/image-upload";
 import { Button } from "@/components/button";
 import {
   AlertCircle,
@@ -121,6 +122,17 @@ export function ProductManager({
   const [currentSpec, setCurrentSpec] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Product Image State
+  const [imageMode, setImageMode] = useState<"upload" | "url" | "presets">("upload");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadStats, setUploadStats] = useState<{
+    originalKB: number;
+    compressedKB: number;
+    name: string;
+    isStorage: boolean;
+  } | null>(null);
+  const [urlInput, setUrlInput] = useState("");
+
   // Escape key handler for dismissing open modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -186,6 +198,9 @@ export function ProductManager({
   const openCreateModal = () => {
     setEditingProduct(null);
     setFormError("");
+    setUploadStats(null);
+    setImageMode("upload");
+    setUrlInput("");
     setFormData({
       name: "",
       category: categories[0]?.name || "",
@@ -208,6 +223,10 @@ export function ProductManager({
   const openEditModal = (product: ProductItem) => {
     setEditingProduct(product);
     setFormError("");
+    setUploadStats(null);
+    const isUrl = !!(product.image && (product.image.startsWith("http://") || product.image.startsWith("https://")));
+    setImageMode(isUrl ? "url" : "upload");
+    setUrlInput(isUrl ? product.image : "");
     setFormData({
       name: product.name,
       category: product.category,
@@ -226,23 +245,55 @@ export function ProductManager({
     setIsModalOpen(true);
   };
 
-  // Handle Form Image File Upload
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  // Handle Form Image File Upload (supports up to 10 MB with auto-compression)
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setFormError("Please upload a valid image file (PNG, JPG, WebP).");
+      setFormError("Please upload a valid image file (JPG, PNG, or WebP).");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === "string") {
-        setFormData((prev) => ({ ...prev, image: event.target?.result as string }));
-      }
-    };
-    reader.readAsDataURL(file);
+    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+      setFormError(
+        `Image size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the maximum allowed limit of ${MAX_IMAGE_SIZE_MB} MB. Please upload an image under ${MAX_IMAGE_SIZE_MB} MB.`,
+      );
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setFormError("");
+
+    try {
+      const result = await uploadProductImage(file);
+      setFormData((prev) => ({ ...prev, image: result.url }));
+      setUploadStats({
+        originalKB: result.originalSizeKB,
+        compressedKB: result.compressedSizeKB,
+        name: file.name,
+        isStorage: result.isStorageUrl,
+      });
+      onNotify(
+        result.isStorageUrl
+          ? `Uploaded to cloud storage (${result.compressedSizeKB} KB)`
+          : `Image compressed & ready (${result.compressedSizeKB} KB)`,
+      );
+    } catch (err: unknown) {
+      setFormError("Error processing image: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle URL change
+  const handleUrlApply = (url: string) => {
+    setUrlInput(url);
+    const cleanUrl = url.trim();
+    if (cleanUrl) {
+      setFormData((prev) => ({ ...prev, image: cleanUrl }));
+      setUploadStats(null);
+    }
   };
 
   // Add Spec Tag
@@ -1003,63 +1054,171 @@ export function ProductManager({
                 </div>
               </div>
 
-              {/* Image Selection / Upload */}
-              <div className="space-y-2 border-t border-border pt-4">
-                <label className="text-xs font-semibold text-foreground">Product Image</label>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-                    <img
-                      src={formData.image}
-                      alt="Product preview"
-                      className="size-full object-cover"
-                    />
+              {/* Product Image Selection & Upload */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-foreground">Product Image *</label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Upload from device (up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong>) or paste any image URL.
+                    </p>
+                  </div>
+                  {/* Mode Tabs */}
+                  <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5 text-[11px] self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("upload")}
+                      className={`rounded px-2.5 py-1 font-semibold transition-all ${
+                        imageMode === "upload"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("url")}
+                      className={`rounded px-2.5 py-1 font-semibold transition-all ${
+                        imageMode === "url"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Image URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("presets")}
+                      className={`rounded px-2.5 py-1 font-semibold transition-all ${
+                        imageMode === "presets"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Presets
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3.5 sm:flex-row sm:items-start">
+                  {/* Image Preview Box */}
+                  <div className="relative size-24 shrink-0 overflow-hidden rounded-xl border border-border bg-muted/60 shadow-xs flex items-center justify-center">
+                    {formData.image ? (
+                      <img
+                        src={formData.image}
+                        alt="Product preview"
+                        className="size-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = extinguisherImg;
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon className="size-8 text-muted-foreground/40" />
+                    )}
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-primary">
+                        <RefreshCw className="size-4 animate-spin" />
+                        <span>Compressing...</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted">
-                        <Upload className="size-3.5" />
-                        <span>Upload File</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                        />
-                      </label>
-
-                      <input
-                        type="url"
-                        placeholder="Or enter image URL..."
-                        value={formData.image?.startsWith("data:") ? "" : formData.image}
-                        onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                        className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Presets quick picker */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-                      <span className="text-[10px] text-muted-foreground shrink-0">Presets:</span>
-                      {PRESET_IMAGES.map((preset) => (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, image: preset.src })}
-                          className={`size-7 shrink-0 rounded overflow-hidden border ${
-                            formData.image === preset.src
-                              ? "border-primary ring-2 ring-primary/40"
-                              : "border-border"
-                          }`}
-                          title={preset.name}
-                        >
-                          <img
-                            src={preset.src}
-                            alt={preset.name}
-                            className="size-full object-cover"
+                  {/* Mode-Specific Input Controls */}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {imageMode === "upload" && (
+                      <div className="space-y-2">
+                        <label className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-3.5 cursor-pointer transition-all">
+                          <Upload className="size-5 text-primary" />
+                          <div className="text-center">
+                            <span className="text-xs font-bold text-foreground">
+                              {isUploadingImage ? "Processing image..." : "Choose Image or Drag & Drop"}
+                            </span>
+                            <span className="block text-[10px] text-muted-foreground mt-0.5">
+                              Supports JPG, PNG, WebP up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> (auto-compressed for fast loading)
+                            </span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                            disabled={isUploadingImage}
                           />
-                        </button>
-                      ))}
-                    </div>
+                        </label>
+
+                        {uploadStats && (
+                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1.5 text-[11px] text-emerald-800 dark:text-emerald-300">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Check className="size-3.5 text-emerald-600 shrink-0" />
+                              <span className="font-semibold truncate">{uploadStats.name}</span>
+                            </div>
+                            <span className="shrink-0 text-[10px] font-mono ml-2">
+                              {uploadStats.originalKB} KB → <span className="font-bold text-emerald-600 dark:text-emerald-400">{uploadStats.compressedKB} KB</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {imageMode === "url" && (
+                      <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            inputMode="url"
+                            placeholder="https://example.com/fire-safety-equipment.jpg"
+                            value={urlInput}
+                            onChange={(e) => handleUrlApply(e.target.value)}
+                            className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                          />
+                          {urlInput && (
+                            <button
+                              type="button"
+                              onClick={() => handleUrlApply("")}
+                              className="rounded-lg border border-border px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Enter any public image URL (from suppliers, Unsplash, CDN, or Cloud Storage).
+                        </p>
+                      </div>
+                    )}
+
+                    {imageMode === "presets" && (
+                      <div className="space-y-1.5">
+                        <div className="grid grid-cols-5 sm:grid-cols-9 gap-1.5">
+                          {PRESET_IMAGES.map((preset) => (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({ ...prev, image: preset.src }));
+                                setUploadStats(null);
+                              }}
+                              className={`group relative aspect-square rounded-lg overflow-hidden border p-0.5 transition-all ${
+                                formData.image === preset.src
+                                  ? "border-primary ring-2 ring-primary/40 bg-primary/10"
+                                  : "border-border hover:border-muted-foreground/50 bg-muted/40"
+                              }`}
+                              title={preset.name}
+                            >
+                              <img
+                                src={preset.src}
+                                alt={preset.name}
+                                className="size-full object-cover rounded"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Click to select from certified Sri Udharchi equipment imagery.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
