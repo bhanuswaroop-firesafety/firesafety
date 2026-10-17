@@ -10,7 +10,7 @@ export default defineConfig({
   vite: {
     server: {
       host: "0.0.0.0",
-      port: 3005,
+      port: 5173,
       allowedHosts: true,
     },
   },

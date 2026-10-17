@@ -33,7 +33,6 @@ import {
   subscribeProducts,
   submitInquiry,
 } from "@/lib/db-service";
-import { DEFAULT_PRODUCTS, OFFICIAL_CATALOG_PRODUCTS } from "@/lib/catalog-data";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
@@ -112,7 +111,7 @@ function ProductViewPage() {
   const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
 
   const [product, setProduct] = useState<ProductItem | null>(() => findProductById(productId, []));
-  const [allProducts, setAllProducts] = useState<ProductItem[]>(DEFAULT_PRODUCTS);
+  const [allProducts, setAllProducts] = useState<ProductItem[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [addedToast, setAddedToast] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -195,7 +194,7 @@ function ProductViewPage() {
 
   // Related products from same category or general catalog
   const relatedProducts = useMemo(() => {
-    if (!product) return DEFAULT_PRODUCTS.slice(0, 3);
+    if (!product) return [];
     const sameCat = allProducts.filter(
       (p) => p.category === product.category && p.name !== product.name,
     );

@@ -351,7 +351,7 @@ export function ServiceShowcaseGrid({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-2">
           <AnimatePresence mode="popLayout">
             {filteredServices.map((service, index) => {
               const Icon = service.icon;
@@ -364,7 +364,7 @@ export function ServiceShowcaseGrid({
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.45, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
                   whileHover={{ y: -6, transition: { duration: 0.25, ease: "easeOut" } }}
-                  className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow duration-300 hover:border-primary/50 hover:shadow-xl"
+                  className="group flex flex-col justify-between overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-xs transition-shadow duration-300 hover:border-primary/50 hover:shadow-xl"
                 >
                   <div>
                     {/* Image Header with Overlay Badge */}
@@ -377,54 +377,54 @@ export function ServiceShowcaseGrid({
                         height={380}
                         className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
 
                       {/* Tag pill top left */}
-                      <div className="absolute left-3 top-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-2.5 py-0.5 text-[11px] font-bold tracking-tight text-white backdrop-blur-md">
-                          <ShieldCheck className="size-3 text-brand-gold" />
-                          <span>{service.tag}</span>
+                      <div className="absolute left-2 sm:left-3 top-2 sm:top-3">
+                        <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-white/20 bg-black/60 px-2 sm:px-2.5 py-0.5 text-[9px] sm:text-[11px] font-bold tracking-tight text-white backdrop-blur-md">
+                          <ShieldCheck className="size-2.5 sm:size-3 text-amber-400" />
+                          <span className="truncate max-w-[90px] sm:max-w-none">{service.tag}</span>
                         </span>
                       </div>
 
                       {/* Floating Service Icon bottom left */}
-                      <div className="absolute -bottom-4 left-4 z-10 flex size-12 items-center justify-center rounded-xl border border-border bg-card p-1.5 shadow-lg ring-4 ring-card">
+                      <div className="absolute -bottom-3 sm:-bottom-4 left-2.5 sm:left-4 z-10 flex size-8 sm:size-11 items-center justify-center rounded-lg sm:rounded-xl border border-border bg-card p-1 sm:p-1.5 shadow-md ring-2 sm:ring-4 ring-card">
                         {service.nanoIcon ? (
-                          <NanoIcon name={service.nanoIcon} size="md" />
+                          <NanoIcon name={service.nanoIcon} size="sm" />
                         ) : (
-                          <Icon className="size-6 text-primary" />
+                          <Icon className="size-4 sm:size-5 text-primary" />
                         )}
                       </div>
                     </div>
 
                     {/* Content Body */}
-                    <div className="p-5 pt-7">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
-                        <span className="uppercase tracking-wider text-primary">
+                    <div className="p-3 sm:p-5 pt-4 sm:pt-6">
+                      <div className="flex items-center justify-between text-[9px] sm:text-[11px] font-semibold text-muted-foreground gap-1">
+                        <span className="uppercase tracking-wider text-primary truncate">
                           {service.category}
                         </span>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium">
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[8px] sm:text-[10px] font-mono font-medium truncate shrink-0">
                           {service.standards}
                         </span>
                       </div>
 
-                      <h3 className="mt-2 font-display text-lg font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
+                      <h3 className="mt-1.5 sm:mt-2 font-display text-xs sm:text-base md:text-lg font-bold leading-snug text-foreground transition-colors group-hover:text-primary line-clamp-2">
                         {service.title}
                       </h3>
 
-                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
+                      <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-xs leading-relaxed text-muted-foreground line-clamp-2 sm:line-clamp-3">
                         {service.description}
                       </p>
 
                       {/* Key Deliverables Bullet Points */}
-                      <div className="mt-4 space-y-1.5 border-t border-border/60 pt-4">
-                        <span className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                      <div className="mt-2.5 sm:mt-4 space-y-1 border-t border-border/60 pt-2 sm:pt-3">
+                        <span className="block text-[8px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                           Key Capabilities
                         </span>
-                        <ul className="space-y-1 text-[11px] text-foreground/80">
-                          {service.deliverables.map((bullet, i) => (
-                            <li key={i} className="flex items-start gap-1.5 leading-snug">
-                              <Check className="mt-0.5 size-3 shrink-0 text-success" />
+                        <ul className="space-y-0.5 sm:space-y-1 text-[9px] sm:text-[11px] text-foreground/80">
+                          {service.deliverables.slice(0, 2).map((bullet, i) => (
+                            <li key={i} className="flex items-start gap-1 leading-snug">
+                              <Check className="mt-0.5 size-2.5 sm:size-3 shrink-0 text-emerald-500" />
                               <span className="line-clamp-1">{bullet}</span>
                             </li>
                           ))}
@@ -434,23 +434,23 @@ export function ServiceShowcaseGrid({
                   </div>
 
                   {/* Card Bottom CTA Actions */}
-                  <div className="border-t border-border bg-muted/20 p-4">
-                    <div className="flex items-center gap-2">
+                  <div className="border-t border-border bg-muted/20 p-2 sm:p-3.5">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <Button
                         size="sm"
                         onClick={() => handleInquire(service)}
-                        className="flex-1 text-xs font-bold"
+                        className="flex-1 h-7 sm:h-9 px-1.5 sm:px-3 text-[10px] sm:text-xs font-bold"
                       >
-                        <span>Inquire Solution</span>
-                        <ArrowRight className="size-3.5" />
+                        <span>Inquire</span>
+                        <ArrowRight className="size-3 sm:size-3.5 ml-1 hidden xs:inline" />
                       </Button>
 
                       <a
                         href={service.linkHref}
-                        className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-primary hover:text-primary"
+                        className="grid size-7 sm:size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-primary hover:text-primary"
                         title={`Explore ${service.title} details`}
                       >
-                        <ChevronRight className="size-4" />
+                        <ChevronRight className="size-3.5 sm:size-4" />
                       </a>
                     </div>
                   </div>

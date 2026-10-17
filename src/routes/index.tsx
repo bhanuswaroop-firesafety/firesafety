@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   ArrowRight,
@@ -31,6 +31,7 @@ import {
   Truck,
   CheckCircle2,
   MessageCircle,
+  Quote,
 } from "lucide-react";
 import { Button } from "@/components/button";
 import { BrandLogo } from "@/components/brand-logo";
@@ -40,7 +41,10 @@ import { SectionHeading } from "@/components/section-heading";
 import { ServiceShowcaseGrid } from "@/components/service-showcase-grid";
 import { ContactForm } from "@/components/contact-form";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
+import { CategorySwiper } from "@/components/category-swiper";
 import { useCart } from "@/lib/cart-context";
+import { subscribeProducts } from "@/lib/db-service";
+import type { ProductItem } from "@/lib/types";
 import hero from "@/assets/udharchi-hero.jpg";
 import heroMobile from "@/assets/udharchi-hero-mobile.jpg";
 import hydrant from "@/assets/fire-hydrant-system.jpg";
@@ -195,74 +199,7 @@ const PRODUCT_CATEGORIES = [
   },
 ];
 
-const FEATURED_ACTIONABLE_PRODUCTS = [
-  {
-    id: "def-extinguisher",
-    name: "Commercial ABC Dry Chemical Fire Extinguisher (6kg)",
-    category: "Fire Safety",
-    price: 2450,
-    priceDisplay: "₹2,450",
-    image: extinguisher,
-    specs: "IS 15683 Certified • 4-A:60-B:C Rating",
-    unit: "unit",
-    inStock: true,
-  },
-  {
-    id: "def-hydrant-valve",
-    name: "Industrial Landing Valve & Instantaneous Coupling",
-    category: "Fire Hydrant",
-    price: 3800,
-    priceDisplay: "₹3,800",
-    image: valve,
-    specs: "IS 5290 / BS 5041 • 65mm Single Flanged Outlet",
-    unit: "piece",
-    inStock: true,
-  },
-  {
-    id: "def-fire-pump",
-    name: "Industrial Centrifugal End-Suction Fire Pump Skid",
-    category: "Fire Pumps",
-    price: 68000,
-    priceDisplay: "₹68,000",
-    image: pump,
-    specs: "NBC 2016 Compliant • 1620 LPM Booster Capacity",
-    unit: "set",
-    inStock: true,
-  },
-  {
-    id: "def-safety-helmet",
-    name: "High-Visibility Industrial Safety Hard Hat",
-    category: "PPE",
-    price: 380,
-    priceDisplay: "₹380",
-    image: helmet,
-    specs: "IS 2925 Certified • 4-Point Ratchet Suspension",
-    unit: "piece",
-    inStock: true,
-  },
-  {
-    id: "def-safety-gloves",
-    name: "Heavy-Duty Kevlar & Cowhide Protective Gloves",
-    category: "PPE",
-    price: 450,
-    priceDisplay: "₹450",
-    image: gloves,
-    specs: "EN 388 Level 4 Cut & Puncture Resistant",
-    unit: "pair",
-    inStock: true,
-  },
-  {
-    id: "def-cctv-camera",
-    name: "Explosion-Proof Dome IP Surveillance Camera",
-    category: "CCTV",
-    price: 4200,
-    priceDisplay: "₹4,200",
-    image: cctv,
-    specs: "4K Ultra-HD • Smart IR 40m • IK10 Vandal-Proof",
-    unit: "camera",
-    inStock: true,
-  },
-];
+
 
 const industries = [
   ["Manufacturing", manufacturing],
@@ -282,6 +219,9 @@ const CLIENT_TESTIMONIALS = [
     author: "K. R. Venkatraman",
     role: "Head of Plant Infrastructure",
     company: "Automotive Precision Components, AP",
+    project: "Hydrant Network & Pumphouse Skid",
+    result: "100% NBC Compliance & Fire NOC Cleared",
+    rating: 5,
   },
   {
     quote:
@@ -289,6 +229,9 @@ const CLIENT_TESTIMONIALS = [
     author: "Dr. S. Meenakshi",
     role: "Director of Facilities & Safety",
     company: "Super Specialty Healthcare Group",
+    project: "Statutory Testing & Extinguishers",
+    result: "Dispatched & Certified in 24 Hours",
+    rating: 5,
   },
   {
     quote:
@@ -296,12 +239,41 @@ const CLIENT_TESTIMONIALS = [
     author: "Anand Shekar",
     role: "EHS Manager",
     company: "Global Logistics & Cold Chain Parks",
+    project: "Comprehensive Annual AMC",
+    result: "Zero System Downtime in 3 Years",
+    rating: 5,
+  },
+  {
+    quote:
+      "Commissioned clean-agent gas flooding and high-sensitivity optical smoke detection across our server rooms and cleanrooms. Reliable engineering, zero false alarms, and immaculate safety documentation.",
+    author: "P. Rajesh Varma",
+    role: "Chief Technical Officer",
+    company: "PharmaTech Formulations Ltd.",
+    project: "Clean-Agent Gas Flooding",
+    result: "Zero-Downtime Cleanroom Protection",
+    rating: 5,
   },
 ];
 
 function Index() {
   const [inquiryService, setInquiryService] = useState<string | undefined>(undefined);
   const { addToCart, setIsCartOpen, totalItems } = useCart();
+  const [liveProducts, setLiveProducts] = useState<ProductItem[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = subscribeProducts((data) => {
+      setLiveProducts(data);
+      setProductsLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const featuredDisplayProducts = useMemo(() => {
+    const featured = liveProducts.filter((p) => p.featured);
+    if (featured.length > 0) return featured.slice(0, 6);
+    return liveProducts.slice(0, 6);
+  }, [liveProducts]);
 
   return (
     <main id="home" className="overflow-hidden bg-background pb-20 sm:pb-0">
@@ -352,9 +324,9 @@ function Index() {
         <div className="mx-auto flex min-h-[560px] sm:min-h-[660px] lg:min-h-[720px] max-w-7xl items-center px-4 py-8 sm:px-6 sm:py-16 lg:px-8">
           <div className="max-w-3xl">
             {/* Top Pill */}
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-brand-warm/30 bg-brand-warm/15 px-3 py-1 sm:px-4 sm:py-1.5 text-[11px] sm:text-xs font-bold text-brand-warm backdrop-blur-md mb-3 sm:mb-5">
-              <Award className="size-3 sm:size-3.5 shrink-0" />
-              <span>Certified Fire Safety Products & Engineering</span>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-brand-warm/30 bg-brand-warm/15 px-3 py-1 text-[11px] sm:text-xs font-bold text-brand-warm backdrop-blur-md mb-2.5 sm:mb-4">
+              <ShieldCheck className="size-3.5 shrink-0 text-brand-warm" />
+              <span>Govt. & NBC 2016 Certified Systems</span>
             </div>
 
             <h1 className="font-display text-3xl font-black leading-[1.08] sm:text-5xl lg:text-7xl">
@@ -363,25 +335,20 @@ function Index() {
               Assets & <span className="text-brand-bright">Every Workplace</span>
             </h1>
 
-            <p className="mt-3 sm:mt-6 max-w-2xl text-xs sm:text-base md:text-lg leading-relaxed text-primary-foreground/90">
-              Certified fire safety products, ISI extinguishers, high-pressure hydrant networks, automated
-              sprinkler arrays, diesel booster pumps, statutory inspections, hydro-testing, and
-              industrial PPE gear.
+            <p className="mt-2.5 sm:mt-5 max-w-xl text-xs sm:text-base md:text-lg leading-relaxed text-primary-foreground/90">
+              Govt. certified fire extinguishers, hydrant systems & emergency engineering across Andhra Pradesh & India.
             </p>
 
             {/* Value checklist */}
-            <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 text-[11px] sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-2 sm:text-xs font-semibold text-primary-foreground/90">
-              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
-                <Check className="size-3.5 text-emerald-400 shrink-0" /> NBC 2016 & BIS Certified
+            <div className="mt-3 sm:mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] sm:text-xs font-semibold text-primary-foreground/90">
+              <span className="flex items-center gap-1">
+                <Check className="size-3.5 text-emerald-400 shrink-0" /> BIS Certified
               </span>
-              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
+              <span className="flex items-center gap-1">
                 <Check className="size-3.5 text-emerald-400 shrink-0" /> 24/7 Rapid Dispatch
               </span>
-              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
+              <span className="flex items-center gap-1">
                 <Check className="size-3.5 text-emerald-400 shrink-0" /> 18% GST Input Credit
-              </span>
-              <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 sm:border-0 sm:bg-transparent sm:p-0">
-                <Check className="size-3.5 text-emerald-400 shrink-0" /> Pan-India Logistics
               </span>
             </div>
 
@@ -470,7 +437,7 @@ function Index() {
                 transition={{ duration: 0.5, delay: index * 0.08 }}
                 className="flex min-w-0 items-center gap-2.5 sm:gap-3.5 rounded-xl border border-border/80 bg-card p-3 shadow-xs transition-colors hover:bg-muted/40 lg:border-0 lg:bg-transparent lg:rounded-none lg:shadow-none lg:px-6 lg:py-5 group"
               >
-                <div className="grid size-10 sm:size-12 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/20 shadow-xs transition-transform duration-300 group-hover:scale-110">
+                <div className="grid size-10 sm:size-11 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-muted/80 border border-border/80 shadow-xs transition-transform duration-300 group-hover:scale-105 group-hover:border-primary/40 group-hover:bg-primary/5">
                   <NanoIcon name={iconKey as NanoIconName} size="md" />
                 </div>
                 <span className="truncate">
@@ -503,86 +470,144 @@ function Index() {
             }
           />
 
-          <div className="mt-6 sm:mt-10 grid grid-cols-2 gap-2.5 sm:gap-6 lg:grid-cols-3">
-            {FEATURED_ACTIONABLE_PRODUCTS.map((prod) => (
-              <div
-                key={prod.id}
-                className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-primary/50 hover:shadow-xl"
-              >
-                <a
-                  href={`/products/${prod.id}`}
-                  className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted block cursor-pointer"
+          {productsLoading ? (
+            <div className="mt-6 sm:mt-10 grid grid-cols-2 gap-2.5 sm:gap-6 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="animate-pulse overflow-hidden rounded-xl border border-border bg-card p-4 space-y-3"
                 >
-                  <img
-                    src={prod.image}
-                    alt={`${prod.name} - Fire Safety Product | Sri Udharchi Enterprises`}
-                    className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <span className="absolute left-2 top-2 sm:left-3 sm:top-3 rounded-md bg-background/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
-                    {prod.category}
-                  </span>
-                  <span className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-full bg-emerald-500/90 text-white px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[9px] sm:text-[10px] font-bold backdrop-blur">
-                    In Stock
-                  </span>
-                </a>
-
-                <div className="flex flex-1 flex-col p-2.5 sm:p-5">
-                  <a href={`/products/${prod.id}`} className="hover:text-primary transition-colors">
-                    <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
-                      {prod.name}
-                    </h3>
-                  </a>
-                  <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
-                    {prod.specs}
-                  </p>
-
-                  <div className="mt-2 sm:mt-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-t border-border pt-1.5 sm:pt-3 gap-0.5">
-                    <div>
-                      <span className="font-display text-sm sm:text-xl font-black text-primary">
-                        {prod.priceDisplay}
-                      </span>
-                      <span className="text-[9px] sm:text-xs text-muted-foreground ml-1">
-                        / {prod.unit}
-                      </span>
-                    </div>
-                    <span className="text-[9px] sm:text-[11px] text-muted-foreground">
-                      Excl. 18% GST
-                    </span>
-                  </div>
-
-                  <div className="mt-2.5 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addToCart(prod, 1)}
-                      className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <ShoppingBag className="size-3 mr-1 shrink-0" /> + Cart
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        addToCart(prod, 1);
-                        window.location.href = "/checkout";
-                      }}
-                      className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold"
-                    >
-                      Buy Now
-                    </Button>
-                  </div>
-
-                  <div className="mt-2 text-center border-t border-border/60 pt-1.5">
-                    <a
-                      href={`/products/${prod.id}`}
-                      className="inline-flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold text-primary hover:underline"
-                    >
-                      View Product Details <ChevronRight className="size-3" />
-                    </a>
-                  </div>
+                  <div className="aspect-[4/3] rounded-lg bg-muted" />
+                  <div className="h-4 w-3/4 rounded bg-muted" />
+                  <div className="h-3 w-1/2 rounded bg-muted" />
                 </div>
+              ))}
+            </div>
+          ) : featuredDisplayProducts.length === 0 ? (
+            <div className="mt-8 rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center max-w-xl mx-auto">
+              <Boxes className="mx-auto size-12 text-muted-foreground/60" />
+              <h3 className="mt-3 font-display text-base sm:text-lg font-bold text-foreground">
+                Equipment Catalog Ready for Provisioning
+              </h3>
+              <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+                Live products synced or published via the Admin Panel will appear here. You can also request an instant formal quotation directly from our certified safety engineers.
+              </p>
+              <div className="mt-5 flex justify-center gap-3">
+                <a href="#contact">
+                  <Button size="sm">
+                    <FileText className="size-3.5 mr-1.5" /> Request Custom Quote
+                  </Button>
+                </a>
+                <a href="/products">
+                  <Button variant="outline" size="sm">
+                    Browse All Categories
+                  </Button>
+                </a>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-6 sm:mt-10 grid grid-cols-2 gap-2.5 sm:gap-6 lg:grid-cols-3">
+              {featuredDisplayProducts.map((prod) => {
+                const priceFormatted =
+                  typeof prod.price === "number"
+                    ? `₹${prod.price.toLocaleString("en-IN")}`
+                    : prod.price
+                      ? String(prod.price).startsWith("₹")
+                        ? prod.price
+                        : `₹${prod.price}`
+                      : "Quote upon request";
+                const specsText = Array.isArray(prod.specs)
+                  ? prod.specs.slice(0, 2).join(" • ")
+                  : (prod.specs || prod.description || "BIS / ISI Certified Equipment");
+
+                return (
+                  <div
+                    key={prod.id || prod.sku || prod.name}
+                    className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-primary/50 hover:shadow-xl"
+                  >
+                    <a
+                      href={`/products/${prod.id || prod.sku || prod.name}`}
+                      className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted block cursor-pointer"
+                    >
+                      <img
+                        src={prod.image || extinguisher}
+                        alt={`${prod.name} - Fire Safety Product | Sri Udharchi Enterprises`}
+                        className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <span className="absolute left-2 top-2 sm:left-3 sm:top-3 rounded-md bg-background/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
+                        {prod.category}
+                      </span>
+                      {prod.inStock !== false && (
+                        <span className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-full bg-emerald-500/90 text-white px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[9px] sm:text-[10px] font-bold backdrop-blur">
+                          In Stock
+                        </span>
+                      )}
+                    </a>
+
+                    <div className="flex flex-1 flex-col p-2.5 sm:p-5">
+                      <a
+                        href={`/products/${prod.id || prod.sku || prod.name}`}
+                        className="hover:text-primary transition-colors"
+                      >
+                        <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
+                          {prod.name}
+                        </h3>
+                      </a>
+                      <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
+                        {specsText}
+                      </p>
+
+                      <div className="mt-2 sm:mt-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-t border-border pt-1.5 sm:pt-3 gap-0.5">
+                        <div>
+                          <span className="font-display text-sm sm:text-xl font-black text-primary">
+                            {priceFormatted}
+                          </span>
+                          {prod.unit && (
+                            <span className="text-[9px] sm:text-xs text-muted-foreground ml-1">
+                              / {prod.unit}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[9px] sm:text-[11px] text-muted-foreground">
+                          Excl. 18% GST
+                        </span>
+                      </div>
+
+                      <div className="mt-2.5 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addToCart(prod, 1)}
+                          className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground"
+                        >
+                          <ShoppingBag className="size-3 mr-1 shrink-0" /> + Cart
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            addToCart(prod, 1);
+                            window.location.href = "/checkout";
+                          }}
+                          className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold"
+                        >
+                          Buy Now
+                        </Button>
+                      </div>
+
+                      <div className="mt-2 text-center border-t border-border/60 pt-1.5">
+                        <a
+                          href={`/products/${prod.id || prod.sku || prod.name}`}
+                          className="inline-flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold text-primary hover:underline"
+                        >
+                          View Product Details <ChevronRight className="size-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="mt-8 sm:mt-10 text-center">
             <a href="/products">
@@ -606,70 +631,8 @@ function Index() {
             copy="Comprehensive safety systems engineered for manufacturing plants, high-rises, warehouses, and institutions."
           />
 
-          {/* Mobile Swipeable Category Rail */}
-          <div className="mt-6 flex gap-3 overflow-x-auto no-scrollbar pb-2 sm:hidden snap-x snap-mandatory -mx-4 px-4">
-            {PRODUCT_CATEGORIES.map(({ name, desc, image, nanoIcon }) => (
-              <a
-                key={name}
-                href="/products"
-                className="group flex min-w-[160px] max-w-[170px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs active:scale-[0.98] transition-transform"
-              >
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                  <img src={image} alt={name} loading="lazy" className="size-full object-cover" />
-                  <div className="absolute right-1.5 top-1.5 rounded-lg bg-background/85 p-1 shadow-xs backdrop-blur-md border border-border/60">
-                    <NanoIcon name={nanoIcon} size="sm" />
-                  </div>
-                </div>
-                <div className="p-2.5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xs font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2">
-                      {name}
-                    </h3>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">{desc}</p>
-                  </div>
-                  <span className="mt-2 text-[10px] font-bold text-primary flex items-center gap-0.5">
-                    View &rarr;
-                  </span>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          {/* Desktop/Tablet Grid */}
-          <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 mt-10">
-            {PRODUCT_CATEGORIES.map(({ name, desc, image, nanoIcon }, index) => (
-              <motion.a
-                key={name}
-                href="/products"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.45, delay: (index % 5) * 0.05 }}
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                className="group overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
-              >
-                <div className="relative overflow-hidden bg-muted">
-                  <img
-                    src={image}
-                    alt={name}
-                    loading="lazy"
-                    width={720}
-                    height={620}
-                    className="aspect-[1.3] w-full object-cover transition-transform duration-500 group-hover:scale-108"
-                  />
-                  <div className="absolute right-2 top-2 rounded-xl bg-background/85 p-1.5 shadow-md backdrop-blur-md border border-border/60">
-                    <NanoIcon name={nanoIcon} size="sm" />
-                  </div>
-                </div>
-                <div className="p-3.5">
-                  <h3 className="text-xs font-bold leading-tight group-hover:text-primary transition-colors">
-                    {name}
-                  </h3>
-                  <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{desc}</p>
-                </div>
-              </motion.a>
-            ))}
-          </div>
+          {/* Auto-Swiper with manual hand touch/drag support for Mobile & Desktop */}
+          <CategorySwiper categories={PRODUCT_CATEGORIES} />
         </div>
       </section>
 
@@ -701,41 +664,92 @@ function Index() {
 
       {/* Verified Client Testimonials */}
       <section className="bg-muted/40 py-16 md:py-20 border-y border-border">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary">
-              Client Feedback
-            </span>
-            <h2 className="mt-2 font-display text-3xl font-black text-foreground sm:text-4xl">
+        <div className="mx-auto max-w-7xl px-4 sm:px-5 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] sm:text-xs font-bold text-primary mb-3">
+              <span className="flex items-center text-amber-500">★★★★★</span>
+              <span>4.98 / 5.0 Rating • 500+ Audits & Installations</span>
+            </div>
+            <h2 className="font-display text-2xl font-black text-foreground sm:text-4xl">
               Trusted by Facility Directors & EHS Leaders
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Real testimonials from industrial clients who rely on our certified engineering and
-              fast turnaround.
+            <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
+              Real endorsements from industrial facilities that rely on our certified engineering, statutory NOC advisory, and rapid dispatch.
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          {/* 2-Card Layout for Testimonials */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-2">
             {CLIENT_TESTIMONIALS.map((t, idx) => (
-              <div
+              <motion.div
                 key={idx}
-                className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between hover:border-primary/40 transition-all hover:shadow-md"
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-20px" }}
+                transition={{ duration: 0.4, delay: idx * 0.06 }}
+                className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-6 shadow-xs flex flex-col justify-between hover:border-primary/40 transition-all duration-300 hover:shadow-lg group"
               >
                 <div>
-                  <div className="flex gap-1 text-amber-500 mb-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="size-4 fill-amber-500" />
-                    ))}
+                  {/* Top Bar with Stars & Verified Pill */}
+                  <div className="flex flex-wrap items-center justify-between gap-1 mb-2 sm:mb-3">
+                    <div className="flex items-center gap-0.5 text-amber-500">
+                      {Array.from({ length: t.rating }).map((_, i) => (
+                        <Star key={i} className="size-3 sm:size-4 fill-amber-500" />
+                      ))}
+                      <span className="ml-1 text-[10px] sm:text-xs font-bold text-foreground">5.0</span>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 sm:px-2.5 py-0.5 text-[8px] sm:text-[10px] font-bold">
+                      <CheckCircle2 className="size-2.5 sm:size-3" />
+                      <span>Verified Client</span>
+                    </span>
                   </div>
-                  <p className="text-xs text-foreground/90 leading-relaxed italic">"{t.quote}"</p>
+
+                  {/* Project Scope Tag */}
+                  <div className="mb-2">
+                    <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-[8px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {t.project}
+                    </span>
+                  </div>
+
+                  {/* Quote Body with subtle quote mark */}
+                  <div className="relative mt-1 sm:mt-2">
+                    <Quote className="absolute -left-1 -top-1.5 size-4 sm:size-5 text-primary/15 -scale-x-100 pointer-events-none" />
+                    <p className="text-[10px] sm:text-xs text-foreground/90 leading-relaxed italic pl-3 sm:pl-3.5">
+                      "{t.quote}"
+                    </p>
+                  </div>
+
+                  {/* Measurable Result Banner */}
+                  <div className="mt-2.5 sm:mt-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-2 sm:px-2.5 py-1 sm:py-1.5 flex items-center gap-1.5 text-[9px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                    <ShieldCheck className="size-3 sm:size-3.5 shrink-0" />
+                    <span className="truncate">{t.result}</span>
+                  </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-border/80">
-                  <strong className="block text-xs font-bold text-foreground">{t.author}</strong>
-                  <span className="block text-[11px] text-muted-foreground">{t.role}</span>
-                  <span className="block text-[11px] font-semibold text-primary">{t.company}</span>
+                {/* Author Info with Initial Avatar */}
+                <div className="mt-3.5 sm:mt-5 pt-2.5 sm:pt-3.5 border-t border-border/80 flex items-center gap-2 sm:gap-3">
+                  <div className="size-7 sm:size-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-bold text-[10px] sm:text-xs text-primary shrink-0 group-hover:scale-105 transition-transform">
+                    {t.author
+                      .split(" ")
+                      .filter((part) => !part.includes("."))
+                      .slice(0, 2)
+                      .map((n) => n[0])
+                      .join("") || "AP"}
+                  </div>
+                  <div className="min-w-0">
+                    <strong className="block text-[11px] sm:text-xs font-bold text-foreground truncate">
+                      {t.author}
+                    </strong>
+                    <span className="block text-[9px] sm:text-[11px] text-muted-foreground truncate">
+                      {t.role}
+                    </span>
+                    <span className="block text-[9px] sm:text-[11px] font-semibold text-primary truncate">
+                      {t.company}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -919,23 +933,19 @@ function Index() {
         </a>
       </div>
 
-      {/* Refined Mobile Sticky Bottom Action Bar */}
+      {/* Sleek Mobile Bottom Navigation Dock */}
       <nav
         aria-label="Mobile quick actions"
-        className="fixed bottom-0 inset-x-0 z-40 sm:hidden bg-background/95 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,0.12)] px-3 py-2 flex items-center justify-around gap-2"
-        style={{ paddingBottom: "max(0.6rem, env(safe-area-inset-bottom))" }}
+        className="fixed bottom-2.5 inset-x-3 z-40 sm:hidden bg-background/95 backdrop-blur-2xl border border-border/80 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.16)] px-2 py-1.5 flex items-center justify-between gap-1"
+        style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
       >
-        {/* Direct Call Hotline */}
+        {/* Catalog */}
         <a
-          href="tel:+918639858221"
-          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-card border border-border py-1.5 text-foreground shadow-xs active:scale-95 transition-all"
-          aria-label="Direct Phone Call"
+          href="/products"
+          className="flex flex-1 flex-col items-center justify-center py-1 rounded-xl text-muted-foreground hover:text-foreground active:scale-95 transition-all"
         >
-          <div className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <Phone className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <span className="text-[10px] font-bold">Call Now</span>
+          <ShoppingBag className="size-4" />
+          <span className="text-[10px] font-medium mt-0.5">Catalog</span>
         </a>
 
         {/* WhatsApp Chat */}
@@ -943,41 +953,50 @@ function Index() {
           href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20need%20urgent%20fire%20safety%20assistance."
           target="_blank"
           rel="noreferrer"
-          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-emerald-600 text-white py-1.5 shadow-sm active:scale-95 transition-all"
-          aria-label="WhatsApp Hotline"
+          className="flex flex-1 flex-col items-center justify-center py-1 rounded-xl text-muted-foreground hover:text-emerald-600 active:scale-95 transition-all"
         >
-          <MessageCircle className="size-3.5" />
-          <span className="text-[10px] font-bold">WhatsApp</span>
+          <MessageCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-[10px] font-medium mt-0.5">WhatsApp</span>
         </a>
 
-        {/* Quick Cart Trigger */}
+        {/* Direct Call Hotline */}
+        <a
+          href="tel:+918639858221"
+          className="flex flex-1 flex-col items-center justify-center py-1 rounded-xl text-muted-foreground hover:text-foreground active:scale-95 transition-all"
+        >
+          <div className="relative">
+            <Phone className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+          <span className="text-[10px] font-medium mt-0.5">Call</span>
+        </a>
+
+        {/* Cart Drawer Trigger */}
         <button
           type="button"
           onClick={() => setIsCartOpen(true)}
-          className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-card border border-border py-1.5 text-foreground shadow-xs active:scale-95 transition-all"
-          aria-label="Open Shopping Cart"
+          className="relative flex flex-1 flex-col items-center justify-center py-1 rounded-xl text-muted-foreground hover:text-foreground active:scale-95 transition-all"
         >
           <div className="relative">
-            <ShoppingCart className="size-3.5 text-primary" />
+            <ShoppingCart className="size-4 text-foreground" />
             {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-2 flex size-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-black text-white">
+              <span className="absolute -top-1.5 -right-2.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-black text-white shadow-xs">
                 {totalItems}
               </span>
             )}
           </div>
-          <span className="text-[10px] font-bold">
-            Cart {totalItems > 0 ? `(${totalItems})` : ""}
+          <span className="text-[10px] font-medium mt-0.5">
+            Cart{totalItems > 0 ? ` (${totalItems})` : ""}
           </span>
         </button>
 
-        {/* Get Instant Quote */}
+        {/* Get Instant Quote Action Button */}
         <a
           href="#contact"
-          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-primary text-primary-foreground py-1.5 shadow-sm active:scale-95 transition-all"
-          aria-label="Get Instant Quote"
+          className="flex items-center gap-1 rounded-xl bg-primary text-primary-foreground px-3 py-2 text-xs font-bold shadow-sm shadow-primary/25 active:scale-95 transition-all shrink-0"
         >
           <FileText className="size-3.5" />
-          <span className="text-[10px] font-bold">Get Quote</span>
+          <span>Quote</span>
         </a>
       </nav>
 

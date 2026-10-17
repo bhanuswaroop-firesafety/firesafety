@@ -21,7 +21,6 @@ import { subscribeProducts, CATEGORIES } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
-import { OFFICIAL_CATALOG_PRODUCTS } from "@/lib/catalog-data";
 import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/products")({
@@ -51,24 +50,10 @@ export const Route = createFileRoute("/products")({
           { name: "Home", path: "/" },
           { name: "Fire Safety Products", path: "/products" },
         ]),
-        schemas.productList(
-          OFFICIAL_CATALOG_PRODUCTS.map((p) => ({
-            name: p.name,
-            category: p.category,
-            description: p.description,
-            price: typeof p.price === "number" ? p.price : 0,
-            image: p.image,
-          })),
-        ),
       ],
     }),
   component: ProductsPage,
 });
-
-const DEFAULT_PRODUCTS: ProductItem[] = OFFICIAL_CATALOG_PRODUCTS.map((p, idx) => ({
-  id: `sue-cat-${idx + 1}`,
-  ...p,
-}));
 
 const getCategoryIcon = (category: string): NanoIconName => {
   switch (category) {
@@ -100,15 +85,17 @@ function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [productsList, setProductsList] = useState<ProductItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const unsub = subscribeProducts((data) => {
       setProductsList(data);
+      setIsLoading(false);
     });
     return () => unsub();
   }, []);
 
-  const activeProducts = productsList.length > 0 ? productsList : DEFAULT_PRODUCTS;
+  const activeProducts = productsList;
 
   const filteredProducts = useMemo(() => {
     return activeProducts.filter((p) => {
@@ -189,7 +176,36 @@ function ProductsPage() {
       {/* Products Grid */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          {filteredProducts.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="animate-pulse overflow-hidden rounded-xl border border-border bg-card p-4 space-y-3"
+                >
+                  <div className="aspect-[4/3] rounded-lg bg-muted" />
+                  <div className="h-4 w-3/4 rounded bg-muted" />
+                  <div className="h-3 w-1/2 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          ) : productsList.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center max-w-2xl mx-auto">
+              <Package className="mx-auto size-12 text-muted-foreground/60" />
+              <h3 className="mt-4 font-display text-lg font-bold text-foreground">
+                No Products Available in Catalog
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                There are currently no products published in the live database. Products added or
+                synced through the Administrator Panel will appear here automatically.
+              </p>
+              <div className="mt-6 flex justify-center gap-3">
+                <a href="/contact">
+                  <Button size="sm">Request Equipment Quote</Button>
+                </a>
+              </div>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
               <Package className="mx-auto size-12 text-muted-foreground/60" />
               <h3 className="mt-4 font-display text-lg font-bold text-foreground">
@@ -234,9 +250,6 @@ function ProductsPage() {
                     <span className="absolute left-2 top-2 sm:left-3 sm:top-3 rounded-md bg-background/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
                       {prod.category}
                     </span>
-                    <div className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-lg sm:rounded-xl bg-background/90 p-1 sm:p-1.5 shadow-md backdrop-blur-md border border-border/60 transition-transform duration-300 group-hover:scale-110">
-                      <NanoIcon name={getCategoryIcon(prod.category)} size="sm" />
-                    </div>
                   </a>
 
                   <div className="flex flex-1 flex-col p-3 sm:p-6">

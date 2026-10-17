@@ -163,9 +163,6 @@ function ServicesIndexPage() {
                       referrerPolicy="no-referrer"
                       className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
                     />
-                    <div className="absolute right-3.5 top-3.5 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
-                      <NanoIcon name={srv.nanoIcon} size="md" />
-                    </div>
                   </div>
                 </div>
 

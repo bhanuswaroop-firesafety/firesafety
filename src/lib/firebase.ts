@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps, getApp, deleteApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
@@ -130,5 +130,6 @@ export {
   initializeApp,
   getApps,
   getAuth,
+  deleteApp,
 };
 export type { FirebaseUser, ConfirmationResult };

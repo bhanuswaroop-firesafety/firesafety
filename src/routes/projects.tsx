@@ -192,9 +192,6 @@ function ProjectsPage() {
                   <span className="absolute left-4 top-4 rounded-md bg-background/90 px-3 py-1 text-xs font-bold uppercase tracking-wider text-foreground backdrop-blur">
                     {proj.category}
                   </span>
-                  <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60 transition-transform duration-300 group-hover:scale-110">
-                    <NanoIcon name={proj.nanoIcon} size="sm" />
-                  </div>
                 </div>
 
                 <div className="flex flex-1 flex-col p-6 sm:p-8">

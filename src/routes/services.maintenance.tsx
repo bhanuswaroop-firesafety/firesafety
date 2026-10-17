@@ -75,9 +75,6 @@ export function MaintenanceServicePage() {
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />
-              <div className="absolute right-4 top-4 rounded-xl bg-background/90 p-2 shadow-lg backdrop-blur-md border border-border/60">
-                <NanoIcon name="wrench" size="md" />
-              </div>
             </div>
           </div>
         </div>

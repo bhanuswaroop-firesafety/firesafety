@@ -17,6 +17,7 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signOut,
+  deleteApp,
 } from "./firebase";
 import type {
   ProductItem,
@@ -38,7 +39,7 @@ import type {
   NotificationItem,
 } from "./types";
 export type { LeadItem, OrderItem };
-import { OFFICIAL_CATALOG_PRODUCTS, DEFAULT_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
+import { OFFICIAL_CATALOG_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
 import {
   getKolkataISOString,
   getKolkataDateString,
@@ -116,41 +117,23 @@ export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
 // ========================================================
 
 export function subscribeProducts(callback: (products: ProductItem[]) => void): () => void {
-  // Emit catalog immediately so product pages never render empty
-  callback(DEFAULT_PRODUCTS);
-
   const colRef = collection(db, "products");
   return onSnapshot(
     colRef,
     (snapshot) => {
       if (snapshot.empty) {
-        callback(DEFAULT_PRODUCTS);
+        callback([]);
       } else {
         const customItems = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         })) as ProductItem[];
-
-        // Combine default catalog products with custom Firestore products
-        const customMap = new Map(customItems.map((p) => [p.id || p.sku || p.name, p]));
-        const combined = [...customItems];
-        for (const def of DEFAULT_PRODUCTS) {
-          const defId = def.id || "";
-          const defSku = def.sku || "";
-          if (
-            (!defId || !customMap.has(defId)) &&
-            (!defSku || !customMap.has(defSku)) &&
-            !customMap.has(def.name)
-          ) {
-            combined.push(def);
-          }
-        }
-        callback(combined);
+        callback(customItems);
       }
     },
     (err) => {
-      console.warn("Firestore products fetch notice (fallback to default catalog):", err.message);
-      callback(DEFAULT_PRODUCTS);
+      console.warn("Firestore products fetch notice:", err.message);
+      callback([]);
     },
   );
 }
@@ -171,7 +154,7 @@ export function findProductById(
   const decoded = decodeURIComponent(idOrSlug).trim().toLowerCase();
   const mappedId = FEATURED_ID_MAP[decoded] || decoded;
 
-  // 1. Check in custom / provided product list
+  // Check in custom / provided product list
   const found = productList.find(
     (p) =>
       p.id?.toLowerCase() === mappedId ||
@@ -180,26 +163,7 @@ export function findProductById(
       slugify(p.name) === decoded ||
       p.name.toLowerCase() === decoded,
   );
-  if (found) return found;
-
-  // 2. Check in built-in default catalog
-  const fromDefault = DEFAULT_PRODUCTS.find(
-    (p) =>
-      p.id?.toLowerCase() === mappedId ||
-      p.id?.toLowerCase() === decoded ||
-      p.sku?.toLowerCase() === decoded ||
-      slugify(p.name) === decoded ||
-      p.name.toLowerCase() === decoded,
-  );
-  if (fromDefault) return fromDefault;
-
-  // 3. Numeric index fallback: e.g. "1" -> "sue-cat-1"
-  const num = parseInt(decoded, 10);
-  if (!isNaN(num) && num >= 1 && num <= DEFAULT_PRODUCTS.length) {
-    return DEFAULT_PRODUCTS[num - 1] ?? null;
-  }
-
-  return null;
+  return found ?? null;
 }
 
 export async function getProductById(idOrSlug: string): Promise<ProductItem | null> {
@@ -217,7 +181,7 @@ export async function getProductById(idOrSlug: string): Promise<ProductItem | nu
     console.warn("Firestore getProductById notice:", error);
   }
 
-  return findProductById(decoded, DEFAULT_PRODUCTS);
+  return null;
 }
 
 export function subscribeProductById(
@@ -225,9 +189,6 @@ export function subscribeProductById(
   callback: (product: ProductItem | null) => void,
 ): () => void {
   const decoded = decodeURIComponent(idOrSlug).trim();
-  const initial = findProductById(decoded, DEFAULT_PRODUCTS);
-  if (initial) callback(initial);
-
   const mappedId = FEATURED_ID_MAP[decoded.toLowerCase()] || decoded;
   const docRef = doc(db, "products", mappedId);
   return onSnapshot(
@@ -236,14 +197,12 @@ export function subscribeProductById(
       if (snap.exists()) {
         callback({ id: snap.id, ...snap.data() } as ProductItem);
       } else {
-        const fallback = findProductById(decoded, DEFAULT_PRODUCTS);
-        callback(fallback);
+        callback(null);
       }
     },
     (err) => {
       console.warn("Firestore product subscription notice:", err);
-      const fallback = findProductById(decoded, DEFAULT_PRODUCTS);
-      callback(fallback);
+      callback(null);
     },
   );
 }
@@ -252,29 +211,14 @@ export async function getProducts(): Promise<ProductItem[]> {
   try {
     const colRef = collection(db, "products");
     const snapshot = await getDocs(colRef);
-    if (snapshot.empty) return DEFAULT_PRODUCTS;
-    const customItems = snapshot.docs.map((d) => ({
+    if (snapshot.empty) return [];
+    return snapshot.docs.map((d) => ({
       id: d.id,
       ...d.data(),
     })) as ProductItem[];
-
-    const customMap = new Map(customItems.map((p) => [p.id || p.sku || p.name, p]));
-    const combined = [...customItems];
-    for (const def of DEFAULT_PRODUCTS) {
-      const defId = def.id || "";
-      const defSku = def.sku || "";
-      if (
-        (!defId || !customMap.has(defId)) &&
-        (!defSku || !customMap.has(defSku)) &&
-        !customMap.has(def.name)
-      ) {
-        combined.push(def);
-      }
-    }
-    return combined;
   } catch (error) {
-    console.warn("Firestore getProducts notice (using default catalog):", error);
-    return DEFAULT_PRODUCTS;
+    console.warn("Firestore getProducts notice:", error);
+    return [];
   }
 }
 
@@ -454,10 +398,42 @@ export async function updateUserProfileDetails(
 
 export async function updateUserRole(userId: string, role: string): Promise<void> {
   const docRef = doc(db, "users", userId);
+  const now = getKolkataISOString();
   await updateDoc(docRef, cleanFirestoreData({
     role,
-    updatedAt: getKolkataISOString(),
+    updatedAt: now,
   }));
+
+  try {
+    const userSnap = await getDoc(docRef);
+    if (userSnap.exists()) {
+      const uData = userSnap.data() as UserItem;
+      const userEmail = (uData.email || "").toLowerCase().trim();
+      if (userEmail && userEmail !== "bhanuswaroop04@gmail.com") {
+        const adminDocRef = doc(db, "authorized_admins", userEmail);
+        if (role === "admin") {
+          const adminItem: AuthorizedAdminItem = {
+            id: userEmail,
+            email: userEmail,
+            displayName: uData.displayName || userEmail.split("@")[0],
+            role: "admin",
+            department: uData.company || "Executive Operations",
+            phone: uData.phone || "",
+            addedBy: "Role Management",
+            createdAt: uData.createdAt || now,
+          };
+          await setDoc(adminDocRef, cleanFirestoreData(adminItem), { merge: true });
+        } else {
+          const existingAdmin = await getDoc(adminDocRef);
+          if (existingAdmin.exists()) {
+            await deleteDoc(adminDocRef);
+          }
+        }
+      }
+    }
+  } catch (syncErr) {
+    console.warn("Failed to sync role change to authorized_admins:", syncErr);
+  }
 }
 
 export async function getUserRecord(uid: string): Promise<UserItem | null> {
@@ -965,9 +941,18 @@ export async function isEmailAuthorizedAdmin(email: string): Promise<boolean> {
   if (clean === "bhanuswaroop04@gmail.com") return true;
 
   try {
+    // 1. Check authorized_admins collection
     const docRef = doc(db, "authorized_admins", clean);
     const snap = await getDoc(docRef);
-    return snap.exists();
+    if (snap.exists()) return true;
+
+    // 2. Check if registered in users collection with role === "admin"
+    const usersCol = collection(db, "users");
+    const q = query(usersCol, where("email", "==", clean), where("role", "==", "admin"));
+    const usersSnap = await getDocs(q);
+    if (!usersSnap.empty) return true;
+
+    return false;
   } catch {
     return false;
   }
@@ -1012,6 +997,30 @@ export async function addAuthorizedAdmin(adminData: {
   const cleanEmail = adminData.email.toLowerCase().trim();
   const now = getKolkataISOString();
 
+  // 1. Automatically provision Firebase Auth account if a password is provided
+  // Uses an isolated secondary Firebase app to prevent logging out the current admin session
+  let authProvisioned = false;
+  let provisionedUid: string | null = null;
+  if (adminData.password && adminData.password.trim().length >= 6) {
+    try {
+      const tempAppName = `AdminProvision_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const tempApp = initializeApp(firebaseConfig, tempAppName);
+      const tempAuth = getAuth(tempApp);
+      const cred = await createUserWithEmailAndPassword(tempAuth, cleanEmail, adminData.password.trim());
+      provisionedUid = cred.user.uid;
+      await signOut(tempAuth);
+      await deleteApp(tempApp);
+      authProvisioned = true;
+    } catch (authErr: any) {
+      if (authErr?.code === "auth/email-already-in-use") {
+        authProvisioned = true;
+      } else {
+        console.warn("Secondary auth provisioning notice:", authErr?.message || authErr);
+      }
+    }
+  }
+
+  // 2. Save authorized admin document in Firestore authorized_admins collection
   const record: AuthorizedAdminItem = {
     id: cleanEmail,
     email: cleanEmail,
@@ -1027,7 +1036,37 @@ export async function addAuthorizedAdmin(adminData: {
   const docRef = doc(db, "authorized_admins", cleanEmail);
   await setDoc(docRef, cleanFirestoreData(record), { merge: true });
 
-  return { success: true, message: `Administrator ${cleanEmail} authorized successfully.` };
+  // 3. Sync to users collection so role === "admin" is immediately reflected
+  try {
+    if (provisionedUid) {
+      const userDocRef = doc(db, "users", provisionedUid);
+      await setDoc(userDocRef, cleanFirestoreData({
+        id: provisionedUid,
+        email: cleanEmail,
+        displayName: adminData.displayName || cleanEmail.split("@")[0],
+        role: "admin",
+        department: adminData.department || "Operations",
+        phone: adminData.phone || "",
+        createdAt: now,
+        updatedAt: now,
+      }), { merge: true });
+    } else {
+      const usersCol = collection(db, "users");
+      const q = query(usersCol, where("email", "==", cleanEmail));
+      const snap = await getDocs(q);
+      for (const uDoc of snap.docs) {
+        await updateDoc(uDoc.ref, { role: "admin", updatedAt: now });
+      }
+    }
+  } catch (uErr) {
+    console.warn("User profile role sync notice:", uErr);
+  }
+
+  const msg = authProvisioned
+    ? `Administrator ${cleanEmail} provisioned and authorized successfully with login credentials.`
+    : `Administrator ${cleanEmail} authorized successfully. Can sign in via Google or pre-registered account.`;
+
+  return { success: true, message: msg };
 }
 
 export async function removeAuthorizedAdmin(email: string): Promise<void> {
@@ -1037,6 +1076,18 @@ export async function removeAuthorizedAdmin(email: string): Promise<void> {
   }
   const docRef = doc(db, "authorized_admins", clean);
   await deleteDoc(docRef);
+
+  // Demote their role in users collection to 'staff' so they cannot enter admin portal
+  try {
+    const usersCol = collection(db, "users");
+    const q = query(usersCol, where("email", "==", clean));
+    const snap = await getDocs(q);
+    for (const uDoc of snap.docs) {
+      await updateDoc(uDoc.ref, { role: "staff", updatedAt: getKolkataISOString() });
+    }
+  } catch (err) {
+    console.warn("Notice updating demoted user role:", err);
+  }
 }
 
 // ========================================================
