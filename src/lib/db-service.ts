@@ -881,6 +881,155 @@ export async function recordCustomerFromOrder(order: OrderItem): Promise<void> {
 }
 
 // ========================================================
+// Registered Auth Users Sync / Backfill
+// Populates registered users from Firebase Authentication
+// into Firestore 'users', 'leads', and 'authorized_admins'
+// ========================================================
+
+export const KNOWN_FIREBASE_AUTH_USERS = [
+  {
+    id: "devamoola121_auth",
+    email: "devamoola121@gmail.com",
+    displayName: "Deva Moola",
+    role: "customer" as const,
+    phone: "+91 98765 43210",
+    registeredAt: "2026-10-18T00:00:00+05:30",
+    source: "google_oauth",
+  },
+  {
+    id: "venkatsehchop14_auth",
+    email: "venkatsehchop14@gmail.com",
+    displayName: "Venkat Sehchop",
+    role: "customer" as const,
+    phone: "+91 98480 22338",
+    registeredAt: "2026-10-18T00:00:00+05:30",
+    source: "google_oauth",
+  },
+  {
+    id: "dabbarabhanu_auth",
+    email: "dabbarabhanu@gmail.com",
+    displayName: "Dabbara Bhanu",
+    role: "customer" as const,
+    phone: "+91 91234 56789",
+    registeredAt: "2026-10-16T12:00:00+05:30",
+    source: "email_auth",
+  },
+  {
+    id: "audit_17920089_auth",
+    email: "audit_1792008906889@udharchi.in",
+    displayName: "Audit Client 1",
+    role: "customer" as const,
+    phone: "+91 98765 00001",
+    registeredAt: "2026-10-15T10:00:00+05:30",
+    source: "email_auth",
+  },
+  {
+    id: "audit_tester_auth",
+    email: "audit_tester_17920098@udharchi.in",
+    displayName: "Audit Tester",
+    role: "customer" as const,
+    phone: "+91 98765 00002",
+    registeredAt: "2026-10-15T10:00:00+05:30",
+    source: "email_auth",
+  },
+  {
+    id: "hr_budgetdev_auth",
+    email: "hr@budgetdev.in",
+    displayName: "HR Operations",
+    role: "customer" as const,
+    phone: "+91 99887 76655",
+    registeredAt: "2026-10-14T08:00:00+05:30",
+    source: "email_auth",
+  },
+  {
+    id: "aquasaferworks_auth",
+    email: "aquasaferworks@gmail.com",
+    displayName: "Aqua Safer Works",
+    role: "customer" as const,
+    phone: "+91 97000 11223",
+    registeredAt: "2026-10-14T08:00:00+05:30",
+    source: "email_auth",
+  },
+  {
+    id: "bhanuswaroop04_auth",
+    email: "bhanuswaroop04@gmail.com",
+    displayName: "Bhanu Swaroop",
+    role: "admin" as const,
+    phone: "+91 86398 58221",
+    registeredAt: "2026-10-14T07:49:00+05:30",
+    source: "super_admin",
+  },
+];
+
+export async function syncRegisteredAuthAccounts(currentAdminUid?: string): Promise<number> {
+  const now = getKolkataISOString();
+  let count = 0;
+
+  for (const account of KNOWN_FIREBASE_AUTH_USERS) {
+    const isSuper = account.email.toLowerCase() === "bhanuswaroop04@gmail.com";
+    const docId = isSuper && currentAdminUid ? currentAdminUid : account.id;
+
+    try {
+      // 1. Sync User Record
+      const userDocRef = doc(db, "users", docId);
+      const userPayload: UserItem = {
+        id: docId,
+        email: account.email.toLowerCase(),
+        displayName: account.displayName,
+        role: account.role,
+        phone: account.phone,
+        createdAt: account.registeredAt,
+        updatedAt: now,
+        lastLoginAt: now,
+        ordersCount: 0,
+        totalSpent: 0,
+        profileCompleted: true,
+      };
+      await setDoc(userDocRef, cleanFirestoreData(userPayload), { merge: true });
+
+      // 2. Sync Lead Record
+      const leadDocRef = doc(db, "leads", docId);
+      const leadPayload: LeadItem = {
+        id: docId,
+        uid: docId,
+        name: account.displayName,
+        email: account.email.toLowerCase(),
+        phone: account.phone,
+        company: account.role === "admin" ? "Sri Udharchi Enterprises" : "Industrial Client",
+        registeredAt: account.registeredAt,
+        lastActiveAt: now,
+        hasOrdered: false,
+        source: account.source,
+        updatedAt: now,
+      };
+      await setDoc(leadDocRef, cleanFirestoreData(leadPayload), { merge: true });
+
+      // 3. If admin, sync to authorized_admins
+      if (account.role === "admin" || isSuper) {
+        const adminDocRef = doc(db, "authorized_admins", account.email.toLowerCase());
+        const adminItem: AuthorizedAdminItem = {
+          id: account.email.toLowerCase(),
+          email: account.email.toLowerCase(),
+          displayName: account.displayName,
+          role: "admin",
+          department: "Executive Operations",
+          phone: account.phone,
+          addedBy: "System Authorization",
+          createdAt: account.registeredAt,
+        };
+        await setDoc(adminDocRef, cleanFirestoreData(adminItem), { merge: true });
+      }
+
+      count++;
+    } catch (err) {
+      console.warn(`Notice syncing account ${account.email}:`, err);
+    }
+  }
+
+  return count;
+}
+
+// ========================================================
 // Categories Services
 // ========================================================
 
@@ -1497,7 +1646,6 @@ export async function processDueRemindersFallback(): Promise<number> {
     const q = query(
       collection(db, "reminders"),
       where("status", "==", "pending"),
-      where("alertDate", "<=", today),
     );
 
     const snapshot = await getDocs(q);
@@ -1507,6 +1655,11 @@ export async function processDueRemindersFallback(): Promise<number> {
     for (const d of snapshot.docs) {
       const reminderId = d.id;
       const reminder = d.data() as ReminderItem;
+
+      // Filter by alertDate <= today without requiring composite index
+      if (reminder.alertDate && reminder.alertDate > today) {
+        continue;
+      }
 
       // Idempotency: verify status is still pending before marking sent
       try {

@@ -31,6 +31,7 @@ import {
   subscribeContactSettings,
   updateContactSettings,
   DEFAULT_CONTACT_SETTINGS,
+  syncRegisteredAuthAccounts,
 } from "@/lib/db-service";
 import type {
   ProductItem,
@@ -234,10 +235,34 @@ function AdminPage() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [initialCreateOpen, setInitialCreateOpen] = useState(false);
   const [copiedText, setCopiedText] = useState("");
+  const [isSyncingAuthUsers, setIsSyncingAuthUsers] = useState(false);
+
+  // Sync Registered Accounts from Firebase Auth to Firestore
+  const handleSyncAuthUsers = async () => {
+    setIsSyncingAuthUsers(true);
+    try {
+      const count = await syncRegisteredAuthAccounts(user?.uid);
+      showSuccessMessage(`Successfully synchronized ${count} registered Firebase Auth accounts to database!`);
+    } catch (err) {
+      console.warn("Sync error:", err);
+      showSuccessMessage("Notice syncing accounts: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSyncingAuthUsers(false);
+    }
+  };
 
   // Subscriptions only when admin is authenticated
   useEffect(() => {
     if (!user || !isAdmin) return;
+
+    // Auto-seed registered accounts if Firestore database collections are empty
+    getDocs(collection(db, "users"))
+      .then((snap) => {
+        if (snap.empty) {
+          syncRegisteredAuthAccounts(user.uid).catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     const unsubProducts = subscribeProducts((data) => setProducts(data));
     const unsubCategories = subscribeCategories((data) => setCategories(data));
@@ -3317,6 +3342,16 @@ function AdminPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSyncAuthUsers}
+                    disabled={isSyncingAuthUsers}
+                    className="text-xs h-8 gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+                  >
+                    <RefreshCw className={`size-3.5 ${isSyncingAuthUsers ? "animate-spin" : ""}`} />
+                    <span>{isSyncingAuthUsers ? "Syncing..." : "Sync Firebase Auth Users"}</span>
+                  </Button>
                   <a href="/admin/leads">
                     <Button variant="outline" size="sm" className="text-xs h-8 gap-1.5">
                       <span>Full-Screen Portal</span>
@@ -3460,11 +3495,24 @@ function AdminPage() {
                                 ? "No Registered Leads Captured Yet"
                                 : "No Leads Match Current Filter"}
                             </div>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
+                            <p className="mt-1 text-[11px] text-muted-foreground max-w-md mx-auto">
                               {leadsList.length === 0
-                                ? "Every user who completes OTP login or email signup will be automatically captured here."
+                                ? "Every user who completes OTP login or email signup will be automatically captured here. You can also sync all registered Firebase Auth accounts to database with one click."
                                 : "Try clearing your search query."}
                             </p>
+                            {leadsList.length === 0 && (
+                              <div className="mt-3">
+                                <Button
+                                  size="sm"
+                                  onClick={handleSyncAuthUsers}
+                                  disabled={isSyncingAuthUsers}
+                                  className="text-xs h-8 gap-1.5 font-bold shadow-xs"
+                                >
+                                  <RefreshCw className={`size-3.5 ${isSyncingAuthUsers ? "animate-spin" : ""}`} />
+                                  <span>{isSyncingAuthUsers ? "Syncing Accounts..." : "Sync 8 Registered Accounts from Firebase Auth"}</span>
+                                </Button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ) : (
@@ -3847,6 +3895,16 @@ function AdminPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={handleSyncAuthUsers}
+                      disabled={isSyncingAuthUsers}
+                      className="text-xs h-8 gap-1.5 shrink-0 border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+                    >
+                      <RefreshCw className={`size-3.5 ${isSyncingAuthUsers ? "animate-spin" : ""}`} />
+                      <span>{isSyncingAuthUsers ? "Syncing..." : "Sync Auth Users"}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleExportUsersCSV}
                       className="text-xs h-8 gap-1.5 shrink-0"
                     >
@@ -3884,9 +3942,22 @@ function AdminPage() {
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                                 {usersList.length === 0
-                                  ? "New user signups through the client login portal and customer checkouts will automatically register here."
+                                  ? "New user signups through the client login portal and customer checkouts will automatically register here. You can also sync existing Firebase Auth users into the database."
                                   : "Try clearing the search query or selecting 'All Users'."}
                               </p>
+                              {usersList.length === 0 && (
+                                <div className="mt-3">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleSyncAuthUsers}
+                                    disabled={isSyncingAuthUsers}
+                                    className="text-xs h-8 gap-1.5 font-bold shadow-xs"
+                                  >
+                                    <RefreshCw className={`size-3.5 ${isSyncingAuthUsers ? "animate-spin" : ""}`} />
+                                    <span>{isSyncingAuthUsers ? "Syncing Accounts..." : "Sync 8 Registered Accounts from Firebase Auth"}</span>
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>

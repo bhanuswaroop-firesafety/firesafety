@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   subscribeLeads,
   subscribeOrders,
+  syncRegisteredAuthAccounts,
   type LeadItem,
   type OrderItem,
 } from "@/lib/db-service";
@@ -51,6 +52,21 @@ export function AdminLeadsPage() {
   const [leads, setLeads] = useState<LeadItem[]>([]);
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState("");
+
+  const handleSyncAuthUsers = async () => {
+    setIsSyncing(true);
+    try {
+      const count = await syncRegisteredAuthAccounts(user?.uid);
+      setSyncFeedback(`Successfully synchronized ${count} registered Firebase Auth accounts to database!`);
+      setTimeout(() => setSyncFeedback(""), 4000);
+    } catch (err) {
+      console.warn("Sync error:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -245,6 +261,16 @@ export function AdminLeadsPage() {
 
         <div className="flex items-center gap-2">
           <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncAuthUsers}
+            disabled={isSyncing}
+            className="text-xs h-8 gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+          >
+            <RefreshCw className={`size-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+            <span>{isSyncing ? "Syncing..." : "Sync Firebase Auth Users"}</span>
+          </Button>
+          <Button
             onClick={handleExportCSV}
             disabled={filteredLeads.length === 0}
             className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold h-8 gap-1.5 shadow-xs"
@@ -391,9 +417,27 @@ export function AdminLeadsPage() {
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                           {leads.length === 0
-                            ? "As customers log in via Mobile OTP or register their profile, their details will automatically appear here even if they never place an order."
+                            ? "As customers log in via Mobile OTP or register their profile, their details will automatically appear here even if they never place an order. You can also sync all existing Firebase Auth users into the database."
                             : "Try clearing your search query or switching filters to 'All'."}
                         </p>
+                        {leads.length === 0 && (
+                          <div className="mt-3">
+                            <Button
+                              size="sm"
+                              onClick={handleSyncAuthUsers}
+                              disabled={isSyncing}
+                              className="text-xs h-8 gap-1.5 font-bold shadow-xs"
+                            >
+                              <RefreshCw className={`size-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                              <span>{isSyncing ? "Syncing Accounts..." : "Sync 8 Registered Accounts from Firebase Auth"}</span>
+                            </Button>
+                          </div>
+                        )}
+                        {syncFeedback && (
+                          <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            {syncFeedback}
+                          </p>
+                        )}
                       </div>
                     </td>
                   </tr>
