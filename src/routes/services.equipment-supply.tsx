@@ -40,7 +40,7 @@ export const Route = createFileRoute("/services/equipment-supply")({
         schemas.service(
           "Industrial Fire Safety Products & Equipment Supply",
           "Distributor of BIS/ISI certified fire extinguishers, hydrant landing valves, RRL hoses, PPE safety gear, photoluminescent safety signage, and fire pumps.",
-          "/services/equipment-supply"
+          "/services/equipment-supply",
         ),
       ],
     }),

@@ -103,9 +103,7 @@ export function seoHead(opts: SeoOptions) {
     meta.push({ name: "robots", content: "noindex, nofollow" });
   }
 
-  const links: Array<Record<string, string>> = [
-    { rel: "canonical", href: canonicalUrl },
-  ];
+  const links: Array<Record<string, string>> = [{ rel: "canonical", href: canonicalUrl }];
 
   // Build head return
   const head: {
@@ -148,7 +146,7 @@ export const schemas = {
     url: SITE_URL,
     image: `${SITE_URL}${OG_IMAGE}`,
     description:
-      "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and turnkey AMC maintenance in Andhra Pradesh and Pan-India.",
+      "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and comprehensive AMC maintenance in Andhra Pradesh and Pan-India.",
     telephone: "+918639858221",
     email: "sriudharchienterprises@gmail.com",
     address: {
@@ -214,7 +212,13 @@ export const schemas = {
 
   /** ItemList schema for product catalogs */
   productList: (
-    products: Array<{ name: string; description?: string; image?: string; price?: number; category?: string }>
+    products: Array<{
+      name: string;
+      description?: string;
+      image?: string;
+      price?: number;
+      category?: string;
+    }>,
   ) => ({
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -229,7 +233,9 @@ export const schemas = {
         "@type": "Product",
         name: p.name,
         category: p.category ?? "Fire Safety Products",
-        description: p.description ?? "Certified fire safety product compliant with IS 15683 and NBC 2016 safety codes.",
+        description:
+          p.description ??
+          "Certified fire safety product compliant with IS 15683 and NBC 2016 safety codes.",
         ...(p.image ? { image: p.image } : {}),
         ...(p.price
           ? {
@@ -265,5 +271,54 @@ export const schemas = {
         text: item.answer,
       },
     })),
+  }),
+
+  /** Single Product schema */
+  singleProduct: (product: {
+    name: string;
+    description?: string | undefined;
+    image?: string | undefined;
+    price?: string | number | undefined;
+    sku?: string | undefined;
+    category?: string | undefined;
+    inStock?: boolean | undefined;
+    url?: string | undefined;
+  }) => ({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description:
+      product.description ||
+      `${product.name} - Certified industrial safety and fire protection equipment by ${BRAND}.`,
+    ...(product.image ? { image: product.image } : {}),
+    ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
+    category: product.category || "Fire Safety Products",
+    brand: {
+      "@type": "Brand",
+      name: BRAND,
+    },
+    ...(product.price
+      ? {
+          offers: {
+            "@type": "Offer",
+            url: product.url ? `${SITE_URL}${product.url}` : undefined,
+            priceCurrency: "INR",
+            price:
+              typeof product.price === "string"
+                ? parseFloat(product.price.replace(/[^\d.]/g, "")) || 0
+                : product.price,
+            priceValidUntil: "2027-12-31",
+            availability:
+              product.inStock === false
+                ? "https://schema.org/OutOfStock"
+                : "https://schema.org/InStock",
+            itemCondition: "https://schema.org/NewCondition",
+            seller: {
+              "@type": "Organization",
+              name: BRAND,
+            },
+          },
+        }
+      : {}),
   }),
 } as const;

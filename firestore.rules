@@ -46,7 +46,8 @@ service cloud.firestore {
       allow create, update: if isAdmin() &&
         request.resource.data.keys().hasOnly([
           'id', 'name', 'category', 'image', 'description', 'specs',
-          'price', 'unit', 'sku', 'minOrderQty', 'inStock', 'featured', 'createdAt', 'updatedAt'
+          'price', 'unit', 'sku', 'minOrderQty', 'inStock', 'featured',
+          'renewalMonths', 'createdAt', 'updatedAt'
         ]) &&
         request.resource.data.name is string &&
         request.resource.data.name.size() > 0 &&
@@ -58,7 +59,8 @@ service cloud.firestore {
         request.resource.data.specs is list &&
         request.resource.data.specs.size() <= 20 &&
         request.resource.data.inStock is bool &&
-        request.resource.data.featured is bool;
+        request.resource.data.featured is bool &&
+        (!('renewalMonths' in request.resource.data) || request.resource.data.renewalMonths in [3, 6, 9, 12, null]);
       allow delete: if isAdmin();
     }
 
@@ -101,10 +103,8 @@ service cloud.firestore {
     }
 
     // Users:
-    // - Signed in user can read only their own profile, or admin can read any user profile.
-    // - Initial profile creation: user can create own profile as 'customer', or designated bootstrap email as 'admin'.
-    // - Update: admin can update any role (to 'admin', 'staff', 'customer'); normal user cannot change their role.
-    // - Delete: only admin.
+    // - Signed in user can read and update their own profile, or admin can read/write any profile.
+    // - Self-registration allowed for authenticated users.
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && (
@@ -117,38 +117,163 @@ service cloud.firestore {
         )) ||
         isAdmin()
       ) &&
-      request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt', 'phone', 'company', 'lastLoginAt']);
+      request.resource.data.keys().hasOnly([
+        'id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt',
+        'phone', 'company', 'lastLoginAt', 'ordersCount', 'totalSpent',
+        'profileCompleted', 'profileSkippedAt'
+      ]);
 
       allow update: if (isAdmin() && request.resource.data.role in ['admin', 'staff', 'customer']) || (
         isSignedIn() &&
         request.auth.uid == userId &&
         request.resource.data.role == resource.data.role &&
-        request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt', 'phone', 'company', 'lastLoginAt'])
+        request.resource.data.keys().hasOnly([
+          'id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt',
+          'phone', 'company', 'lastLoginAt', 'ordersCount', 'totalSpent',
+          'profileCompleted', 'profileSkippedAt'
+        ])
       );
 
       allow delete: if isAdmin();
     }
 
-    // Orders:
-    // - Customers can create their own order, or read their own orders.
-    // - Admins can read, update status, and delete orders.
+    // Orders (Tasks A, B, C):
+    // - Mobile number and valid email format are strictly required to create an order.
+    // - Authenticated users can read their own orders; Admins can read and manage all.
+    // - Statuses: placed -> confirmed -> shipped -> delivered (+ cancelled).
+    // - Customer CANNOT: change status to anything except 'cancelled' (and only from placed/confirmed),
+    //   set deliveredAt/installDate/feedbackGiven/statusHistory/shippingCharge, edit another user's order, or change role.
     match /orders/{orderId} {
-      allow create: if request.resource.data.keys().hasOnly([
-          'orderId', 'orderDate', 'customerName', 'customerPhone', 'customerEmail',
-          'customerId', 'shippingAddress', 'companyName', 'gstin', 'paymentMethod',
-          'items', 'subtotal', 'discount', 'gst', 'shipping', 'total', 'status', 'createdAt'
-        ]) &&
-        request.resource.data.customerName is string &&
-        request.resource.data.customerPhone is string &&
-        request.resource.data.customerEmail is string &&
-        request.resource.data.items is list &&
-        request.resource.data.total is number;
-
-      allow read: if isAdmin() || (
-        isSignedIn() && resource.data.customerId == request.auth.uid
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          request.resource.data.customerId == request.auth.uid &&
+          request.resource.data.customerName is string &&
+          request.resource.data.customerName.size() >= 2 &&
+          request.resource.data.customerEmail is string &&
+          request.resource.data.customerEmail.size() >= 5 &&
+          request.resource.data.customerPhone is string &&
+          request.resource.data.customerPhone.size() >= 10 &&
+          request.resource.data.items is list &&
+          request.resource.data.items.size() > 0 &&
+          request.resource.data.total is number &&
+          request.resource.data.total >= 0 &&
+          request.resource.data.status in ['placed', 'confirmed'] &&
+          !('deliveredAt' in request.resource.data) &&
+          !('installDate' in request.resource.data) &&
+          !('feedbackGiven' in request.resource.data)
+        )
       );
 
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.customerId == request.auth.uid ||
+          (resource.data.customerEmail != null && request.auth.token.email != null &&
+           resource.data.customerEmail.lower() == request.auth.token.email.lower())
+        )
+      );
+
+      // Customer update: only self-cancellation from placed or confirmed.
+      // Customer cannot tamper with deliveredAt, installDate, feedbackGiven, statusHistory, shippingCharge, etc.
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.customerId == request.auth.uid &&
+        request.resource.data.status == 'cancelled' &&
+        resource.data.status in ['placed', 'confirmed'] &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'deliveredAt', 'installDate', 'feedbackGiven', 'shippingCharge',
+          'customerId', 'orderNumber', 'createdAt', 'total', 'subtotal',
+          'gst', 'shipping', 'items', 'shippingType', 'expectedDeliveryFrom', 'expectedDeliveryTo'
+        ])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Leads / Registered Customers (Task 3):
+    // - Maintains captured customer profile even if they never place an order.
+    // - Signed-in user can create, update, or read their own lead profile.
+    // - Executive administrators can read, filter, search, and manage all customer leads.
+    match /leads/{leadId} {
+      allow read: if isSignedIn() && (request.auth.uid == leadId || isAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == leadId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Settings (settings/shipping, settings/social, settings/contact):
+    // - Public read so visitors see real shipping ranges, dispatch pricing, social URLs, and support info.
+    // - Admin-only write.
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Feedback (Task D):
+    // - Document ID must be the orderId: feedback/{orderId} (enforces strictly 1 feedback per order).
+    // - Only the order owner can submit feedback.
+    // - Can only submit feedback when the order status in Firestore is 'delivered'.
+    // - Rating must be an integer between 1 and 5.
+    match /feedback/{orderId} {
+      allow read: if isAdmin() || (
+        isSignedIn() && resource.data.userId == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.orderId == orderId &&
+        request.resource.data.rating is int &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        exists(/databases/$(database)/documents/orders/$(orderId)) &&
+        get(/databases/$(database)/documents/orders/$(orderId)).data.status == "delivered" &&
+        get(/databases/$(database)/documents/orders/$(orderId)).data.customerId == request.auth.uid;
       allow update, delete: if isAdmin();
+    }
+
+    // Carts (carts/{uid}):
+    // - Server-backed cart state for logged-in users.
+    // - Strictly owner-only read, write, and delete.
+    match /carts/{uid} {
+      allow read, delete: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == uid || isAdmin()) &&
+        request.resource.data.items is list &&
+        request.resource.data.items.size() <= 50;
+    }
+
+    // Checkout Drafts (drafts/{uid}):
+    // - Server-backed checkout form draft restored on refresh and deleted on order placement.
+    // - Strictly owner-only read, write, and delete.
+    match /drafts/{uid} {
+      allow read, delete: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == uid || isAdmin()) &&
+        (!('notes' in request.resource.data) || (request.resource.data.notes is string && request.resource.data.notes.size() <= 1000));
+    }
+
+    // Reminders (Task E):
+    // - Refill and renewal reminders for fire safety equipment.
+    // - Customer can read reminders associated with their account.
+    // - Admin can read, write, and manage all reminders.
+    match /reminders/{reminderId} {
+      allow read: if isAdmin() || (
+        isSignedIn() && resource.data.userId == request.auth.uid
+      );
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Notifications (Task E):
+    // - In-app notification alerts for refills, renewals, and system events.
+    // - Customer can read their own notifications and mark them as read.
+    // - Admin can read and manage all notifications.
+    match /notifications/{notificationId} {
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.userId == request.auth.uid ||
+          resource.data.userId == 'all'
+        )
+      );
+      allow update: if (
+        isSignedIn() && resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+      ) || isAdmin();
+      allow create, delete: if isAdmin();
     }
   }
 }

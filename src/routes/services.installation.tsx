@@ -12,7 +12,7 @@ export const Route = createFileRoute("/services/installation")({
     seoHead({
       title: "Fire Safety System Installation | Sri Udharchi Enterprises",
       description:
-        "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
+        "Complete installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
       path: "/services/installation",
       jsonLd: [
         schemas.breadcrumbs([
@@ -21,9 +21,9 @@ export const Route = createFileRoute("/services/installation")({
           { name: "System Installation", path: "/services/installation" },
         ]),
         schemas.service(
-          "Turnkey Fire Safety System Installation",
+          "Complete Fire Safety System Installation",
           "Engineered installation of industrial fire hydrants, automatic sprinkler rings, diesel pump houses, FM-200 clean agent gas flooding, and intelligent detection systems.",
-          "/services/installation"
+          "/services/installation",
         ),
       ],
     }),
@@ -44,7 +44,7 @@ export function InstallationServicePage() {
                 <HardHat className="size-3.5" /> Service Pillar 02
               </div>
               <h1 className="mt-4 font-display text-4xl font-black text-foreground sm:text-5xl">
-                Turnkey Fire Safety <span className="text-primary">System Installation</span>
+                Comprehensive Fire Safety <span className="text-primary">System Installation</span>
               </h1>
               <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
                 We handle the complete execution cycle of industrial and commercial fire protection
@@ -111,7 +111,7 @@ export function InstallationServicePage() {
               },
               {
                 title: "Fire Pump House & Automation",
-                desc: "Turnkey installation of main electric driven pumps, diesel engine standby pumps, jockey pumps, and auto-start synchronized control panels.",
+                desc: "Complete installation of main electric driven pumps, diesel engine standby pumps, jockey pumps, and auto-start synchronized control panels.",
               },
               {
                 title: "Clean Agent Gas Flooding (FM-200 / Novec)",
@@ -153,7 +153,7 @@ export function InstallationServicePage() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-4">
             <a href="/contact?service=Installation">
-              <Button size="lg">Request Turnkey Installation Quote</Button>
+              <Button size="lg">Request Installation Quote</Button>
             </a>
             <a href="/services/inspection">
               <Button variant="outline" size="lg">

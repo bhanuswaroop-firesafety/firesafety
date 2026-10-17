@@ -174,14 +174,14 @@ function AboutPage() {
               </h2>
               <p className="mt-4 text-base leading-relaxed text-muted-foreground">
                 From high-hazard chemical manufacturing and shipping ports to IT parks and hospital
-                campuses, Sri Udharchi Enterprises delivers complete turnkey safety infrastructure.
+                campuses, Sri Udharchi Enterprises delivers complete integrated safety infrastructure.
               </p>
 
               <div className="mt-6 space-y-3">
                 {[
                   "Bureau of Indian Standards (BIS / ISI) certified hardware",
                   "National Fire Protection Association (NFPA) standard designs",
-                  "Turnkey supply, execution, testing, and annual maintenance",
+                  "End-to-end supply, execution, testing, and annual maintenance",
                   "Periodic refilling, hydrostatic testing & AMC guarantees",
                   "Trained, certified safety engineers & technicians",
                 ].map((item) => (

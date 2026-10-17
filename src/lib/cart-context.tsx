@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import type { ProductItem } from "./types";
+import { useAuth } from "./auth-context";
+import { subscribeCart, saveCart, clearServerCart } from "./db-service";
+import { PhoneOtpModal } from "@/components/phone-otp-modal";
 
 export interface CartItem {
   id: string;
@@ -11,7 +14,7 @@ export interface CartItem {
   unit?: string | undefined;
   image: string;
   quantity: number;
-  specs?: string[] | undefined;
+  specs?: string[] | string | undefined;
   sku?: string | undefined;
 }
 
@@ -49,16 +52,18 @@ const VALID_COUPONS: Record<string, CouponInfo> = {
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (
-    item: {
-      id?: string;
-      name: string;
-      category?: string;
-      price?: string | number;
-      unit?: string;
-      image?: string;
-      specs?: string[];
-      sku?: string;
-    },
+    item:
+      | {
+          id?: string | undefined;
+          name: string;
+          category?: string | undefined;
+          price?: string | number | undefined;
+          unit?: string | undefined;
+          image?: string | undefined;
+          specs?: string[] | string | undefined;
+          sku?: string | undefined;
+        }
+      | ProductItem,
     quantity?: number,
   ) => void;
   removeFromCart: (id: string) => void;
@@ -77,12 +82,10 @@ interface CartContextType {
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   isHydrated: boolean;
+  isCartLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
-
-const CART_STORAGE_KEY = "udharchi_cart_items_v1";
-const COUPON_STORAGE_KEY = "udharchi_cart_coupon_v1";
 
 export function parsePriceToNumber(rawPrice?: string | number): number {
   if (typeof rawPrice === "number") return rawPrice;
@@ -93,56 +96,67 @@ export function parsePriceToNumber(rawPrice?: string | number): number {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isCartLoading, setIsCartLoading] = useState(false);
 
-  // Hydrate from localStorage once on client mount
+  // Guest auth interceptor state
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  // Sync with Firestore carts/{uid} when user logs in or out
   useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const saved = localStorage.getItem(CART_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setCartItems(parsed);
-          }
-        }
-        const savedCoupon = localStorage.getItem(COUPON_STORAGE_KEY);
-        if (savedCoupon) {
-          setCouponCode(savedCoupon);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load cart from localStorage", e);
-    } finally {
+    if (!user) {
+      // Guest visitor: in-memory state only (resets on reload or logout)
+      setCartItems([]);
+      setCouponCode(null);
       setIsHydrated(true);
+      setIsCartLoading(false);
+      return;
     }
-  }, []);
 
-  // Save to localStorage only after hydration is complete
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
-    } catch (e) {
-      console.error("Failed to save cart to localStorage", e);
-    }
-  }, [cartItems, isHydrated]);
+    setIsCartLoading(true);
 
-  useEffect(() => {
-    if (!isHydrated) return;
+    const unsubscribe = subscribeCart(
+      user.uid,
+      (cartDoc) => {
+        if (cartDoc && Array.isArray(cartDoc.items)) {
+          setCartItems(cartDoc.items);
+          setCouponCode(cartDoc.couponCode || null);
+        } else {
+          setCartItems([]);
+          setCouponCode(null);
+        }
+        setIsHydrated(true);
+        setIsCartLoading(false);
+      },
+      (err) => {
+        console.error("Firestore cart load error:", err);
+        toast.error("Could not sync your cart with the server. Please check your network.");
+        setIsHydrated(true);
+        setIsCartLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  // Persist cart changes to Firestore
+  const syncToServer = async (items: CartItem[], coupon: string | null) => {
+    if (!user) return;
     try {
-      if (couponCode) {
-        localStorage.setItem(COUPON_STORAGE_KEY, couponCode);
-      } else {
-        localStorage.removeItem(COUPON_STORAGE_KEY);
-      }
-    } catch (e) {
-      console.error("Failed to save coupon to localStorage", e);
+      await saveCart(user.uid, items, coupon);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("Failed to save cart to server. " + msg);
     }
-  }, [couponCode, isHydrated]);
+  };
 
   const subtotal = useMemo(() => {
     return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -180,7 +194,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return Math.max(0, subtotal - discountAmount) + gstAmount + shippingFee;
   }, [subtotal, discountAmount, gstAmount, shippingFee]);
 
-  const addToCart: CartContextType["addToCart"] = (item, quantity = 1) => {
+  const performAddToCart = (
+    item: Parameters<CartContextType["addToCart"]>[0],
+    quantity: number,
+  ) => {
     const numericPrice = parsePriceToNumber(item.price);
     const id = item.id || `item-${item.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
     const priceDisplay =
@@ -189,19 +206,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         : `₹${numericPrice.toLocaleString("en-IN")}`;
 
     setCartItems((prev) => {
+      let updated: CartItem[];
       const existing = prev.find((i) => i.id === id);
       if (existing) {
         toast.success(`Updated quantity for ${item.name}`, {
           description: `Total quantity: ${existing.quantity + quantity}`,
         });
-        return prev.map((i) =>
-          i.id === id ? { ...i, quantity: i.quantity + quantity } : i,
-        );
+        updated = prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity + quantity } : i));
       } else {
         toast.success(`Added ${item.name} to cart`, {
           description: `${priceDisplay} ${item.unit ? `per ${item.unit}` : ""}`,
         });
-        return [
+        updated = [
           ...prev,
           {
             id,
@@ -217,9 +233,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         ];
       }
+
+      syncToServer(updated, couponCode);
+      return updated;
     });
 
     setIsCartOpen(true);
+  };
+
+  const addToCart: CartContextType["addToCart"] = (item, quantity = 1) => {
+    if (!user) {
+      // Prompt OTP login modal first for logged-out visitors
+      pendingActionRef.current = () => {
+        performAddToCart(item, quantity);
+      };
+      setIsAuthModalOpen(true);
+      toast.info("Please sign in with mobile OTP to save items to your verified account.");
+      return;
+    }
+
+    performAddToCart(item, quantity);
   };
 
   const removeFromCart = (id: string) => {
@@ -228,13 +261,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (removedItem) {
         toast.info(`Removed ${removedItem.name} from cart`);
       }
-      return prev.filter((i) => i.id !== id);
+      const updated = prev.filter((i) => i.id !== id);
+      syncToServer(updated, couponCode);
+      return updated;
     });
   };
 
   const updateQuantity = (id: string, delta: number) => {
-    setCartItems((prev) =>
-      prev
+    setCartItems((prev) => {
+      const updated = prev
         .map((item) => {
           if (item.id === id) {
             const newQty = item.quantity + delta;
@@ -242,13 +277,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
           return item;
         })
-        .filter(Boolean) as CartItem[],
-    );
+        .filter(Boolean) as CartItem[];
+
+      syncToServer(updated, couponCode);
+      return updated;
+    });
   };
 
   const clearCart = () => {
     setCartItems([]);
     setCouponCode(null);
+    if (user) {
+      clearServerCart(user.uid).catch((err) => {
+        console.warn("Could not clear server cart:", err);
+      });
+    }
   };
 
   const applyCoupon = (code: string) => {
@@ -272,6 +315,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     setCouponCode(normalized);
+    syncToServer(cartItems, normalized);
+
     toast.success(`Coupon ${normalized} applied!`, {
       description: found.description,
     });
@@ -280,7 +325,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeCoupon = () => {
     setCouponCode(null);
+    syncToServer(cartItems, null);
     toast.info("Coupon removed");
+  };
+
+  const handleAuthModalSuccess = () => {
+    setIsAuthModalOpen(false);
+    if (pendingActionRef.current) {
+      const action = pendingActionRef.current;
+      pendingActionRef.current = null;
+      // Execute pending action after state update
+      setTimeout(() => {
+        action();
+      }, 300);
+    }
   };
 
   return (
@@ -304,9 +362,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         isCartOpen,
         setIsCartOpen,
         isHydrated,
+        isCartLoading,
       }}
     >
       {children}
+
+      {/* Guest Login Modal triggered on Add to Cart */}
+      <PhoneOtpModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          pendingActionRef.current = null;
+        }}
+        onSuccess={handleAuthModalSuccess}
+        title="Sign In to Add to Cart"
+        subtitle="Verify your mobile number via real SMS OTP to store equipment in your verified server account"
+      />
     </CartContext.Provider>
   );
 }

@@ -23,7 +23,7 @@ export const Route = createFileRoute("/services/maintenance")({
         schemas.service(
           "Fire Fighting AMC & Preventive Maintenance",
           "Comprehensive annual maintenance contracts (AMC), periodic extinguisher refilling, diesel booster pump test runs, gasket care, and 24/7 emergency dispatch.",
-          "/services/maintenance"
+          "/services/maintenance",
         ),
       ],
     }),

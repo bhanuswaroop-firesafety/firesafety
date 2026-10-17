@@ -28,4 +28,3 @@ export function SignupPage() {
 
   return <LoginPage initialMode="signup" />;
 }
-

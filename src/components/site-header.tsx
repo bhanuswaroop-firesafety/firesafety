@@ -15,12 +15,22 @@ import {
   Boxes,
   Truck,
   MessageCircle,
+  Smartphone,
+  Instagram,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
+import {
+  subscribeSocialSettings,
+  DEFAULT_SOCIAL_SETTINGS,
+  subscribeContactSettings,
+  DEFAULT_CONTACT_SETTINGS,
+} from "@/lib/db-service";
+import type { SocialSettings, ContactSettings } from "@/lib/types";
 import { BrandLogo } from "./brand-logo";
 import { Button } from "./button";
+import { PhoneOtpModal } from "./phone-otp-modal";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -57,6 +67,25 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [servicesDropdown, setServicesDropdown] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(true);
+  const [isPhoneOtpModalOpen, setIsPhoneOtpModalOpen] = useState(false);
+  const [social, setSocial] = useState<SocialSettings>(DEFAULT_SOCIAL_SETTINGS);
+  const [contact, setContact] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
+
+  useEffect(() => {
+    const unsubSocial = subscribeSocialSettings((settings) => setSocial(settings));
+    const unsubContact = subscribeContactSettings((settings) => setContact(settings));
+    return () => {
+      unsubSocial();
+      unsubContact();
+    };
+  }, []);
+
+  const hasInstagram = Boolean(
+    social.instagramUrl &&
+      social.instagramUrl.trim() &&
+      !social.instagramUrl.includes("[PASTE")
+  );
+  const instagramHref = hasInstagram ? social.instagramUrl.trim() : "";
 
   useEffect(() => {
     if (!open) return;
@@ -83,19 +112,23 @@ export function SiteHeader() {
               <span className="sm:hidden">24/7 Hotline:</span>
             </div>
             <a
-              href="tel:+918639858221"
+              href={`tel:${contact.supportPhone.replace(/\s+/g, "")}`}
               className="font-mono font-bold text-white hover:text-brand-warm transition-colors flex items-center gap-1 shrink-0"
             >
               <Phone className="size-3 text-emerald-400 sm:hidden" />
-              +91 8639858221
+              {contact.supportPhone}
             </a>
-            <span className="text-white/40 hidden sm:inline">•</span>
-            <a
-              href="tel:+919030609171"
-              className="font-mono hover:text-brand-warm transition-colors hidden md:inline"
-            >
-              +91 9030609171
-            </a>
+            {contact.secondaryPhone && (
+              <>
+                <span className="text-white/40 hidden sm:inline">•</span>
+                <a
+                  href={`tel:${contact.secondaryPhone.replace(/\s+/g, "")}`}
+                  className="font-mono hover:text-brand-warm transition-colors hidden md:inline"
+                >
+                  {contact.secondaryPhone}
+                </a>
+              </>
+            )}
             <span className="text-white/40 hidden md:inline">•</span>
             <span className="text-white/70 truncate hidden sm:inline">
               NBC 2016 & IS Certified Industrial Contractor • Pan-India Logistics
@@ -122,6 +155,21 @@ export function SiteHeader() {
             <a href="/contact" className="hover:text-brand-warm transition-colors font-semibold">
               Emergency NOC Inquiry
             </a>
+            {hasInstagram && (
+              <>
+                <span className="text-white/30">|</span>
+                <a
+                  href={instagramHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-pink-400 transition-colors flex items-center gap-1 text-[11px]"
+                  title="Official Instagram Profile"
+                >
+                  <Instagram className="size-3 text-pink-400" />
+                  <span>Instagram</span>
+                </a>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -260,6 +308,14 @@ export function SiteHeader() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsPhoneOtpModalOpen(true)}
+                    className="text-xs font-semibold text-foreground hover:text-primary gap-1 px-2.5"
+                  >
+                    <Smartphone className="size-3.5 text-primary" /> Phone OTP
+                  </Button>
                   <a href="/login">
                     <Button
                       variant="ghost"
@@ -528,32 +584,44 @@ export function SiteHeader() {
                       )}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <a href="/login" onClick={() => setOpen(false)}>
-                        <Button variant="outline" className="w-full justify-center text-xs">
-                          <User className="size-3.5" /> Sign In
-                        </Button>
-                      </a>
-                      <a href="/admin" onClick={() => setOpen(false)}>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-center text-xs border-primary/40 text-primary"
-                        >
-                          <Lock className="size-3.5" /> Admin
-                        </Button>
-                      </a>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setOpen(false);
+                          setIsPhoneOtpModalOpen(true);
+                        }}
+                        className="w-full justify-center text-xs gap-1.5 border-primary/40 text-primary font-bold"
+                      >
+                        <Smartphone className="size-3.5 text-primary" /> Login with Phone OTP
+                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <a href="/login" onClick={() => setOpen(false)}>
+                          <Button variant="outline" className="w-full justify-center text-xs">
+                            <User className="size-3.5" /> Sign In
+                          </Button>
+                        </a>
+                        <a href="/admin" onClick={() => setOpen(false)}>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-center text-xs border-primary/40 text-primary"
+                          >
+                            <Lock className="size-3.5" /> Admin
+                          </Button>
+                        </a>
+                      </div>
                     </div>
                   )}
 
                   {/* Hotlines */}
                   <div className="grid grid-cols-2 gap-2">
-                    <a href="tel:+918639858221">
-                      <Button className="w-full text-xs">
-                        <Phone className="size-3.5" /> 8639858221
+                    <a href={`tel:${contact.supportPhone.replace(/\s+/g, "")}`}>
+                      <Button className="w-full text-xs truncate">
+                        <Phone className="size-3.5 shrink-0" /> {contact.supportPhone}
                       </Button>
                     </a>
                     <a
-                      href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20have%20an%20urgent%20fire%20safety%20inquiry."
+                      href={`https://wa.me/${contact.supportPhone.replace(/\D+/g, "")}?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20have%20an%20urgent%20fire%20safety%20inquiry.`}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -566,6 +634,24 @@ export function SiteHeader() {
                     </a>
                   </div>
 
+                  {/* Official Instagram Profile */}
+                  {hasInstagram && (
+                    <a
+                      href={instagramHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full text-xs border-pink-500/30 text-pink-600 hover:bg-pink-500/10 gap-2 font-semibold"
+                      >
+                        <Instagram className="size-3.5 text-pink-600" />
+                        <span>Follow on Instagram</span>
+                      </Button>
+                    </a>
+                  )}
+
                   {/* Trust Footer */}
                   <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-muted-foreground pt-1">
                     <ShieldCheck className="size-3 text-primary" />
@@ -576,6 +662,12 @@ export function SiteHeader() {
             </>
           )}
         </AnimatePresence>
+
+        {/* Global Phone OTP Login Modal */}
+        <PhoneOtpModal
+          isOpen={isPhoneOtpModalOpen}
+          onClose={() => setIsPhoneOtpModalOpen(false)}
+        />
       </header>
     </>
   );

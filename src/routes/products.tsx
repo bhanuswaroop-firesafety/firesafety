@@ -4,7 +4,19 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SectionHeading } from "@/components/section-heading";
 import { Button } from "@/components/button";
-import { ArrowRight, Check, Phone, Search, ShieldCheck, X, Package, ShoppingBag, Zap, ShoppingCart } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Eye,
+  Phone,
+  Search,
+  ShieldCheck,
+  X,
+  Package,
+  ShoppingBag,
+  Zap,
+  ShoppingCart,
+} from "lucide-react";
 import { subscribeProducts, CATEGORIES } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
@@ -15,7 +27,8 @@ import { seoHead, schemas } from "@/lib/seo";
 export const Route = createFileRoute("/products")({
   head: () =>
     seoHead({
-      title: "Fire Safety Products & Equipment | Buy Certified Safety Gear - Sri Udharchi Enterprises",
+      title:
+        "Fire Safety Products & Equipment | Buy Certified Safety Gear - Sri Udharchi Enterprises",
       description:
         "Buy ISI/BIS certified fire safety products and industrial safety gear online. Explore ABC & CO2 fire extinguishers, fire hydrant systems, diesel fire pumps, PPE kits, CCTV, and emergency safety products at Sri Udharchi Enterprises.",
       path: "/products",
@@ -43,9 +56,9 @@ export const Route = createFileRoute("/products")({
             name: p.name,
             category: p.category,
             description: p.description,
-            price: p.price,
+            price: typeof p.price === "number" ? p.price : 0,
             image: p.image,
-          }))
+          })),
         ),
       ],
     }),
@@ -126,7 +139,9 @@ function ProductsPage() {
             Certified Fire Safety Products & <span className="text-primary">Safety Equipment</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Buy certified fire safety products and industrial protective equipment. Every safety product supplied by Sri Udharchi Enterprises meets strict national (BIS/ISI/NBC) and international (NFPA/CE) compliance benchmarks.
+            Buy certified fire safety products and industrial protective equipment. Every safety
+            product supplied by Sri Udharchi Enterprises meets strict national (BIS/ISI/NBC) and
+            international (NFPA/CE) compliance benchmarks.
           </p>
 
           {/* Search bar & Categories Pill Navigation */}
@@ -206,7 +221,10 @@ function ProductsPage() {
                   key={prod.id || prod.name}
                   className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-xl"
                 >
-                  <div className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted">
+                  <a
+                    href={`/products/${prod.id || prod.sku || prod.name}`}
+                    className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted block cursor-pointer"
+                  >
                     <img
                       src={prod.image}
                       alt={`${prod.name} - Certified Fire Safety Product | Sri Udharchi Enterprises`}
@@ -219,12 +237,17 @@ function ProductsPage() {
                     <div className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-lg sm:rounded-xl bg-background/90 p-1 sm:p-1.5 shadow-md backdrop-blur-md border border-border/60 transition-transform duration-300 group-hover:scale-110">
                       <NanoIcon name={getCategoryIcon(prod.category)} size="sm" />
                     </div>
-                  </div>
+                  </a>
 
                   <div className="flex flex-1 flex-col p-3 sm:p-6">
-                    <h3 className="font-display text-xs sm:text-xl font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
-                      {prod.name}
-                    </h3>
+                    <a
+                      href={`/products/${prod.id || prod.sku || prod.name}`}
+                      className="group-hover:text-primary transition-colors"
+                    >
+                      <h3 className="font-display text-xs sm:text-xl font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
+                        {prod.name}
+                      </h3>
+                    </a>
                     <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground line-clamp-2 hidden sm:block">
                       {prod.description}
                     </p>
@@ -249,7 +272,9 @@ function ProductsPage() {
                               {prod.price.startsWith("₹") ? prod.price : `₹${prod.price}`}
                             </span>
                             {prod.unit && (
-                              <span className="text-[10px] sm:text-xs text-muted-foreground">/ {prod.unit}</span>
+                              <span className="text-[10px] sm:text-xs text-muted-foreground">
+                                / {prod.unit}
+                              </span>
                             )}
                           </div>
                         ) : (
@@ -277,7 +302,8 @@ function ProductsPage() {
                           onClick={() => addToCart(prod, 1)}
                           className="h-8 sm:h-9 w-full justify-center px-1.5 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all"
                         >
-                          <ShoppingBag className="size-3 sm:size-3.5 mr-1" /> Add<span className="hidden sm:inline">&nbsp;to Cart</span>
+                          <ShoppingBag className="size-3 sm:size-3.5 mr-1" /> Add
+                          <span className="hidden sm:inline">&nbsp;to Cart</span>
                         </Button>
                         <Button
                           size="sm"
@@ -290,12 +316,21 @@ function ProductsPage() {
                           <Zap className="size-3 sm:size-3.5 mr-1" /> Buy Now
                         </Button>
                       </div>
-                      <a
-                        href={`/contact?product=${encodeURIComponent(prod.name)}`}
-                        className="hidden sm:block text-center text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors py-0.5"
-                      >
-                        Request Custom Bulk Specification
-                      </a>
+
+                      <div className="flex items-center justify-between border-t border-border/60 pt-2 text-[11px]">
+                        <a
+                          href={`/products/${prod.id || prod.sku || prod.name}`}
+                          className="inline-flex items-center gap-1 font-bold text-primary hover:underline py-0.5"
+                        >
+                          <Eye className="size-3.5" /> View Details
+                        </a>
+                        <a
+                          href={`/contact?product=${encodeURIComponent(prod.name)}`}
+                          className="hidden sm:inline-block text-[11px] text-muted-foreground hover:text-primary transition-colors py-0.5"
+                        >
+                          Bulk Specs
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -320,7 +355,9 @@ function ProductsPage() {
               </span>
             </div>
             <div className="text-left pr-1">
-              <span className="block text-xs font-bold leading-tight">View Cart ({totalItems})</span>
+              <span className="block text-xs font-bold leading-tight">
+                View Cart ({totalItems})
+              </span>
               <span className="block text-[11px] font-semibold text-white/90">
                 ₹{totalAmount.toLocaleString("en-IN")}
               </span>

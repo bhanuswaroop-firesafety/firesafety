@@ -12,6 +12,7 @@ import { MotionConfig } from "motion/react";
 import { AuthProvider } from "../lib/auth-context";
 import { CartProvider } from "../lib/cart-context";
 import { CartDrawer } from "../components/cart-drawer";
+import { CompleteProfileModal } from "../components/complete-profile-modal";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -86,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Leading distributor of certified fire safety products and turnkey fire protection engineering in Andhra Pradesh & India. Buy fire extinguishers, hydrants, fire pumps, and industrial PPE gear.",
+          "Leading distributor of certified fire safety products and comprehensive fire protection engineering in Andhra Pradesh & India. Buy fire extinguishers, hydrants, fire pumps, and industrial PPE gear.",
       },
       {
         name: "keywords",
@@ -103,9 +104,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Turnkey fire fighting systems, statutory inspections, hydro-testing, AMC maintenance, and certified industrial safety supplies.",
+          "Complete fire fighting systems, statutory inspections, hydro-testing, AMC maintenance, and certified industrial safety supplies.",
       },
-      { property: "og:image", content: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png" },
+      {
+        property: "og:image",
+        content: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png",
+      },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "en_IN" },
       { name: "author", content: "Sri Udharchi Enterprises" },
@@ -114,9 +118,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "Turnkey fire fighting systems, statutory inspections, hydro-testing, and certified industrial safety equipment.",
+          "Complete fire fighting systems, statutory inspections, hydro-testing, and certified industrial safety equipment.",
       },
-      { name: "twitter:image", content: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png" },
+      {
+        name: "twitter:image",
+        content: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png",
+      },
     ],
     links: [
       { rel: "canonical", href: "https://sriudharchi.com/" },
@@ -156,7 +163,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               name: "Sri Udharchi Enterprises",
               image: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png",
               description:
-                "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and turnkey AMC maintenance in Andhra Pradesh and Pan-India.",
+                "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and comprehensive AMC maintenance in Andhra Pradesh and Pan-India.",
               telephone: "+918639858221",
               email: "sriudharchienterprises@gmail.com",
               url: "https://sriudharchi.com",
@@ -176,14 +183,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               openingHoursSpecification: [
                 {
                   "@type": "OpeningHoursSpecification",
-                  dayOfWeek: [
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                  ],
+                  dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
                   opens: "09:00",
                   closes: "19:00",
                 },
@@ -233,6 +233,7 @@ function RootComponent() {
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
             <CartDrawer />
+            <CompleteProfileModal />
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>

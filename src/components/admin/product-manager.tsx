@@ -198,6 +198,7 @@ export function ProductManager({
       image: extinguisherImg,
       inStock: true,
       featured: false,
+      renewalMonths: undefined,
     });
     setCurrentSpec("");
     setIsModalOpen(true);
@@ -219,6 +220,7 @@ export function ProductManager({
       image: product.image,
       inStock: product.inStock !== false,
       featured: !!product.featured,
+      renewalMonths: product.renewalMonths,
     });
     setCurrentSpec("");
     setIsModalOpen(true);
@@ -284,6 +286,7 @@ export function ProductManager({
         image: formData.image || extinguisherImg,
         inStock: formData.inStock ?? true,
         featured: formData.featured ?? false,
+        renewalMonths: formData.renewalMonths || undefined,
       };
 
       if (editingProduct?.id) {
@@ -717,11 +720,20 @@ export function ProductManager({
                     {/* Action buttons */}
                     <td className="py-3 pl-3 pr-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
+                        <a
+                          href={`/products/${prod.id || prod.sku}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-primary"
+                          title="View Live Product Page"
+                        >
+                          <ExternalLink className="size-3.5" />
+                        </a>
                         <button
                           type="button"
                           onClick={() => setPreviewProduct(prod)}
                           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title="Preview Product"
+                          title="Quick Preview"
                         >
                           <Eye className="size-3.5" />
                         </button>
@@ -828,6 +840,15 @@ export function ProductManager({
                   </div>
 
                   <div className="flex items-center gap-1">
+                    <a
+                      href={`/products/${prod.id || prod.sku}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg border border-border p-1.5 text-muted-foreground hover:border-primary hover:text-primary"
+                      title="View Live Product Page"
+                    >
+                      <ExternalLink className="size-3.5" />
+                    </a>
                     <button
                       type="button"
                       onClick={() => openEditModal(prod)}
@@ -1100,6 +1121,33 @@ export function ProductManager({
                 </div>
               </div>
 
+              {/* Task E: Refill / Renewal Interval */}
+              <div className="border-t border-border pt-3">
+                <label className="text-xs font-semibold text-foreground block">
+                  Refill / Maintenance Renewal Cycle (AMC Alert)
+                </label>
+                <p className="text-[11px] text-muted-foreground mb-1.5">
+                  Periodic alert interval (3, 6, 9, or 12 months) automatically scheduled when equipment is delivered.
+                </p>
+                <select
+                  value={formData.renewalMonths ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({
+                      ...formData,
+                      renewalMonths: val ? (Number(val) as 3 | 6 | 9 | 12) : undefined,
+                    });
+                  }}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="">No reminder (One-time equipment or consumable)</option>
+                  <option value="3">Every 3 Months (Quarterly inspection)</option>
+                  <option value="6">Every 6 Months (Semi-annual refill/recharge)</option>
+                  <option value="9">Every 9 Months (Periodic maintenance)</option>
+                  <option value="12">Every 12 Months (Annual hydro-test & refill)</option>
+                </select>
+              </div>
+
               {/* Flags: In Stock & Featured */}
               <div className="flex flex-wrap items-center gap-6 border-t border-border pt-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -1341,7 +1389,16 @@ export function ProductManager({
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex items-center justify-between gap-2">
+              <a
+                href={`/products/${previewProduct.id || previewProduct.sku}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+              >
+                <ExternalLink className="size-3.5" />
+                <span>View Live Product Page</span>
+              </a>
               <Button
                 variant="outline"
                 size="sm"

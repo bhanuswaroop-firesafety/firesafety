@@ -31,10 +31,7 @@ function measure(
 ) {
   const safeW = Math.max(width, 320);
   const safeH = Math.max(height, 360);
-  const h = Math.min(
-    (tile / 100) * safeH,
-    ((MAX_WIDTH / 100) * safeW) / aspect,
-  );
+  const h = Math.min((tile / 100) * safeH, ((MAX_WIDTH / 100) * safeW) / aspect);
   const radius = safeW * arc(bend);
   if (!(h > 0) || !(radius > 0))
     return { columns: 4, sweep: 30, unit: 5, limit: 30, tileH: 160, radius: 600 };
@@ -189,9 +186,13 @@ export function TiltedGridHero({
         }}
       >
         {Array.from({ length: columns }, (_, t) => {
-          const first = ((columns - 1 - t) % Math.max(images.length, 1) + Math.max(images.length, 1)) % Math.max(images.length, 1);
+          const first =
+            (((columns - 1 - t) % Math.max(images.length, 1)) + Math.max(images.length, 1)) %
+            Math.max(images.length, 1);
           const currentIdx = shown[t] ?? first;
-          const safeIdx = ((currentIdx % Math.max(images.length, 1)) + Math.max(images.length, 1)) % Math.max(images.length, 1);
+          const safeIdx =
+            ((currentIdx % Math.max(images.length, 1)) + Math.max(images.length, 1)) %
+            Math.max(images.length, 1);
           const img = images[safeIdx];
 
           return (
@@ -226,9 +227,7 @@ export function TiltedGridHero({
                     left: `${+(((aspectRatio - share) / 2) * tileH).toFixed(2)}px`,
                     width: `${+(k === SLICES - 1 ? sliceW : sliceW + 1.2).toFixed(2)}px`,
                     height: `${+tileH.toFixed(2)}px`,
-                    transform: turn(
-                      (aspectRatio / 2 - (k + 0.5) * share) * unit,
-                    ),
+                    transform: turn((aspectRatio / 2 - (k + 0.5) * share) * unit),
                   }}
                 >
                   {img?.src ? (

@@ -129,20 +129,12 @@ export function CartDrawer() {
                   gear.
                 </p>
                 <div className="mt-6 w-full space-y-2">
-                  <a
-                    href="/products"
-                    onClick={() => setIsCartOpen(false)}
-                    className="block w-full"
-                  >
+                  <a href="/products" onClick={() => setIsCartOpen(false)} className="block w-full">
                     <Button className="w-full justify-center">
                       Browse Equipment Catalog <ArrowRight className="size-4" />
                     </Button>
                   </a>
-                  <a
-                    href="/contact"
-                    onClick={() => setIsCartOpen(false)}
-                    className="block w-full"
-                  >
+                  <a href="/contact" onClick={() => setIsCartOpen(false)} className="block w-full">
                     <Button variant="outline" className="w-full justify-center">
                       Request Custom Quotation
                     </Button>
@@ -153,19 +145,31 @@ export function CartDrawer() {
               <div className="flex-1 overflow-y-auto px-5 py-4 divide-y divide-border/60">
                 {cartItems.map((item) => (
                   <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex gap-3.5">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      referrerPolicy="no-referrer"
-                      className="size-20 shrink-0 rounded-lg object-cover border border-border bg-muted"
-                    />
+                    <a
+                      href={`/products/${item.id}`}
+                      onClick={() => setIsCartOpen(false)}
+                      className="shrink-0"
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        referrerPolicy="no-referrer"
+                        className="size-20 shrink-0 rounded-lg object-cover border border-border bg-muted hover:opacity-90 transition-opacity"
+                      />
+                    </a>
 
                     <div className="flex flex-1 flex-col justify-between min-w-0">
                       <div>
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-xs font-bold text-foreground line-clamp-2 leading-tight">
-                            {item.name}
-                          </h4>
+                          <a
+                            href={`/products/${item.id}`}
+                            onClick={() => setIsCartOpen(false)}
+                            className="hover:text-primary transition-colors min-w-0"
+                          >
+                            <h4 className="text-xs font-bold text-foreground line-clamp-2 leading-tight">
+                              {item.name}
+                            </h4>
+                          </a>
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
@@ -190,9 +194,7 @@ export function CartDrawer() {
                           >
                             <Minus className="size-3" />
                           </button>
-                          <span className="w-7 text-center text-xs font-bold">
-                            {item.quantity}
-                          </span>
+                          <span className="w-7 text-center text-xs font-bold">{item.quantity}</span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
@@ -251,7 +253,7 @@ export function CartDrawer() {
                   </div>
 
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Industrial Logistics</span>
+                    <span>Standard Delivery (5-7 days)</span>
                     <span>
                       {shippingFee === 0 ? (
                         <span className="font-bold text-emerald-600">FREE</span>
@@ -277,21 +279,13 @@ export function CartDrawer() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <a
-                    href="/cart"
-                    onClick={() => setIsCartOpen(false)}
-                    className="w-full"
-                  >
+                  <a href="/cart" onClick={() => setIsCartOpen(false)} className="w-full">
                     <Button variant="outline" className="w-full justify-center text-xs">
                       View Cart
                     </Button>
                   </a>
 
-                  <a
-                    href="/checkout"
-                    onClick={() => setIsCartOpen(false)}
-                    className="w-full"
-                  >
+                  <a href="/checkout" onClick={() => setIsCartOpen(false)} className="w-full">
                     <Button className="w-full justify-center text-xs">
                       Checkout <ArrowRight className="size-3.5" />
                     </Button>

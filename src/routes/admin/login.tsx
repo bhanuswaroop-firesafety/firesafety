@@ -1,8 +1,16 @@
-'use client';
+"use client";
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
-import { Eye, EyeOff, ArrowLeft, RefreshCw, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  RefreshCw,
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { useAuth, SUPER_ADMIN_EMAILS } from "@/lib/auth-context";
 import { isEmailAuthorizedAdmin } from "@/lib/db-service";
 import {
@@ -41,26 +49,12 @@ export function AdminLoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Restore remembered email on initial load
+  // Default hint for administrator
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const rememberedEmail = localStorage.getItem("sue_admin_remember_email");
-        if (rememberedEmail) {
-          setFormData((prev) => ({
-            ...prev,
-            email: rememberedEmail,
-            rememberMe: true,
-          }));
-        } else {
-          // Helpful default hint for Bhanu
-          setFormData((prev) => ({
-            ...prev,
-            email: "bhanuswaroop04@gmail.com",
-          }));
-        }
-      } catch {}
-    }
+    setFormData((prev) => ({
+      ...prev,
+      email: "bhanuswaroop04@gmail.com",
+    }));
   }, []);
 
   // Redirect to admin dashboard if already signed in with admin privileges
@@ -119,16 +113,7 @@ export function AdminLoginPage() {
           return;
         }
 
-        // Save email preference if rememberMe is enabled
-        if (typeof window !== "undefined") {
-          try {
-            if (formData.rememberMe) {
-              localStorage.setItem("sue_admin_remember_email", targetEmail);
-            } else {
-              localStorage.removeItem("sue_admin_remember_email");
-            }
-          } catch {}
-        }
+
 
         // Successfully authenticated! Navigate to /admin
         navigate({ to: "/admin" });
@@ -254,7 +239,8 @@ export function AdminLoginPage() {
             Sri Udharchi Enterprises
           </h2>
           <p className="text-xs text-slate-300 max-w-sm mt-0.5 leading-relaxed drop-shadow">
-            Authorized administrative access for real-time fire safety catalog, customer lead management, and live order tracking.
+            Authorized administrative access for real-time fire safety catalog, customer lead
+            management, and live order tracking.
           </p>
         </div>
       </div>
@@ -266,9 +252,7 @@ export function AdminLoginPage() {
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider mb-3">
               <span>Admin Portal</span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
-              Welcome Back
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Welcome Back</h1>
             <p className="text-gray-600 text-sm">
               Sri Udharchi Enterprises Administration &middot;{" "}
               <button
@@ -300,7 +284,10 @@ export function AdminLoginPage() {
           <form onSubmit={handleEmailSubmit} className="space-y-5">
             {/* Email Address */}
             <div>
-              <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label
+                htmlFor="admin-email"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
                 Email Address
               </label>
               <input
@@ -318,7 +305,10 @@ export function AdminLoginPage() {
 
             {/* Password */}
             <div>
-              <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label
+                htmlFor="admin-password"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
                 Password
               </label>
               <div className="relative">
@@ -339,11 +329,7 @@ export function AdminLoginPage() {
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
             </div>
@@ -392,9 +378,7 @@ export function AdminLoginPage() {
                 <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="px-3 bg-white text-gray-500 font-semibold tracking-wider">
-                  or
-                </span>
+                <span className="px-3 bg-white text-gray-500 font-semibold tracking-wider">or</span>
               </div>
             </div>
 
@@ -432,7 +416,9 @@ export function AdminLoginPage() {
             {/* Administrator Security Note */}
             <div className="pt-2 text-center">
               <p className="text-[11px] text-gray-500 leading-relaxed">
-                Super Administrator: <span className="font-semibold text-gray-700">bhanuswaroop04@gmail.com</span> &amp; Authorized Personnel
+                Super Administrator:{" "}
+                <span className="font-semibold text-gray-700">bhanuswaroop04@gmail.com</span> &amp;
+                Authorized Personnel
                 <br />
                 Strict role-based access control enforced via Cloud Firestore security rules.
               </p>

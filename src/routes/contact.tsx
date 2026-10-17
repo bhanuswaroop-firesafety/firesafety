@@ -1,9 +1,17 @@
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
 import { ContactForm } from "@/components/contact-form";
-import { Clock, Mail, MapPin, Phone, PhoneCall, ShieldCheck } from "lucide-react";
+import { Clock, Mail, MapPin, Phone, PhoneCall, ShieldCheck, Instagram } from "lucide-react";
+import {
+  subscribeSocialSettings,
+  DEFAULT_SOCIAL_SETTINGS,
+  subscribeContactSettings,
+  DEFAULT_CONTACT_SETTINGS,
+} from "@/lib/db-service";
+import type { SocialSettings, ContactSettings } from "@/lib/types";
 
 import { seoHead, schemas } from "@/lib/seo";
 
@@ -25,7 +33,7 @@ export const Route = createFileRoute("/contact")({
     seoHead({
       title: "Contact Us & Request Quote | Sri Udharchi Enterprises",
       description:
-        "Get in touch with Sri Udharchi Enterprises for fire safety audits, equipment quotes, turnkey installation estimates, and 24/7 emergency support.",
+        "Get in touch with Sri Udharchi Enterprises for fire safety audits, equipment quotes, complete installation estimates, and 24/7 emergency support.",
       path: "/contact",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },
@@ -39,6 +47,24 @@ function ContactPage() {
   const { service, product } = Route.useSearch();
   const initialService =
     service || (product ? "Certified PPE & Safety Equipment Supply" : undefined);
+  const [social, setSocial] = useState<SocialSettings>(DEFAULT_SOCIAL_SETTINGS);
+  const [contact, setContact] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
+
+  useEffect(() => {
+    const unsubSocial = subscribeSocialSettings((settings) => setSocial(settings));
+    const unsubContact = subscribeContactSettings((settings) => setContact(settings));
+    return () => {
+      unsubSocial();
+      unsubContact();
+    };
+  }, []);
+
+  const hasInstagram = Boolean(
+    social.instagramUrl &&
+      social.instagramUrl.trim() &&
+      !social.instagramUrl.includes("[PASTE")
+  );
+  const instagramHref = hasInstagram ? social.instagramUrl.trim() : "";
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
@@ -53,7 +79,7 @@ function ContactPage() {
             Get in Touch with Our <span className="text-primary">Safety Engineers</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Whether you need a full turnkey fire system quote, emergency cylinder refilling, or an
+            Whether you need a complete fire system quote, emergency cylinder refilling, or an
             expert safety audit, our team is ready to assist.
           </p>
         </div>
@@ -78,16 +104,18 @@ function ContactPage() {
                   urgent inspection requirements.
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <a href="tel:+918639858221" className="w-full sm:w-auto">
+                  <a href={`tel:${contact.supportPhone.replace(/\s+/g, "")}`} className="w-full sm:w-auto">
                     <Button size="lg" className="w-full">
-                      <Phone className="size-4" /> Call +91 8639858221
+                      <Phone className="size-4" /> Call {contact.supportPhone}
                     </Button>
                   </a>
-                  <a href="tel:+919030609171" className="w-full sm:w-auto">
-                    <Button size="lg" variant="outline" className="w-full">
-                      <Phone className="size-4" /> Call +91 9030609171
-                    </Button>
-                  </a>
+                  {contact.secondaryPhone && (
+                    <a href={`tel:${contact.secondaryPhone.replace(/\s+/g, "")}`} className="w-full sm:w-auto">
+                      <Button size="lg" variant="outline" className="w-full">
+                        <Phone className="size-4" /> Call {contact.secondaryPhone}
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -100,10 +128,10 @@ function ContactPage() {
                     Email Inquiries
                   </h3>
                   <a
-                    href="mailto:sriudharchienterprises@gmail.com"
+                    href={`mailto:${contact.supportEmail}`}
                     className="mt-2 block text-xs font-medium text-muted-foreground hover:text-primary"
                   >
-                    sriudharchienterprises@gmail.com
+                    {contact.supportEmail}
                   </a>
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Responses within 2 business hours
@@ -133,10 +161,10 @@ function ContactPage() {
                 <h3 className="font-display text-base font-bold text-foreground">
                   Our Office & Supply Hub
                 </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
                   Sri Udharchi Enterprises
                   <br />
-                  H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241
+                  {contact.address}
                 </p>
                 <div className="mt-3">
                   <a
@@ -152,6 +180,32 @@ function ContactPage() {
                   Serving clients across Andhra Pradesh, Telangana, Odisha, and Pan-India.
                 </p>
               </div>
+
+              {/* Instagram Channel Card */}
+              {hasInstagram && (
+                <div className="rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/5 via-card to-card p-6 shadow-sm">
+                  <div className="mb-3 inline-flex size-10 items-center justify-center rounded-lg bg-pink-500/10 text-pink-600">
+                    <Instagram className="size-5" />
+                  </div>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    Official Instagram Profile
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    Follow us for real on-site safety installations, equipment demonstrations, and emergency compliance advisories.
+                  </p>
+                  <div className="mt-3">
+                    <a
+                      href={instagramHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-xs font-bold text-pink-600 hover:text-pink-700 hover:underline gap-1.5"
+                    >
+                      <span>Follow @sriudharchienterprises</span>
+                      <span>→</span>
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Quote Request Form */}

@@ -26,7 +26,10 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminLeadsRouteImport } from './routes/admin/leads'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as ProductProductIdRouteImport } from './routes/product_.$productId'
+import { Route as ProductsProductIdRouteImport } from './routes/products_.$productId'
 import { Route as ServicesIndexRouteImport } from './routes/services.index'
 import { Route as ServicesConsultationRouteImport } from './routes/services.consultation'
 import { Route as ServicesEquipmentSupplyRouteImport } from './routes/services.equipment-supply'
@@ -119,9 +122,24 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLeadsRoute = AdminLeadsRouteImport.update({
+  id: '/admin/leads',
+  path: '/admin/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductProductIdRoute = ProductProductIdRouteImport.update({
+  id: '/product_/$productId',
+  path: '/product/$productId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
+  id: '/products_/$productId',
+  path: '/products/$productId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesIndexRoute = ServicesIndexRouteImport.update({
@@ -172,7 +190,10 @@ export interface FileRoutesByFullPath {
   '/products': typeof ProductsRoute
   '/projects': typeof ProjectsRoute
   '/signup': typeof SignupRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/product/$productId': typeof ProductProductIdRoute
+  '/products/$productId': typeof ProductsProductIdRoute
   '/services/consultation': typeof ServicesConsultationRoute
   '/services/equipment-supply': typeof ServicesEquipmentSupplyRoute
   '/services/inspection': typeof ServicesInspectionRoute
@@ -198,7 +219,10 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRoute
   '/projects': typeof ProjectsRoute
   '/signup': typeof SignupRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/product/$productId': typeof ProductProductIdRoute
+  '/products/$productId': typeof ProductsProductIdRoute
   '/services/consultation': typeof ServicesConsultationRoute
   '/services/equipment-supply': typeof ServicesEquipmentSupplyRoute
   '/services/inspection': typeof ServicesInspectionRoute
@@ -225,7 +249,10 @@ export interface FileRoutesById {
   '/products': typeof ProductsRoute
   '/projects': typeof ProjectsRoute
   '/signup': typeof SignupRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/product_/$productId': typeof ProductProductIdRoute
+  '/products_/$productId': typeof ProductsProductIdRoute
   '/services/consultation': typeof ServicesConsultationRoute
   '/services/equipment-supply': typeof ServicesEquipmentSupplyRoute
   '/services/inspection': typeof ServicesInspectionRoute
@@ -253,7 +280,10 @@ export interface FileRouteTypes {
     | '/products'
     | '/projects'
     | '/signup'
+    | '/admin/leads'
     | '/admin/login'
+    | '/product/$productId'
+    | '/products/$productId'
     | '/services/consultation'
     | '/services/equipment-supply'
     | '/services/inspection'
@@ -279,7 +309,10 @@ export interface FileRouteTypes {
     | '/products'
     | '/projects'
     | '/signup'
+    | '/admin/leads'
     | '/admin/login'
+    | '/product/$productId'
+    | '/products/$productId'
     | '/services/consultation'
     | '/services/equipment-supply'
     | '/services/inspection'
@@ -305,7 +338,10 @@ export interface FileRouteTypes {
     | '/products'
     | '/projects'
     | '/signup'
+    | '/admin/leads'
     | '/admin/login'
+    | '/product_/$productId'
+    | '/products_/$productId'
     | '/services/consultation'
     | '/services/equipment-supply'
     | '/services/inspection'
@@ -332,7 +368,10 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRoute
   ProjectsRoute: typeof ProjectsRoute
   SignupRoute: typeof SignupRoute
+  AdminLeadsRoute: typeof AdminLeadsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  ProductProductIdRoute: typeof ProductProductIdRoute
+  ProductsProductIdRoute: typeof ProductsProductIdRoute
   ServicesConsultationRoute: typeof ServicesConsultationRoute
   ServicesEquipmentSupplyRoute: typeof ServicesEquipmentSupplyRoute
   ServicesInspectionRoute: typeof ServicesInspectionRoute
@@ -463,11 +502,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/leads': {
+      id: '/admin/leads'
+      path: '/admin/leads'
+      fullPath: '/admin/leads'
+      preLoaderRoute: typeof AdminLeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product_/$productId': {
+      id: '/product_/$productId'
+      path: '/product/$productId'
+      fullPath: '/product/$productId'
+      preLoaderRoute: typeof ProductProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products_/$productId': {
+      id: '/products_/$productId'
+      path: '/products/$productId'
+      fullPath: '/products/$productId'
+      preLoaderRoute: typeof ProductsProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services/': {
@@ -532,7 +592,10 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRoute,
   ProjectsRoute: ProjectsRoute,
   SignupRoute: SignupRoute,
+  AdminLeadsRoute: AdminLeadsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  ProductProductIdRoute: ProductProductIdRoute,
+  ProductsProductIdRoute: ProductsProductIdRoute,
   ServicesConsultationRoute: ServicesConsultationRoute,
   ServicesEquipmentSupplyRoute: ServicesEquipmentSupplyRoute,
   ServicesInspectionRoute: ServicesInspectionRoute,

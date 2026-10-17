@@ -134,7 +134,8 @@ function CartPage() {
                 Equipment Cart & Quotation
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Review certified fire protection gear, statutory GST billing, and dispatch schedules.
+                Review certified fire protection gear, statutory GST billing, and dispatch
+                schedules.
               </p>
             </div>
 
@@ -157,7 +158,9 @@ function CartPage() {
           {!isHydrated ? (
             <div className="py-20 text-center max-w-sm mx-auto">
               <div className="size-10 animate-spin rounded-full border-3 border-primary border-t-transparent mx-auto mb-4" />
-              <p className="text-xs text-muted-foreground font-semibold">Loading your safety cart...</p>
+              <p className="text-xs text-muted-foreground font-semibold">
+                Loading your safety cart...
+              </p>
             </div>
           ) : cartItems.length === 0 ? (
             /* Empty Cart View */
@@ -171,7 +174,8 @@ function CartPage() {
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 Looking for industrial fire extinguishers, heavy-duty pumps, hydrants, or certified
-                PPE? Add certified equipment to your cart or request an official turnkey project quotation.
+                PPE? Add certified equipment to your cart or request an official project
+                quotation.
               </p>
 
               <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -182,7 +186,7 @@ function CartPage() {
                 </a>
                 <a href="/contact">
                   <Button variant="outline" size="lg">
-                    Request Turnkey Proposal
+                    Request Project Proposal
                   </Button>
                 </a>
               </div>
@@ -227,7 +231,8 @@ function CartPage() {
                         className="w-full h-7 sm:h-8 px-1 text-[10px] sm:text-xs hover:bg-primary hover:text-primary-foreground font-bold"
                         onClick={() => addToCart(item, 1)}
                       >
-                        <Plus className="size-3 mr-1" /> Add<span className="hidden sm:inline">&nbsp;to Cart</span>
+                        <Plus className="size-3 mr-1" /> Add
+                        <span className="hidden sm:inline">&nbsp;to Cart</span>
                       </Button>
                     </div>
                   ))}
@@ -275,19 +280,26 @@ function CartPage() {
                       >
                         {/* Product Info */}
                         <div className="flex gap-4 items-center">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            referrerPolicy="no-referrer"
-                            className="size-20 shrink-0 rounded-xl object-cover border border-border bg-muted"
-                          />
+                          <a href={`/products/${item.id}`} className="shrink-0">
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              referrerPolicy="no-referrer"
+                              className="size-20 shrink-0 rounded-xl object-cover border border-border bg-muted hover:opacity-90 transition-opacity"
+                            />
+                          </a>
                           <div className="min-w-0">
                             <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-bold text-primary">
                               {item.category}
                             </span>
-                            <h3 className="mt-1 font-display text-sm font-bold text-foreground leading-snug">
-                              {item.name}
-                            </h3>
+                            <a
+                              href={`/products/${item.id}`}
+                              className="hover:text-primary transition-colors block"
+                            >
+                              <h3 className="mt-1 font-display text-sm font-bold text-foreground leading-snug">
+                                {item.name}
+                              </h3>
+                            </a>
                             {item.specs && item.specs.length > 0 && (
                               <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
                                 {item.specs[0]}
@@ -536,7 +548,7 @@ function CartPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Truck className="size-4 text-primary shrink-0" />
-                      <span>Pan-India Safe Road Transport & Dispatch</span>
+                      <span>Pan-India Safe Cargo (Standard 5 to 7 days | Priority 1 to 2 days)</span>
                     </div>
                   </div>
                 </div>
@@ -546,8 +558,8 @@ function CartPage() {
                   <strong className="block font-bold text-foreground mb-1">
                     Corporate & Government Procurement
                   </strong>
-                  Need a formal Proforma Invoice or Purchase Order (PO) approval before disbursement?
-                  Proceed to checkout and select{" "}
+                  Need a formal Proforma Invoice or Purchase Order (PO) approval before
+                  disbursement? Proceed to checkout and select{" "}
                   <span className="font-semibold text-foreground">
                     "Corporate Purchase Order / Proforma Invoice"
                   </span>{" "}

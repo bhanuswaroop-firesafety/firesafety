@@ -31,7 +31,7 @@ export const Route = createFileRoute("/services/consultation")({
         schemas.service(
           "Fire Safety Consultation, NBC Compliance & NOC Advisory",
           "Professional fire safety risk assessments (HIRA), NBC 2016 alignment, hydraulic calculations, and statutory Fire Department NOC approvals.",
-          "/services/consultation"
+          "/services/consultation",
         ),
       ],
     }),

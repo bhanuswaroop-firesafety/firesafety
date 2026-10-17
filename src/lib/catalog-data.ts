@@ -20,7 +20,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Multi-purpose ABC powder extinguisher certified for Class A, B, and C fire hazards with forged brass valve and pressure gauge.",
     image: extinguisherImg,
-    specs: ["IS 15683 Certified", "4-A : 60-B:C Rating", "Squeeze Grip Operation", "Epoxy Coated Cylinder"],
+    specs: [
+      "IS 15683 Certified",
+      "4-A : 60-B:C Rating",
+      "Squeeze Grip Operation",
+      "Epoxy Coated Cylinder",
+    ],
     price: "2,450",
     unit: "unit",
     sku: "SUE-FE-ABC04",
@@ -34,7 +39,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Heavy-duty flanged PN16 single outlet oblique landing valve with blank cap, chain, and handwheel for wet riser downcomers.",
     image: hydrantValveImg,
-    specs: ["IS 5290 / BS 5041 Type A", "65mm (2.5 Inch) Flanged Inlet", "High-Grade Leaded Gunmetal / Brass", "Hydrostatic Tested to 21 Bar"],
+    specs: [
+      "IS 5290 / BS 5041 Type A",
+      "65mm (2.5 Inch) Flanged Inlet",
+      "High-Grade Leaded Gunmetal / Brass",
+      "Hydrostatic Tested to 21 Bar",
+    ],
     price: "3,800",
     unit: "piece",
     sku: "SUE-FH-LV65",
@@ -48,7 +58,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Skid-mounted high-pressure electric motor driven centrifugal fire booster pump with automated pressure sensing control manifold.",
     image: pumpImg,
-    specs: ["NBC 2016 Compliant", "Capacity: 1620 LPM (430 GPM)", "Pressure Head: 7 Bar to 12 Bar", "ABB Heavy Industrial Motor"],
+    specs: [
+      "NBC 2016 Compliant",
+      "Capacity: 1620 LPM (430 GPM)",
+      "Pressure Head: 7 Bar to 12 Bar",
+      "ABB Heavy Industrial Motor",
+    ],
     price: "68,000",
     unit: "set",
     sku: "SUE-FP-SKID01",
@@ -62,7 +77,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Impact-absorbing high-density polyethylene construction helmet with reflective micro-prismatic bands and 4-point chin strap.",
     image: helmetImg,
-    specs: ["IS 2925 / EN 397 Certified", "UV-Resistant Polyethylene Shell", "Side Slots for Earmuffs / Visor", "Ratchet Size Adjustment (53-64cm)"],
+    specs: [
+      "IS 2925 / EN 397 Certified",
+      "UV-Resistant Polyethylene Shell",
+      "Side Slots for Earmuffs / Visor",
+      "Ratchet Size Adjustment (53-64cm)",
+    ],
     price: "380",
     unit: "piece",
     sku: "SUE-PPE-HH01",
@@ -76,7 +96,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Heat and cut-resistant protective work gloves with reinforced palm grip, Kevlar stitching, and fluorescent reflective safety cuffs.",
     image: glovesImg,
-    specs: ["EN 388 Level 4 Cut Resistance", "Reinforced Kevlar Seams", "Split Cowhide Leather Palms", "Vibration & Puncture Resistant"],
+    specs: [
+      "EN 388 Level 4 Cut Resistance",
+      "Reinforced Kevlar Seams",
+      "Split Cowhide Leather Palms",
+      "Vibration & Puncture Resistant",
+    ],
     price: "450",
     unit: "pair",
     sku: "SUE-PPE-GL02",
@@ -90,7 +115,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Vandal-proof 4K ultra-HD optical dome camera with Smart Infrared night vision and IP67 weatherproof industrial housing.",
     image: cctvImg,
-    specs: ["4K (8MP) Ultra HD Resolution", "Smart IR Range up to 40m", "H.265+ Compression Efficiency", "IK10 Vandal-Proof / IP67 Rated"],
+    specs: [
+      "4K (8MP) Ultra HD Resolution",
+      "Smart IR Range up to 40m",
+      "H.265+ Compression Efficiency",
+      "IK10 Vandal-Proof / IP67 Rated",
+    ],
     price: "4,200",
     unit: "camera",
     sku: "SUE-SEC-CCTV04",
@@ -104,7 +134,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Hot-dip galvanized (GI) perforated cable tray designed for neat electrical wire routing, high thermal dissipation, and corrosion prevention.",
     image: cableImg,
-    specs: ["IS 2629 Hot-Dip Galvanized", "Width: 150mm - 600mm", "2-Hour Fire Integrity Rating", "Includes Coupler Plates & Fasteners"],
+    specs: [
+      "IS 2629 Hot-Dip Galvanized",
+      "Width: 150mm - 600mm",
+      "2-Hour Fire Integrity Rating",
+      "Includes Coupler Plates & Fasteners",
+    ],
     price: "850",
     unit: "meter",
     sku: "SUE-CM-CTGI",
@@ -118,7 +153,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "High-flexibility PVC road safety cones with weighted rubber base to resist wind turbulence, fitted with dual prismatic reflective collars.",
     image: roadSafetyImg,
-    specs: ["Height: 750mm (30 Inch)", "High-Intensity Prismatic Sleeves", "UV Stabilized No-Fade Material", "Tough Recycled Rubber Base"],
+    specs: [
+      "Height: 750mm (30 Inch)",
+      "High-Intensity Prismatic Sleeves",
+      "UV Stabilized No-Fade Material",
+      "Tough Recycled Rubber Base",
+    ],
     price: "550",
     unit: "piece",
     sku: "SUE-RS-CONE75",
@@ -132,7 +172,12 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     description:
       "Comprehensive wall-mountable and portable medical emergency kit equipped with burn dressings, antiseptic sprays, eye wash, and trauma shears.",
     image: medicalSafetyImg,
-    specs: ["Factories Act 1948 Compliant", "Waterproof & Dustproof Case", "Contains 60+ Essential Medical Items", "Quick-Release Wall Bracket"],
+    specs: [
+      "Factories Act 1948 Compliant",
+      "Waterproof & Dustproof Case",
+      "Contains 60+ Essential Medical Items",
+      "Quick-Release Wall Bracket",
+    ],
     price: "1,850",
     unit: "kit",
     sku: "SUE-MS-FAK50",
@@ -141,3 +186,17 @@ export const OFFICIAL_CATALOG_PRODUCTS: Omit<ProductItem, "id">[] = [
     featured: true,
   },
 ];
+
+export const DEFAULT_PRODUCTS: ProductItem[] = OFFICIAL_CATALOG_PRODUCTS.map((p, idx) => ({
+  id: `sue-cat-${idx + 1}`,
+  ...p,
+}));
+
+export const FEATURED_ID_MAP: Record<string, string> = {
+  "def-extinguisher": "sue-cat-1",
+  "def-hydrant-valve": "sue-cat-2",
+  "def-fire-pump": "sue-cat-3",
+  "def-safety-helmet": "sue-cat-4",
+  "def-safety-gloves": "sue-cat-5",
+  "def-cctv-camera": "sue-cat-6",
+};

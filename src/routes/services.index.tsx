@@ -34,9 +34,9 @@ export const Route = createFileRoute("/services/")({
           { name: "Services", path: "/services" },
         ]),
         schemas.service(
-          "Turnkey Fire Protection & Industrial Safety Services",
+          "Comprehensive Fire Protection & Industrial Safety Services",
           "Comprehensive engineering services including fire hydrant networks, automatic sprinklers, gas suppression, AMC maintenance, hydro-testing, and NBC compliance audits.",
-          "/services"
+          "/services",
         ),
       ],
     }),
@@ -73,7 +73,7 @@ const servicePillars: Array<{
     nanoIcon: "helmet",
     image: installationImg,
     summary:
-      "Turnkey civil and mechanical installation of automated sprinkler grids, fire hydrants, riser downcomer systems, addressable fire alarms, and clean agent gas flooding systems.",
+      "Complete civil and mechanical installation of automated sprinkler grids, fire hydrants, riser downcomer systems, addressable fire alarms, and clean agent gas flooding systems.",
     bullets: [
       "Hydrant piping networks & landing valve risers",
       "Automated ceiling fire sprinkler networks",
@@ -139,7 +139,7 @@ function ServicesIndexPage() {
             Complete Industrial <span className="text-primary">Safety Services</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            From initial hazard assessment and blueprint consultation to certified turnkey
+            From initial hazard assessment and blueprint consultation to certified end-to-end
             installation, rigorous testing, and round-the-clock maintenance.
           </p>
         </div>

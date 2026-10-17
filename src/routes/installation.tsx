@@ -7,7 +7,7 @@ export const Route = createFileRoute("/installation")({
     seoHead({
       title: "Fire Safety System Installation | Sri Udharchi Enterprises",
       description:
-        "Turnkey installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
+        "Complete installation of fire hydrant systems, automatic sprinkler networks, fire alarm panels, gas suppression systems, and industrial CCTV.",
       path: "/services/installation", // Canonical points to primary service URL
     }),
   component: InstallationServicePage,

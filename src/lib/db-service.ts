@@ -10,9 +10,7 @@ import {
   deleteDoc,
   onSnapshot,
   query,
-  orderBy,
-  handleFirestoreError,
-  OperationType,
+  where,
   firebaseConfig,
   initializeApp,
   getApps,
@@ -23,12 +21,32 @@ import {
 import type {
   ProductItem,
   UserItem,
+  LeadItem,
   InquiryItem,
   CategoryItem,
   OrderItem,
+  OrderStatus,
   AuthorizedAdminItem,
+  OrderStatusHistoryItem,
+  ShippingSettings,
+  SocialSettings,
+  ContactSettings,
+  CartDoc,
+  CheckoutDraftDoc,
+  FeedbackItem,
+  ReminderItem,
+  NotificationItem,
 } from "./types";
-import { OFFICIAL_CATALOG_PRODUCTS } from "./catalog-data";
+export type { LeadItem, OrderItem };
+import { OFFICIAL_CATALOG_PRODUCTS, DEFAULT_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
+import {
+  getKolkataISOString,
+  getKolkataDateString,
+  calculateDeliveryWindow,
+  addMonthsWithClamp,
+  subtractDaysKolkata,
+  isDateDueOrPassed,
+} from "./date-utils";
 
 export const CATEGORIES: string[] = [
   "Fire Safety",
@@ -39,82 +57,314 @@ export const CATEGORIES: string[] = [
   "Cable Management",
 ];
 
-// Product Services
-export function subscribeProducts(callback: (products: ProductItem[]) => void) {
+// Task A: Default Shipping Settings
+export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
+  standardDaysMin: 5,
+  standardDaysMax: 7,
+  priorityDaysMin: 1,
+  priorityDaysMax: 2,
+  priorityCharge: 0,
+};
+
+// Task F: Default Social Settings (Instagram defaults to empty to hide if unconfigured)
+export const DEFAULT_SOCIAL_SETTINGS: SocialSettings = {
+  instagramUrl: "",
+};
+
+// Default Contact & Support Settings
+export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
+  supportPhone: "+91 8639858221",
+  secondaryPhone: "+91 9030609171",
+  supportEmail: "support@udharchi.in",
+  adminEmail: "bhanuswaroop04@gmail.com",
+  address: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
+};
+
+/**
+ * Generate standard sequence order number: ORD-YYYYMMDD-XXXX
+ */
+export function generateOrderNumber(): string {
+  const d = getKolkataDateString().replace(/-/g, "");
+  const seq = String(Math.floor(1 + Math.random() * 9999)).padStart(4, "0");
+  return `ORD-${d}-${seq}`;
+}
+
+/**
+ * Clean data before sending to Firestore to avoid 'Unsupported field value: undefined' errors
+ */
+export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) {
+    return obj.map((item) =>
+      typeof item === "object" && item !== null ? cleanFirestoreData(item) : item,
+    ) as any;
+  }
+  const result: any = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val === undefined) continue;
+    if (val !== null && typeof val === "object" && !(val instanceof Date)) {
+      result[key] = cleanFirestoreData(val);
+    } else {
+      result[key] = val;
+    }
+  }
+  return result;
+}
+
+// ========================================================
+// Product Services (Direct Firestore with Default Catalog)
+// ========================================================
+
+export function subscribeProducts(callback: (products: ProductItem[]) => void): () => void {
+  // Emit catalog immediately so product pages never render empty
+  callback(DEFAULT_PRODUCTS);
+
   const colRef = collection(db, "products");
   return onSnapshot(
     colRef,
     (snapshot) => {
       if (snapshot.empty) {
-        callback([]);
+        callback(DEFAULT_PRODUCTS);
       } else {
-        const items = snapshot.docs.map((d) => ({
+        const customItems = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         })) as ProductItem[];
-        callback(items);
+
+        // Combine default catalog products with custom Firestore products
+        const customMap = new Map(customItems.map((p) => [p.id || p.sku || p.name, p]));
+        const combined = [...customItems];
+        for (const def of DEFAULT_PRODUCTS) {
+          const defId = def.id || "";
+          const defSku = def.sku || "";
+          if (
+            (!defId || !customMap.has(defId)) &&
+            (!defSku || !customMap.has(defSku)) &&
+            !customMap.has(def.name)
+          ) {
+            combined.push(def);
+          }
+        }
+        callback(combined);
       }
     },
     (err) => {
-      console.warn("Firestore products fetch warning:", err.message);
-      callback([]);
+      console.warn("Firestore products fetch notice (fallback to default catalog):", err.message);
+      callback(DEFAULT_PRODUCTS);
     },
   );
 }
 
-export async function addProduct(product: Omit<ProductItem, "id">): Promise<string> {
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+export function findProductById(
+  idOrSlug: string,
+  productList: ProductItem[] = [],
+): ProductItem | null {
+  if (!idOrSlug) return null;
+  const decoded = decodeURIComponent(idOrSlug).trim().toLowerCase();
+  const mappedId = FEATURED_ID_MAP[decoded] || decoded;
+
+  // 1. Check in custom / provided product list
+  const found = productList.find(
+    (p) =>
+      p.id?.toLowerCase() === mappedId ||
+      p.id?.toLowerCase() === decoded ||
+      p.sku?.toLowerCase() === decoded ||
+      slugify(p.name) === decoded ||
+      p.name.toLowerCase() === decoded,
+  );
+  if (found) return found;
+
+  // 2. Check in built-in default catalog
+  const fromDefault = DEFAULT_PRODUCTS.find(
+    (p) =>
+      p.id?.toLowerCase() === mappedId ||
+      p.id?.toLowerCase() === decoded ||
+      p.sku?.toLowerCase() === decoded ||
+      slugify(p.name) === decoded ||
+      p.name.toLowerCase() === decoded,
+  );
+  if (fromDefault) return fromDefault;
+
+  // 3. Numeric index fallback: e.g. "1" -> "sue-cat-1"
+  const num = parseInt(decoded, 10);
+  if (!isNaN(num) && num >= 1 && num <= DEFAULT_PRODUCTS.length) {
+    return DEFAULT_PRODUCTS[num - 1] ?? null;
+  }
+
+  return null;
+}
+
+export async function getProductById(idOrSlug: string): Promise<ProductItem | null> {
+  if (!idOrSlug) return null;
+  const decoded = decodeURIComponent(idOrSlug).trim();
+  const mappedId = FEATURED_ID_MAP[decoded.toLowerCase()] || decoded;
+
+  try {
+    const docRef = doc(db, "products", mappedId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as ProductItem;
+    }
+  } catch (error) {
+    console.warn("Firestore getProductById notice:", error);
+  }
+
+  return findProductById(decoded, DEFAULT_PRODUCTS);
+}
+
+export function subscribeProductById(
+  idOrSlug: string,
+  callback: (product: ProductItem | null) => void,
+): () => void {
+  const decoded = decodeURIComponent(idOrSlug).trim();
+  const initial = findProductById(decoded, DEFAULT_PRODUCTS);
+  if (initial) callback(initial);
+
+  const mappedId = FEATURED_ID_MAP[decoded.toLowerCase()] || decoded;
+  const docRef = doc(db, "products", mappedId);
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback({ id: snap.id, ...snap.data() } as ProductItem);
+      } else {
+        const fallback = findProductById(decoded, DEFAULT_PRODUCTS);
+        callback(fallback);
+      }
+    },
+    (err) => {
+      console.warn("Firestore product subscription notice:", err);
+      const fallback = findProductById(decoded, DEFAULT_PRODUCTS);
+      callback(fallback);
+    },
+  );
+}
+
+export async function getProducts(): Promise<ProductItem[]> {
   try {
     const colRef = collection(db, "products");
-    const docRef = await addDoc(colRef, {
-      ...product,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    return docRef.id;
+    const snapshot = await getDocs(colRef);
+    if (snapshot.empty) return DEFAULT_PRODUCTS;
+    const customItems = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as ProductItem[];
+
+    const customMap = new Map(customItems.map((p) => [p.id || p.sku || p.name, p]));
+    const combined = [...customItems];
+    for (const def of DEFAULT_PRODUCTS) {
+      const defId = def.id || "";
+      const defSku = def.sku || "";
+      if (
+        (!defId || !customMap.has(defId)) &&
+        (!defSku || !customMap.has(defSku)) &&
+        !customMap.has(def.name)
+      ) {
+        combined.push(def);
+      }
+    }
+    return combined;
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, "products");
+    console.warn("Firestore getProducts notice (using default catalog):", error);
+    return DEFAULT_PRODUCTS;
   }
 }
 
-export async function updateProduct(id: string, product: Partial<ProductItem>): Promise<void> {
-  try {
-    const docRef = doc(db, "products", id);
-    await updateDoc(docRef, {
+export async function saveProduct(product: Partial<ProductItem>): Promise<string> {
+  const colRef = collection(db, "products");
+  const now = getKolkataISOString();
+
+  if (product.id) {
+    const docRef = doc(colRef, product.id);
+    const payload = cleanFirestoreData({
       ...product,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+    await setDoc(docRef, payload, { merge: true });
+    return product.id;
+  } else {
+    const docRef = doc(colRef);
+    const payload = cleanFirestoreData({
+      ...product,
+      id: docRef.id,
+      inStock: product.inStock !== false,
+      featured: product.featured || false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await setDoc(docRef, payload);
+    return docRef.id;
   }
+}
+
+export async function addProduct(product: Omit<ProductItem, "id">): Promise<string> {
+  return saveProduct(product);
+}
+
+export async function updateProduct(id: string, updates: Partial<ProductItem>): Promise<void> {
+  await saveProduct({ ...updates, id });
+}
+
+export async function seedOfficialCatalog(): Promise<number> {
+  let seededCount = 0;
+  for (const item of OFFICIAL_CATALOG_PRODUCTS) {
+    const id = ("id" in item && typeof (item as { id?: unknown }).id === "string" ? (item as { id: string }).id : slugify(item.name));
+    const docRef = doc(db, "products", id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      await setDoc(
+        docRef,
+        cleanFirestoreData({
+          ...item,
+          id,
+          createdAt: getKolkataISOString(),
+          updatedAt: getKolkataISOString(),
+        }),
+      );
+      seededCount++;
+    }
+  }
+  return seededCount;
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  try {
-    const docRef = doc(db, "products", id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
-  }
+  const docRef = doc(db, "products", id);
+  await deleteDoc(docRef);
 }
 
-// Inquiries / Leads Services
+// ========================================================
+// Inquiries Services (Zero-trust lead submissions)
+// ========================================================
+
 export async function submitInquiry(
-  inquiry: Omit<InquiryItem, "id" | "status" | "createdAt">,
+  inquiry: Omit<InquiryItem, "id" | "createdAt" | "status"> & { status?: InquiryItem["status"] },
 ): Promise<string> {
-  try {
-    const colRef = collection(db, "inquiries");
-    const docRef = await addDoc(colRef, {
-      ...inquiry,
-      status: "new",
-      createdAt: new Date().toISOString(),
-    });
-    return docRef.id;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, "inquiries");
-  }
+  const now = getKolkataISOString();
+  const cleanInquiry = {
+    name: inquiry.name.trim(),
+    phone: inquiry.phone.trim(),
+    email: inquiry.email.trim().toLowerCase(),
+    service: inquiry.service ? inquiry.service.trim() : "",
+    facility: inquiry.facility ? inquiry.facility.trim() : "",
+    message: inquiry.message ? inquiry.message.trim() : "",
+    status: (inquiry.status || "new") as InquiryItem["status"],
+    createdAt: now,
+  };
+
+  const colRef = collection(db, "inquiries");
+  const docRef = await addDoc(colRef, cleanFirestoreData(cleanInquiry));
+  return docRef.id;
 }
 
-export function subscribeInquiries(callback: (inquiries: InquiryItem[]) => void) {
+export function subscribeInquiries(callback: (inquiries: InquiryItem[]) => void): () => void {
   const colRef = collection(db, "inquiries");
   return onSnapshot(
     colRef,
@@ -123,225 +373,609 @@ export function subscribeInquiries(callback: (inquiries: InquiryItem[]) => void)
         id: d.id,
         ...d.data(),
       })) as InquiryItem[];
-      // Sort in-memory to avoid missing compound index
-      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       callback(items);
     },
     (err) => {
-      handleFirestoreError(err, OperationType.LIST, "inquiries");
+      console.error("Firestore inquiries subscription error:", err);
     },
   );
+}
+
+export async function getInquiries(): Promise<InquiryItem[]> {
+  const colRef = collection(db, "inquiries");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as InquiryItem[];
 }
 
 export async function updateInquiryStatus(
   id: string,
   status: "new" | "contacted" | "closed",
 ): Promise<void> {
-  try {
-    const docRef = doc(db, "inquiries", id);
-    await updateDoc(docRef, { status });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `inquiries/${id}`);
-  }
+  const docRef = doc(db, "inquiries", id);
+  await updateDoc(docRef, { status });
 }
 
 export async function deleteInquiry(id: string): Promise<void> {
-  try {
-    const docRef = doc(db, "inquiries", id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `inquiries/${id}`);
-  }
+  const docRef = doc(db, "inquiries", id);
+  await deleteDoc(docRef);
 }
 
-// Users Services
-export function subscribeUsers(callback: (users: UserItem[]) => void) {
+// ========================================================
+// User Profile & Authentication Records
+// ========================================================
+
+export async function saveUserRecord(user: UserItem): Promise<void> {
+  const now = getKolkataISOString();
+  const cleanUser: UserItem = {
+    ...user,
+    email: user.email.toLowerCase(),
+    updatedAt: now,
+  };
+
+  const docRef = doc(db, "users", user.id);
+  await setDoc(docRef, cleanFirestoreData(cleanUser), { merge: true });
+}
+
+export async function updateUserProfileDetails(
+  uid: string,
+  updates: {
+    displayName?: string;
+    email?: string;
+    company?: string;
+    phone?: string;
+  },
+): Promise<void> {
+  const now = getKolkataISOString();
+  const payload: Record<string, any> = {
+    updatedAt: now,
+    profileCompleted: true,
+  };
+  if (updates.displayName !== undefined) payload["displayName"] = updates.displayName.trim();
+  if (updates.email !== undefined) payload["email"] = updates.email.trim().toLowerCase();
+  if (updates.company !== undefined) payload["company"] = updates.company.trim();
+  if (updates.phone !== undefined) payload["phone"] = updates.phone.trim();
+
+  const userDocRef = doc(db, "users", uid);
+  await updateDoc(userDocRef, cleanFirestoreData(payload));
+
+  // Sync to leads collection
+  await syncUserLeadRecord({
+    uid,
+    name: updates.displayName,
+    email: updates.email,
+    company: updates.company,
+    phone: updates.phone,
+    source: "profile_completion",
+  });
+}
+
+export async function updateUserRole(userId: string, role: string): Promise<void> {
+  const docRef = doc(db, "users", userId);
+  await updateDoc(docRef, cleanFirestoreData({
+    role,
+    updatedAt: getKolkataISOString(),
+  }));
+}
+
+export async function getUserRecord(uid: string): Promise<UserItem | null> {
+  try {
+    const docRef = doc(db, "users", uid);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as UserItem;
+    }
+  } catch (err) {
+    console.warn("Firestore getUserRecord notice:", err);
+  }
+  return null;
+}
+
+export function subscribeUsers(callback: (users: UserItem[]) => void): () => void {
   const colRef = collection(db, "users");
   return onSnapshot(
     colRef,
     (snapshot) => {
-      const items = snapshot.docs.map((d) => ({
+      const users = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       })) as UserItem[];
-      callback(items);
+      callback(users);
     },
     (err) => {
-      console.warn("Users subscription warning:", err.message);
-      callback([]);
+      console.error("Firestore users subscription error:", err);
     },
   );
 }
 
-export async function updateUserRole(
-  uid: string,
-  role: "admin" | "staff" | "customer",
-): Promise<void> {
-  try {
-    const docRef = doc(db, "users", uid);
-    await updateDoc(docRef, { role });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
-  }
+export async function getUsers(): Promise<UserItem[]> {
+  const colRef = collection(db, "users");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as UserItem[];
 }
 
-// Categories Services
-export function subscribeCategories(callback: (categories: CategoryItem[]) => void) {
-  const colRef = collection(db, "categories");
-  return onSnapshot(
-    colRef,
-    (snapshot) => {
-      if (snapshot.empty) {
-        callback([]);
-      } else {
-        const items = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })) as CategoryItem[];
-        callback(items);
-      }
+export async function deleteUser(uid: string): Promise<void> {
+  const docRef = doc(db, "users", uid);
+  await deleteDoc(docRef);
+}
+
+// ========================================================
+// Orders Services (Tasks A, B, C, D)
+// ========================================================
+
+export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
+  // Task B: Strictly require mobile number and valid email format
+  const rawPhone = (order.customerPhone || "").trim();
+  const rawEmail = (order.customerEmail || "").trim().toLowerCase();
+
+  const phoneDigits = rawPhone.replace(/\D/g, "");
+  if (phoneDigits.length < 10) {
+    throw new Error(
+      "A valid 10-digit consignee mobile number is strictly required to book safety equipment.",
+    );
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!rawEmail || !emailRegex.test(rawEmail)) {
+    throw new Error(
+      "A valid business or personal email address is strictly required for delivery tracking & GST invoices.",
+    );
+  }
+
+  const orderNumber = order.orderNumber || generateOrderNumber();
+  const now = getKolkataISOString();
+
+  // Task A: Determine shipping type, rates, and estimated delivery dates
+  const shippingSettings = await getShippingSettings();
+  const shippingType = order.shippingType || "standard";
+  const windowInfo = calculateDeliveryWindow(shippingType, shippingSettings);
+  const expectedDeliveryFrom = order.expectedDeliveryFrom || windowInfo.fromISO;
+  const expectedDeliveryTo = order.expectedDeliveryTo || windowInfo.toISO;
+  const shippingCharge =
+    order.shippingCharge !== undefined
+      ? order.shippingCharge
+      : shippingType === "priority"
+        ? shippingSettings.priorityCharge
+        : 0;
+
+  // Task C: Status audit history initialized to "placed"
+  const initialStatus = order.status || "placed";
+  const initialHistory: OrderStatusHistoryItem[] = [
+    {
+      status: initialStatus,
+      timestamp: now,
+      note:
+        shippingType === "priority"
+          ? "Order placed with Priority / Emergency Dispatch"
+          : "Order placed with Standard Delivery",
+      updatedBy: order.customerId ? `Customer (${order.customerEmail})` : "Customer",
     },
-    (err) => {
-      console.warn("Categories subscription warning:", err.message);
-      callback([]);
-    },
-  );
-}
+  ];
 
-export async function addCategory(category: {
-  name: string;
-  description?: string | undefined;
-}): Promise<string> {
+  const cleanOrder: OrderItem = {
+    id: orderNumber,
+    orderId: orderNumber,
+    orderNumber,
+    customerId: order.customerId,
+    customerName: order.customerName || "Customer",
+    customerPhone: rawPhone,
+    customerEmail: rawEmail,
+    shippingAddress: order.shippingAddress || "",
+    paymentMethod: order.paymentMethod || "cod",
+    items: order.items || [],
+    subtotal: order.subtotal || 0,
+    discount: order.discount || 0,
+    gst: order.gst || 0,
+    shipping: order.shipping || 0,
+    total: order.total || 0,
+    companyName: order.companyName || "",
+    gstin: order.gstin || "",
+    status: initialStatus,
+    shippingType,
+    expectedDeliveryFrom,
+    expectedDeliveryTo,
+    shippingCharge,
+    statusHistory: initialHistory,
+    feedbackGiven: false,
+    createdAt: order.createdAt || now,
+    updatedAt: now,
+    estimatedDelivery:
+      order.estimatedDelivery || `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+  };
+
+  // 1. Write directly to Cloud Firestore orders collection
+  const colRef = collection(db, "orders");
+  const docRef = doc(colRef, orderNumber);
+  await setDoc(docRef, cleanFirestoreData(cleanOrder), { merge: true });
+
+  // 2. Automatically link user profile & lead record
   try {
-    const colRef = collection(db, "categories");
-    const docRef = await addDoc(colRef, {
-      ...category,
-      createdAt: new Date().toISOString(),
-    });
-    return docRef.id;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, "categories");
+    await recordCustomerFromOrder(cleanOrder);
+  } catch (err) {
+    console.warn("Customer record / lead linkage notice:", err);
   }
+
+  return orderNumber;
 }
 
-export async function deleteCategory(id: string): Promise<void> {
-  try {
-    const docRef = doc(db, "categories", id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `categories/${id}`);
-  }
-}
-
-// Orders Services
-export async function submitOrder(
-  order: Omit<OrderItem, "id">,
-): Promise<string> {
-  try {
-    const colRef = collection(db, "orders");
-    const docRef = await addDoc(colRef, {
-      ...order,
-      createdAt: order.createdAt || new Date().toISOString(),
-      status: order.status || "pending",
-    });
-    return docRef.id;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, "orders");
-  }
-}
-
-export function subscribeOrders(callback: (orders: OrderItem[]) => void) {
+export function subscribeOrders(callback: (orders: OrderItem[]) => void): () => void {
   const colRef = collection(db, "orders");
   return onSnapshot(
     colRef,
     (snapshot) => {
-      const items = snapshot.docs.map((d) => ({
+      const orders = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       })) as OrderItem[];
-      // Sort in-memory newest first
-      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      callback(items);
+      callback(orders);
     },
     (err) => {
-      console.warn("Orders subscription warning:", err.message);
-      callback([]);
+      console.error("Firestore orders subscription error:", err);
     },
   );
 }
 
+export function subscribeUserOrders(
+  customerId: string,
+  callback: (orders: OrderItem[]) => void,
+): () => void {
+  const q = query(collection(db, "orders"), where("customerId", "==", customerId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as OrderItem[];
+      callback(orders);
+    },
+    (err) => {
+      console.error("Firestore user orders subscription error:", err);
+    },
+  );
+}
+
+export async function getOrders(): Promise<OrderItem[]> {
+  const colRef = collection(db, "orders");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as OrderItem[];
+}
+
 export async function updateOrderStatus(
-  id: string,
-  status: OrderItem["status"],
+  orderId: string,
+  status: OrderStatus | string,
+  optionsOrNote?:
+    | string
+    | {
+        note?: string;
+        updatedBy?: string;
+        deliveredAt?: string;
+        installDate?: string;
+      },
+  updatedBy: string = "Admin",
+  extraDetails?: {
+    deliveredAt?: string;
+    installDate?: string;
+  },
 ): Promise<void> {
+  const normStatus: OrderStatus =
+    status === "pending"
+      ? "placed"
+      : status === "dispatched"
+        ? "shipped"
+        : (status as OrderStatus);
+
+  const note =
+    typeof optionsOrNote === "string"
+      ? optionsOrNote
+      : optionsOrNote?.note;
+  const author =
+    typeof optionsOrNote === "object" && optionsOrNote?.updatedBy
+      ? optionsOrNote.updatedBy
+      : updatedBy;
+  const installDate =
+    typeof optionsOrNote === "object" && optionsOrNote?.installDate
+      ? optionsOrNote.installDate
+      : extraDetails?.installDate;
+  const deliveredAt =
+    typeof optionsOrNote === "object" && optionsOrNote?.deliveredAt
+      ? optionsOrNote.deliveredAt
+      : extraDetails?.deliveredAt;
+
+  const orderRef = doc(db, "orders", orderId);
+  const snap = await getDoc(orderRef);
+  if (!snap.exists()) {
+    throw new Error(`Order #${orderId} was not found in Firestore.`);
+  }
+
+  const existingOrder = snap.data() as OrderItem;
+  const nowIso = getKolkataISOString();
+
+  const history = existingOrder.statusHistory ? [...existingOrder.statusHistory] : [];
+  history.push({
+    status: normStatus,
+    timestamp: nowIso,
+    note: note || `Status updated to ${normStatus}`,
+    updatedBy: author,
+  });
+
+  const updates: Partial<OrderItem> = {
+    status: normStatus,
+    statusHistory: history,
+    updatedAt: nowIso,
+  };
+
+  if (normStatus === "delivered") {
+    const finalDeliveredAt = deliveredAt || nowIso;
+    const finalInstallDate = installDate || getKolkataDateString();
+    updates.deliveredAt = finalDeliveredAt;
+    updates.installDate = finalInstallDate;
+
+    // Task E: Automatically schedule renewal reminders for equipment
+    if (existingOrder.items && existingOrder.items.length > 0) {
+      for (const item of existingOrder.items) {
+        if (item.renewalMonths) {
+          createRenewalReminder(
+            existingOrder,
+            {
+              productId: item.productId,
+              name: item.name,
+              renewalMonths: item.renewalMonths,
+            },
+            finalInstallDate,
+            1,
+          ).catch((e) => console.warn("Auto-create reminder notice:", e));
+        }
+      }
+    }
+  }
+
+  await updateDoc(orderRef, cleanFirestoreData(updates));
+}
+
+export async function cancelOrder(
+  orderId: string,
+  note: string = "Cancelled by customer",
+  updatedBy: string = "customer",
+): Promise<void> {
+  const orderRef = doc(db, "orders", orderId);
+  const snap = await getDoc(orderRef);
+  if (!snap.exists()) {
+    throw new Error(`Order #${orderId} was not found in Firestore.`);
+  }
+
+  const order = snap.data() as OrderItem;
+
+  // Task C: Block cancellation if already shipped or delivered
+  if (order.status === "shipped" || order.status === "delivered") {
+    throw new Error(
+      "Order already shipped. Please contact support (+91 8639858221 / support@udharchi.in) for dispatch returns.",
+    );
+  }
+
+  const nowIso = getKolkataISOString();
+  const history = order.statusHistory ? [...order.statusHistory] : [];
+  history.push({
+    status: "cancelled",
+    timestamp: nowIso,
+    note,
+    updatedBy,
+  });
+
+  await updateDoc(orderRef, {
+    status: "cancelled",
+    statusHistory: history,
+    updatedAt: nowIso,
+  });
+}
+
+export async function deleteOrder(orderId: string): Promise<void> {
+  const docRef = doc(db, "orders", orderId);
+  await deleteDoc(docRef);
+}
+
+// ========================================================
+// Leads / Registered Customers (Task 3)
+// ========================================================
+
+export interface LeadSyncInput {
+  uid: string;
+  name?: string | undefined;
+  phone?: string | undefined;
+  email?: string | undefined;
+  company?: string | undefined;
+  registeredAt?: string | undefined;
+  lastActiveAt?: string | undefined;
+  hasOrdered?: boolean | undefined;
+  orderId?: string | undefined;
+  source?: string | undefined;
+  updatedAt?: string | undefined;
+}
+
+export async function syncUserLeadRecord(leadData: LeadSyncInput): Promise<LeadItem> {
+  if (!leadData || !leadData.uid) {
+    throw new Error("UID is required to sync a lead record.");
+  }
+
+  const now = getKolkataISOString();
+  let existingLead: LeadItem | null = null;
+
   try {
-    const docRef = doc(db, "orders", id);
-    await updateDoc(docRef, {
-      status,
-      updatedAt: new Date().toISOString(),
+    const snap = await getDoc(doc(db, "leads", leadData.uid));
+    if (snap.exists()) {
+      existingLead = snap.data() as LeadItem;
+    }
+  } catch {}
+
+  const hasOrdered = existingLead?.hasOrdered ?? leadData.hasOrdered ?? false;
+  const orderId = existingLead?.orderId || leadData.orderId;
+  const registeredAt = existingLead?.registeredAt || leadData.registeredAt || now;
+
+  const merged: LeadItem = {
+    id: leadData.uid,
+    uid: leadData.uid,
+    name: leadData.name?.trim() || existingLead?.name || "Customer",
+    phone: leadData.phone?.trim() || existingLead?.phone || "",
+    email: leadData.email?.trim().toLowerCase() || existingLead?.email || "",
+    company: leadData.company?.trim() || existingLead?.company || "",
+    registeredAt,
+    lastActiveAt: now,
+    hasOrdered,
+    orderId,
+    source: existingLead?.source || leadData.source || "otp_auth",
+    updatedAt: now,
+  };
+
+  const leadRef = doc(db, "leads", leadData.uid);
+  await setDoc(leadRef, cleanFirestoreData(merged), { merge: true });
+  return merged;
+}
+
+export async function markLeadAsOrdered(uid: string, orderId: string): Promise<void> {
+  const leadRef = doc(db, "leads", uid);
+  await setDoc(
+    leadRef,
+    {
+      hasOrdered: true,
+      orderId,
+      lastActiveAt: getKolkataISOString(),
+      updatedAt: getKolkataISOString(),
+    },
+    { merge: true },
+  );
+}
+
+export function subscribeLeads(callback: (leads: LeadItem[]) => void): () => void {
+  const colRef = collection(db, "leads");
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as LeadItem[];
+      callback(items);
+    },
+    (err) => {
+      console.error("Firestore leads subscription error:", err);
+    },
+  );
+}
+
+export async function getLeads(): Promise<LeadItem[]> {
+  const colRef = collection(db, "leads");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as LeadItem[];
+}
+
+export async function recordCustomerFromOrder(order: OrderItem): Promise<void> {
+  const uid = order.customerId;
+  if (!uid) return;
+
+  const userDocRef = doc(db, "users", uid);
+  const snap = await getDoc(userDocRef);
+
+  if (snap.exists()) {
+    const existing = snap.data() as UserItem;
+    await updateDoc(userDocRef, {
+      ordersCount: (existing.ordersCount || 0) + 1,
+      totalSpent: (existing.totalSpent || 0) + order.total,
+      phone: order.customerPhone || existing.phone || "",
+      company: order.companyName || existing.company || "",
+      displayName:
+        existing.displayName && existing.displayName !== "Customer"
+          ? existing.displayName
+          : order.customerName,
+      updatedAt: getKolkataISOString(),
     });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `orders/${id}`);
   }
-}
 
-export async function deleteOrder(id: string): Promise<void> {
-  try {
-    const docRef = doc(db, "orders", id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `orders/${id}`);
-  }
-}
-
-// Seed / Sync Verified Sri Udharchi Catalog to Firestore
-export async function seedOfficialCatalog(): Promise<number> {
-  try {
-    // 1. Sync Categories first
-    const catColRef = collection(db, "categories");
-    const existingCatsSnap = await getDocs(catColRef);
-    const existingCatNames = new Set(existingCatsSnap.docs.map((d) => d.data().name));
-
-    for (const cat of CATEGORIES) {
-      if (!existingCatNames.has(cat)) {
-        await addDoc(catColRef, {
-          name: cat,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    }
-
-    // 2. Add Official Catalog Products
-    const prodColRef = collection(db, "products");
-    const existingProdsSnap = await getDocs(prodColRef);
-    const existingProdNames = new Set(existingProdsSnap.docs.map((d) => d.data().name));
-
-    let addedCount = 0;
-    for (const item of OFFICIAL_CATALOG_PRODUCTS) {
-      if (!existingProdNames.has(item.name)) {
-        await addDoc(prodColRef, {
-          ...item,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        addedCount++;
-      }
-    }
-
-    return addedCount;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, "products/seed");
-  }
+  await markLeadAsOrdered(uid, order.orderNumber);
 }
 
 // ========================================================
-// Authorized Administrators Management
+// Categories Services
 // ========================================================
 
-/**
- * Subscribe to the real-time list of authorized administrators.
- */
-export function subscribeAuthorizedAdmins(callback: (admins: AuthorizedAdminItem[]) => void) {
+export async function getCategories(): Promise<CategoryItem[]> {
+  try {
+    const colRef = collection(db, "categories");
+    const snapshot = await getDocs(colRef);
+    if (!snapshot.empty) {
+      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CategoryItem[];
+    }
+  } catch {}
+  return CATEGORIES.map((name, i) => ({ id: `cat-${i}`, name }));
+}
+
+export function subscribeCategories(callback: (categories: CategoryItem[]) => void): () => void {
+  const defaultCats: CategoryItem[] = CATEGORIES.map((name, i) => ({ id: `cat-${i}`, name }));
+  callback(defaultCats);
+  const colRef = collection(db, "categories");
+  return onSnapshot(
+    colRef,
+    (snap) => {
+      if (!snap.empty) {
+        callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CategoryItem[]);
+      } else {
+        callback(defaultCats);
+      }
+    },
+    () => {
+      callback(defaultCats);
+    },
+  );
+}
+
+export async function addCategory(category: CategoryItem | Omit<CategoryItem, "id">): Promise<void> {
+  const colRef = collection(db, "categories");
+  const docRef = "id" in category && category.id ? doc(colRef, category.id) : doc(colRef);
+  await setDoc(docRef, cleanFirestoreData({ ...category, id: docRef.id }), { merge: true });
+}
+
+export async function saveCategory(category: CategoryItem): Promise<void> {
+  const colRef = collection(db, "categories");
+  const docRef = category.id ? doc(colRef, category.id) : doc(colRef);
+  await setDoc(docRef, cleanFirestoreData(category), { merge: true });
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  const docRef = doc(db, "categories", id);
+  await deleteDoc(docRef);
+}
+
+// ========================================================
+// Authorized Admins Services
+// ========================================================
+
+export async function isEmailAuthorizedAdmin(email: string): Promise<boolean> {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  if (clean === "bhanuswaroop04@gmail.com") return true;
+
+  try {
+    const docRef = doc(db, "authorized_admins", clean);
+    const snap = await getDoc(docRef);
+    return snap.exists();
+  } catch {
+    return false;
+  }
+}
+
+export function subscribeAuthorizedAdmins(
+  callback: (admins: AuthorizedAdminItem[]) => void,
+): () => void {
   const colRef = collection(db, "authorized_admins");
   return onSnapshot(
     colRef,
@@ -353,173 +987,547 @@ export function subscribeAuthorizedAdmins(callback: (admins: AuthorizedAdminItem
       callback(items);
     },
     (err) => {
-      console.warn("Authorized admins subscription warning:", err.message);
-      callback([]);
+      console.error("Firestore authorized admins subscription error:", err);
     },
   );
 }
 
-/**
- * Creates Firebase Authentication account for a new admin using a secondary app
- * so the current logged-in administrator is NOT logged out!
- */
-export async function createAdminAuthAccount(
-  email: string,
-  pass: string,
-): Promise<{ success: boolean; uid?: string; error?: string }> {
-  try {
-    const secondaryAppName = "AdminProvisioning";
-    const existingApps = getApps();
-    let secondaryApp = existingApps.find((a) => a.name === secondaryAppName);
-    if (!secondaryApp) {
-      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
-    }
-    const secondaryAuth = getAuth(secondaryApp);
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), pass);
-    const uid = cred.user.uid;
-    await signOut(secondaryAuth);
-    return { success: true, uid };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, error: msg };
-  }
+export async function getAuthorizedAdmins(): Promise<AuthorizedAdminItem[]> {
+  const colRef = collection(db, "authorized_admins");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as AuthorizedAdminItem[];
 }
 
-/**
- * Adds an authorized administrator by email, optional password, and profile metadata.
- */
-export async function addAuthorizedAdmin(data: {
+export async function addAuthorizedAdmin(adminData: {
   email: string;
-  displayName?: string | undefined;
-  password?: string | undefined;
-  department?: string | undefined;
-  phone?: string | undefined;
-  addedBy: string;
-}): Promise<{ success: boolean; createdAuth: boolean; message: string }> {
-  const cleanEmail = data.email.trim().toLowerCase();
-  const now = new Date().toISOString();
-  let createdAuth = false;
+  displayName: string;
+  password?: string;
+  department?: string;
+  phone?: string;
+  addedBy?: string;
+}): Promise<{ success: boolean; message: string }> {
+  const cleanEmail = adminData.email.toLowerCase().trim();
+  const now = getKolkataISOString();
 
-  // 1. If password provided, create real Firebase Auth account via secondary app
-  let authUid: string | undefined;
-  if (data.password && data.password.trim().length >= 6) {
-    const authRes = await createAdminAuthAccount(cleanEmail, data.password.trim());
-    if (authRes.success) {
-      createdAuth = true;
-      authUid = authRes.uid;
-    } else {
-      console.warn("Notice during admin auth provisioning:", authRes.error);
-    }
-  }
-
-  // 2. Persist in authorized_admins collection
-  const adminDocRef = doc(db, "authorized_admins", cleanEmail);
-  const adminRecord: AuthorizedAdminItem = {
+  const record: AuthorizedAdminItem = {
     id: cleanEmail,
     email: cleanEmail,
-    displayName: data.displayName?.trim() || cleanEmail.split("@")[0],
+    displayName: adminData.displayName || cleanEmail.split("@")[0],
     role: "admin",
-    department: data.department?.trim() || "Operations",
-    phone: data.phone?.trim() || "",
-    addedBy: data.addedBy,
+    department: adminData.department || "Operations",
+    phone: adminData.phone || "",
+    addedBy: adminData.addedBy || "Super Administrator",
     createdAt: now,
-    updatedAt: now,
+    initialPassword: adminData.password || undefined,
   };
-  if (data.password) {
-    adminRecord.initialPassword = data.password;
-  }
-  await setDoc(adminDocRef, adminRecord, { merge: true });
 
-  // 3. If a user document exists or UID was created, ensure their role is admin
+  const docRef = doc(db, "authorized_admins", cleanEmail);
+  await setDoc(docRef, cleanFirestoreData(record), { merge: true });
+
+  return { success: true, message: `Administrator ${cleanEmail} authorized successfully.` };
+}
+
+export async function removeAuthorizedAdmin(email: string): Promise<void> {
+  const clean = email.toLowerCase().trim();
+  if (clean === "bhanuswaroop04@gmail.com") {
+    throw new Error("Cannot revoke designated Super Administrator access.");
+  }
+  const docRef = doc(db, "authorized_admins", clean);
+  await deleteDoc(docRef);
+}
+
+// ========================================================
+// Settings Services (Shipping, Social, Contact)
+// ========================================================
+
+export async function getShippingSettings(): Promise<ShippingSettings> {
   try {
-    if (authUid) {
-      const userRef = doc(db, "users", authUid);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        const userProfile: UserItem = {
-          id: authUid,
-          email: cleanEmail,
-          displayName: data.displayName?.trim() || cleanEmail.split("@")[0],
-          role: "admin",
-          createdAt: now,
-          updatedAt: now,
-          lastLoginAt: now,
-          company: "Sri Udharchi Enterprises (Admin)",
-          phone: data.phone?.trim() || "",
-        };
-        await setDoc(userRef, userProfile);
+    const docRef = doc(db, "settings", "shipping");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { ...DEFAULT_SHIPPING_SETTINGS, ...(snap.data() as ShippingSettings) };
+    }
+  } catch (err) {
+    console.warn("Firestore getShippingSettings error:", err);
+  }
+  return DEFAULT_SHIPPING_SETTINGS;
+}
+
+export function subscribeShippingSettings(
+  callback: (settings: ShippingSettings) => void,
+): () => void {
+  callback(DEFAULT_SHIPPING_SETTINGS);
+  const docRef = doc(db, "settings", "shipping");
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback({ ...DEFAULT_SHIPPING_SETTINGS, ...(snap.data() as ShippingSettings) });
       } else {
-        await updateDoc(userRef, { role: "admin", updatedAt: now });
+        callback(DEFAULT_SHIPPING_SETTINGS);
       }
-    } else {
-      // Find user by email in users collection
-      const usersSnap = await getDocs(collection(db, "users"));
-      const match = usersSnap.docs.find(
-        (d) => d.data()?.email?.toLowerCase() === cleanEmail,
-      );
-      if (match) {
-        await updateDoc(doc(db, "users", match.id), { role: "admin", updatedAt: now });
-      }
-    }
-  } catch (err) {
-    console.warn("Could not sync user role doc:", err);
-  }
+    },
+    (err) => {
+      console.warn("Firestore shipping settings subscription error:", err);
+    },
+  );
+}
 
-  return {
-    success: true,
-    createdAuth,
-    message: `Administrator ${cleanEmail} has been authorized with executive privileges.`,
+export async function updateShippingSettings(settings: Partial<ShippingSettings>): Promise<void> {
+  const current = await getShippingSettings();
+  const updated: ShippingSettings = {
+    ...current,
+    ...settings,
+    updatedAt: getKolkataISOString(),
   };
+  const docRef = doc(db, "settings", "shipping");
+  await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
 }
 
-/**
- * Removes admin authorization for an email (protecting super admin).
- */
-export async function removeAuthorizedAdmin(
-  email: string,
-  superAdmin = "bhanuswaroop04@gmail.com",
-): Promise<void> {
-  const cleanEmail = email.trim().toLowerCase();
-  if (cleanEmail === superAdmin.toLowerCase()) {
-    throw new Error("Super Administrator bhanuswaroop04@gmail.com cannot be removed.");
-  }
-  const adminDocRef = doc(db, "authorized_admins", cleanEmail);
-  await deleteDoc(adminDocRef);
-
-  // Downgrade in users collection if present
+export async function getSocialSettings(): Promise<SocialSettings> {
   try {
-    const usersSnap = await getDocs(collection(db, "users"));
-    const match = usersSnap.docs.find(
-      (d) => d.data()?.email?.toLowerCase() === cleanEmail,
-    );
-    if (match) {
-      await updateDoc(doc(db, "users", match.id), {
-        role: "customer",
-        updatedAt: new Date().toISOString(),
-      });
+    const docRef = doc(db, "settings", "social");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { ...DEFAULT_SOCIAL_SETTINGS, ...(snap.data() as SocialSettings) };
     }
   } catch (err) {
-    console.warn("Error demoting user document:", err);
+    console.warn("Firestore getSocialSettings error:", err);
   }
+  return DEFAULT_SOCIAL_SETTINGS;
 }
 
-/**
- * Helper to check if an email is an authorized administrator
- */
-export async function isEmailAuthorizedAdmin(
-  email: string,
-  superAdminEmails = ["bhanuswaroop04@gmail.com"],
-): Promise<boolean> {
-  const cleanEmail = email.trim().toLowerCase();
-  if (superAdminEmails.map((e) => e.toLowerCase()).includes(cleanEmail)) {
-    return true;
-  }
+export function subscribeSocialSettings(
+  callback: (settings: SocialSettings) => void,
+): () => void {
+  callback(DEFAULT_SOCIAL_SETTINGS);
+  const docRef = doc(db, "settings", "social");
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback({ ...DEFAULT_SOCIAL_SETTINGS, ...(snap.data() as SocialSettings) });
+      } else {
+        callback(DEFAULT_SOCIAL_SETTINGS);
+      }
+    },
+    (err) => {
+      console.warn("Firestore social settings subscription error:", err);
+    },
+  );
+}
+
+export async function updateSocialSettings(settings: Partial<SocialSettings>): Promise<void> {
+  const current = await getSocialSettings();
+  const updated: SocialSettings = {
+    ...current,
+    ...settings,
+    updatedAt: getKolkataISOString(),
+  };
+  const docRef = doc(db, "settings", "social");
+  await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
+}
+
+export async function getContactSettings(): Promise<ContactSettings> {
   try {
-    const adminSnap = await getDoc(doc(db, "authorized_admins", cleanEmail));
-    if (adminSnap.exists() && adminSnap.data()?.role === "admin") {
-      return true;
+    const docRef = doc(db, "settings", "contact");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { ...DEFAULT_CONTACT_SETTINGS, ...(snap.data() as ContactSettings) };
     }
-  } catch {}
-  return false;
+  } catch (err) {
+    console.warn("Firestore getContactSettings error:", err);
+  }
+  return DEFAULT_CONTACT_SETTINGS;
 }
 
+export function subscribeContactSettings(
+  callback: (settings: ContactSettings) => void,
+): () => void {
+  callback(DEFAULT_CONTACT_SETTINGS);
+  const docRef = doc(db, "settings", "contact");
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback({ ...DEFAULT_CONTACT_SETTINGS, ...(snap.data() as ContactSettings) });
+      } else {
+        callback(DEFAULT_CONTACT_SETTINGS);
+      }
+    },
+    (err) => {
+      console.warn("Firestore contact settings subscription error:", err);
+    },
+  );
+}
+
+export async function updateContactSettings(settings: Partial<ContactSettings>): Promise<void> {
+  const current = await getContactSettings();
+  const updated: ContactSettings = {
+    ...current,
+    ...settings,
+    updatedAt: getKolkataISOString(),
+  };
+  const docRef = doc(db, "settings", "contact");
+  await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
+}
+
+// ========================================================
+// Server Cart Services (carts/{uid})
+// ========================================================
+
+export function subscribeCart(
+  uid: string,
+  callback: (cart: CartDoc | null) => void,
+  onError?: (err: Error) => void,
+): () => void {
+  const cartRef = doc(db, "carts", uid);
+  return onSnapshot(
+    cartRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback(snap.data() as CartDoc);
+      } else {
+        callback(null);
+      }
+    },
+    (err) => {
+      if (onError) onError(err);
+      else console.error("Firestore cart subscription error:", err);
+    },
+  );
+}
+
+export async function saveCart(
+  uid: string,
+  items: CartDoc["items"],
+  couponCode?: string | null,
+): Promise<void> {
+  const cartRef = doc(db, "carts", uid);
+  const payload: CartDoc = {
+    items,
+    couponCode: couponCode || undefined,
+    updatedAt: getKolkataISOString(),
+  };
+  await setDoc(cartRef, cleanFirestoreData(payload));
+}
+
+export async function clearServerCart(uid: string): Promise<void> {
+  const cartRef = doc(db, "carts", uid);
+  await deleteDoc(cartRef);
+}
+
+// ========================================================
+// Server Checkout Draft Services (drafts/{uid})
+// ========================================================
+
+export async function getCheckoutDraft(uid: string): Promise<CheckoutDraftDoc | null> {
+  try {
+    const draftRef = doc(db, "drafts", uid);
+    const snap = await getDoc(draftRef);
+    if (snap.exists()) {
+      return snap.data() as CheckoutDraftDoc;
+    }
+  } catch (err) {
+    console.warn("Firestore getCheckoutDraft notice:", err);
+  }
+  return null;
+}
+
+export async function saveCheckoutDraft(
+  uid: string,
+  draft: Partial<CheckoutDraftDoc>,
+): Promise<void> {
+  const draftRef = doc(db, "drafts", uid);
+  const payload: CheckoutDraftDoc = {
+    uid,
+    ...draft,
+    updatedAt: getKolkataISOString(),
+  };
+  await setDoc(draftRef, cleanFirestoreData(payload), { merge: true });
+}
+
+export async function deleteCheckoutDraft(uid: string): Promise<void> {
+  const draftRef = doc(db, "drafts", uid);
+  await deleteDoc(draftRef);
+}
+
+// ========================================================
+// Customer Feedback Services (feedback/{orderId})
+// ========================================================
+
+export async function submitFeedback(
+  feedback: Omit<FeedbackItem, "id" | "createdAt"> & { id?: string; createdAt?: string },
+): Promise<FeedbackItem> {
+  if (!feedback.orderId) {
+    throw new Error("Order ID is required to submit feedback.");
+  }
+  const intRating = Math.round(feedback.rating);
+  if (!intRating || intRating < 1 || intRating > 5) {
+    throw new Error("Rating must be an integer between 1 and 5 stars.");
+  }
+
+  // Document ID is strictly feedback.orderId (ensures 1 feedback per order)
+  const docRef = doc(db, "feedback", feedback.orderId);
+  const payload: FeedbackItem = {
+    ...feedback,
+    id: feedback.orderId,
+    feedbackId: feedback.orderId,
+    rating: intRating,
+    createdAt: feedback.createdAt || getKolkataISOString(),
+  };
+
+  await setDoc(docRef, cleanFirestoreData(payload));
+
+  // Mark feedbackGiven = true on order
+  try {
+    const orderRef = doc(db, "orders", feedback.orderId);
+    await updateDoc(orderRef, { feedbackGiven: true });
+  } catch (err) {
+    console.warn("Could not mark order feedbackGiven flag:", err);
+  }
+
+  return payload;
+}
+
+export function subscribeFeedback(callback: (items: FeedbackItem[]) => void): () => void {
+  const colRef = collection(db, "feedback");
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        feedbackId: d.id,
+        ...d.data(),
+      })) as FeedbackItem[];
+      callback(items);
+    },
+    (err) => {
+      console.error("Firestore feedback subscription error:", err);
+    },
+  );
+}
+
+// ========================================================
+// Equipment Refill & Renewal Alerts Services (reminders/{reminderId})
+// ========================================================
+
+export async function createRenewalReminder(
+  order: OrderItem,
+  item: {
+    productId?: string | undefined;
+    name: string;
+    renewalMonths?: 3 | 6 | 9 | 12 | undefined;
+  },
+  installDateStr?: string,
+  cycleNumber: number = 1,
+): Promise<ReminderItem | null> {
+  const months = item.renewalMonths;
+  if (!months) return null;
+
+  const installDate = installDateStr || order.installDate || getKolkataDateString();
+  const renewalDate = addMonthsWithClamp(installDate, months);
+  const alertDate = subtractDaysKolkata(renewalDate, 7);
+
+  const safeProdId = item.productId || slugify(item.name);
+  const safeOrderId = order.orderNumber || order.id || order.orderId || "";
+  // Deterministic ID prevents duplicate reminders per orderId + productId + cycleNumber
+  const reminderId = `REM-${safeOrderId}-${safeProdId}-${cycleNumber}`;
+  const nowIso = getKolkataISOString();
+
+  const reminder: ReminderItem = {
+    id: reminderId,
+    reminderId,
+    orderId: safeOrderId,
+    userId: order.customerId || "guest",
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    customerEmail: order.customerEmail,
+    productId: safeProdId,
+    productName: item.name,
+    renewalMonths: months,
+    installDate,
+    renewalDate,
+    alertDate,
+    status: "pending",
+    cycle: cycleNumber,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  const docRef = doc(db, "reminders", reminderId);
+  await setDoc(docRef, cleanFirestoreData(reminder), { merge: true });
+  return reminder;
+}
+
+export function subscribeReminders(callback: (reminders: ReminderItem[]) => void): () => void {
+  const colRef = collection(db, "reminders");
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as ReminderItem[];
+      callback(items);
+    },
+    (err) => {
+      console.error("Firestore reminders subscription error:", err);
+    },
+  );
+}
+
+export async function markReminderCompleted(
+  reminderId: string,
+  completionDateOrNote?: string,
+  scheduleNextOrAdmin?: boolean | string,
+): Promise<{ completedReminder: ReminderItem; nextReminder?: ReminderItem }> {
+  const docRef = doc(db, "reminders", reminderId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) {
+    throw new Error(`Reminder ${reminderId} not found in Firestore.`);
+  }
+
+  const current = snap.data() as ReminderItem;
+  const nowIso = getKolkataISOString();
+
+  await updateDoc(docRef, {
+    status: "completed",
+    completedAt: nowIso,
+    updatedAt: nowIso,
+  });
+
+  const shouldScheduleNext = scheduleNextOrAdmin !== false;
+  if (!shouldScheduleNext) {
+    return { completedReminder: { ...current, status: "completed", completedAt: nowIso } };
+  }
+
+  const nextCycle = (current.cycle || 1) + 1;
+  const nextInstallDate = current.renewalDate;
+  const nextRenewalDate = addMonthsWithClamp(nextInstallDate, current.renewalMonths);
+  const nextAlertDate = subtractDaysKolkata(nextRenewalDate, 7);
+  const nextReminderId = `REM-${current.orderId}-${current.productId}-${nextCycle}`;
+
+  const nextReminder: ReminderItem = {
+    id: nextReminderId,
+    reminderId: nextReminderId,
+    orderId: current.orderId,
+    userId: current.userId,
+    customerName: current.customerName,
+    customerPhone: current.customerPhone,
+    customerEmail: current.customerEmail,
+    productId: current.productId,
+    productName: current.productName,
+    renewalMonths: current.renewalMonths,
+    installDate: nextInstallDate,
+    renewalDate: nextRenewalDate,
+    alertDate: nextAlertDate,
+    status: "pending",
+    cycle: nextCycle,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  await setDoc(doc(db, "reminders", nextReminderId), cleanFirestoreData(nextReminder), {
+    merge: true,
+  });
+
+  return { completedReminder: { ...current, status: "completed", completedAt: nowIso }, nextReminder };
+}
+
+export async function processDueRemindersFallback(): Promise<number> {
+  const today = getKolkataDateString();
+  const nowIso = getKolkataISOString();
+
+  try {
+    const q = query(
+      collection(db, "reminders"),
+      where("status", "==", "pending"),
+      where("alertDate", "<=", today),
+    );
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return 0;
+
+    let processed = 0;
+    for (const d of snapshot.docs) {
+      const reminderId = d.id;
+      const reminder = d.data() as ReminderItem;
+
+      // Idempotency: verify status is still pending before marking sent
+      try {
+        const docRef = doc(db, "reminders", reminderId);
+        const freshSnap = await getDoc(docRef);
+        if (!freshSnap.exists() || freshSnap.data()?.["status"] !== "pending") {
+          continue;
+        }
+
+        await updateDoc(docRef, {
+          status: "sent",
+          lastAlertSentAt: nowIso,
+          updatedAt: nowIso,
+        });
+
+        await createNotification({
+          userId: reminder.userId,
+          title: "Upcoming Safety Refill / Inspection Due",
+          message: `Your ${reminder.productName} (Order #${reminder.orderId}) is scheduled for refill on ${reminder.renewalDate}. Contact +91 8639858221 to schedule inspection.`,
+          type: "renewal",
+          orderId: reminder.orderId,
+          reminderId,
+          read: false,
+          createdAt: nowIso,
+        });
+
+        processed++;
+      } catch (err) {
+        console.warn(`Idempotency check error on reminder ${reminderId}:`, err);
+      }
+    }
+    return processed;
+  } catch (err) {
+    console.warn("processDueRemindersFallback notice:", err);
+    return 0;
+  }
+}
+
+// ========================================================
+// In-App Notifications Services (notifications/{id})
+// ========================================================
+
+export async function createNotification(notif: Omit<NotificationItem, "id">): Promise<void> {
+  const colRef = collection(db, "notifications");
+  await addDoc(colRef, cleanFirestoreData(notif));
+}
+
+export function subscribeNotifications(
+  userId: string,
+  callback: (notifications: NotificationItem[]) => void,
+): () => void {
+  const colRef = collection(db, "notifications");
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const all = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as NotificationItem[];
+      const userNotifs = all.filter(
+        (n) =>
+          n.userId === userId || n.userId === "all" || (userId === "admin" && n.userId === "admin"),
+      );
+      callback(userNotifs);
+    },
+    (err) => {
+      console.error("Firestore notifications subscription error:", err);
+    },
+  );
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  const docRef = doc(db, "notifications", id);
+  await updateDoc(docRef, { read: true });
+}

@@ -31,7 +31,7 @@ export const Route = createFileRoute("/services/inspection")({
         schemas.service(
           "Fire Safety Testing, Inspection & Form B Certification",
           "NABL/PESO-calibrated hydrostatic pressure testing, fire pump flow rate calibration, smoke detector sensitivity auditing, and statutory Form B certificates.",
-          "/services/inspection"
+          "/services/inspection",
         ),
       ],
     }),

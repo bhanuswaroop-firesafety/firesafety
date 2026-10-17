@@ -1,7 +1,34 @@
+import { useState, useEffect } from "react";
 import { BrandLogo } from "./brand-logo";
-import { Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { Mail, MapPin, Phone, ShieldCheck, Instagram } from "lucide-react";
+import {
+  subscribeSocialSettings,
+  DEFAULT_SOCIAL_SETTINGS,
+  subscribeContactSettings,
+  DEFAULT_CONTACT_SETTINGS,
+} from "@/lib/db-service";
+import type { SocialSettings, ContactSettings } from "@/lib/types";
 
 export function SiteFooter() {
+  const [social, setSocial] = useState<SocialSettings>(DEFAULT_SOCIAL_SETTINGS);
+  const [contact, setContact] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
+
+  useEffect(() => {
+    const unsubSocial = subscribeSocialSettings((settings) => setSocial(settings));
+    const unsubContact = subscribeContactSettings((settings) => setContact(settings));
+    return () => {
+      unsubSocial();
+      unsubContact();
+    };
+  }, []);
+
+  const hasInstagram = Boolean(
+    social.instagramUrl &&
+      social.instagramUrl.trim() &&
+      !social.instagramUrl.includes("[PASTE")
+  );
+  const instagramHref = hasInstagram ? social.instagramUrl.trim() : "";
+
   return (
     <footer className="border-t border-border bg-card/60 backdrop-blur">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_0.9fr_1fr] lg:px-8">
@@ -112,34 +139,75 @@ export function SiteFooter() {
             <li className="flex items-start gap-3">
               <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
               <div className="space-y-0.5">
-                <a href="tel:+918639858221" className="block font-semibold hover:text-primary">
-                  +91 8639858221
+                <a
+                  href={`tel:${contact.supportPhone.replace(/\s+/g, "")}`}
+                  className="block font-semibold hover:text-primary"
+                >
+                  {contact.supportPhone}
                 </a>
-                <a href="tel:+919030609171" className="block font-semibold hover:text-primary">
-                  +91 9030609171
-                </a>
+                {contact.secondaryPhone && (
+                  <a
+                    href={`tel:${contact.secondaryPhone.replace(/\s+/g, "")}`}
+                    className="block font-semibold hover:text-primary"
+                  >
+                    {contact.secondaryPhone}
+                  </a>
+                )}
                 <span className="block text-xs text-muted-foreground">24/7 Emergency Support</span>
               </div>
             </li>
             <li className="flex items-start gap-3">
               <Mail className="mt-0.5 size-4 shrink-0 text-primary" />
               <a
-                href="mailto:sriudharchienterprises@gmail.com"
+                href={`mailto:${contact.supportEmail}`}
                 className="break-all hover:text-primary"
               >
-                sriudharchienterprises@gmail.com
+                {contact.supportEmail}
               </a>
             </li>
             <li className="flex items-start gap-3">
               <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241</span>
+              <span>{contact.address}</span>
             </li>
+            {hasInstagram && (
+              <li className="flex items-center gap-3 pt-1">
+                <Instagram className="size-4 shrink-0 text-pink-600" />
+                <a
+                  href={instagramHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-foreground hover:text-pink-600 transition-colors flex items-center gap-1.5"
+                  title="Follow Sri Udharchi Enterprises on Instagram"
+                >
+                  <span>Instagram Profile</span>
+                  <span className="text-[10px] rounded bg-pink-500/10 px-1.5 py-0.2 text-pink-600 font-bold">
+                    Official
+                  </span>
+                </a>
+              </li>
+            )}
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-border px-5 py-5 text-center text-xs text-muted-foreground">
-        © 2026 Sri Udharchi Enterprises. All rights reserved.
+      <div className="border-t border-border px-5 py-5 text-xs text-muted-foreground">
+        <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <span>© 2026 Sri Udharchi Enterprises. All rights reserved.</span>
+          {hasInstagram && (
+            <div className="flex items-center gap-4">
+              <a
+                href={instagramHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-pink-600 transition-colors"
+                title="Official Instagram"
+              >
+                <Instagram className="size-3.5 text-pink-600" />
+                <span>Follow @sriudharchienterprises</span>
+              </a>
+            </div>
+          )}
+        </div>
       </div>
     </footer>
   );

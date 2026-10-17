@@ -27,7 +27,9 @@ interface AdminAnalyticsProps {
   usersList: UserItem[];
   categories: CategoryItem[];
   orders?: OrderItem[];
-  onNavigateTab: (tab: "products" | "inquiries" | "users" | "analytics" | "orders" | "system") => void;
+  onNavigateTab: (
+    tab: "products" | "inquiries" | "users" | "analytics" | "orders" | "system",
+  ) => void;
   onOpenAddProduct?: () => void;
 }
 
@@ -74,9 +76,13 @@ export function AdminAnalytics({
   const orderStats = useMemo(() => {
     const list = orders || [];
     const total = list.length;
-    const pending = list.filter((o) => o.status === "pending").length;
+    const pending = list.filter((o) => o.status === "placed" || o.status === "pending").length;
     const confirmed = list.filter(
-      (o) => o.status === "confirmed" || o.status === "dispatched" || o.status === "delivered",
+      (o) =>
+        o.status === "confirmed" ||
+        o.status === "shipped" ||
+        o.status === "dispatched" ||
+        o.status === "delivered",
     ).length;
     const revenue = list.reduce((sum, o) => sum + (o.total || 0), 0);
     return { total, pending, confirmed, revenue };

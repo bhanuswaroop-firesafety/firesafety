@@ -1,10 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
 import { useCart } from "@/lib/cart-context";
-import { submitOrder } from "@/lib/db-service";
+import { useAuth } from "@/lib/auth-context";
+import {
+  submitOrder,
+  subscribeShippingSettings,
+  DEFAULT_SHIPPING_SETTINGS,
+  generateOrderNumber,
+  getCheckoutDraft,
+  saveCheckoutDraft,
+  deleteCheckoutDraft,
+} from "@/lib/db-service";
+import type { ShippingSettings } from "@/lib/types";
+import { calculateDeliveryWindow, formatKolkataDisplay } from "@/lib/date-utils";
 import {
   ShieldCheck,
   Truck,
@@ -21,7 +32,10 @@ import {
   ShoppingBag,
   AlertCircle,
   Clock,
+  Smartphone,
+  Zap,
 } from "lucide-react";
+import { PhoneOtpModal } from "@/components/phone-otp-modal";
 
 import { seoHead } from "@/lib/seo";
 
@@ -46,8 +60,8 @@ interface OrderConfirmationData {
   customerPhone: string;
   customerEmail: string;
   shippingAddress: string;
-  companyName?: string;
-  gstin?: string;
+  companyName?: string | undefined;
+  gstin?: string | undefined;
   paymentMethod: PaymentMethod;
   items: Array<{
     name: string;
@@ -60,6 +74,9 @@ interface OrderConfirmationData {
   shipping: number;
   total: number;
   estimatedDelivery: string;
+  shippingType: "standard" | "priority";
+  expectedDeliveryFrom: string;
+  expectedDeliveryTo: string;
 }
 
 const INDIAN_STATES = [
@@ -100,6 +117,15 @@ function CheckoutPage() {
     clearCart,
     isHydrated,
   } = useCart();
+  const { user, userProfile } = useAuth();
+  const [isPhoneOtpModalOpen, setIsPhoneOtpModalOpen] = useState(false);
+
+  // Dynamic Shipping Settings from Firestore (Task A)
+  const [shippingSettings, setShippingSettings] =
+    useState<ShippingSettings>(DEFAULT_SHIPPING_SETTINGS);
+  useEffect(() => {
+    return subscribeShippingSettings(setShippingSettings);
+  }, []);
 
   // Form states
   const [fullName, setFullName] = useState("");
@@ -114,6 +140,67 @@ function CheckoutPage() {
   const [gstin, setGstin] = useState("");
   const [deliverySpeed, setDeliverySpeed] = useState<"standard" | "priority">("standard");
 
+  // Phone is verified if authenticated via Firebase phone or profile phone exists
+  const isPhoneVerified = Boolean(
+    user?.phoneNumber ||
+      (userProfile?.phone && userProfile.phone.trim().replace(/\D/g, "").length >= 10),
+  );
+
+  const [isDraftLoading, setIsDraftLoading] = useState(false);
+
+  // 1. Restore booking draft from Firestore drafts/{uid} across page refreshes
+  useEffect(() => {
+    if (!user) return;
+    setIsDraftLoading(true);
+    getCheckoutDraft(user.uid)
+      .then((d) => {
+        if (d) {
+          if (d.fullName) setFullName(d.fullName);
+          if (d.phone && !isPhoneVerified) setPhone(d.phone);
+          if (d.email) setEmail(d.email);
+          if (d.address) setAddress(d.address);
+          if (d.city) setCity(d.city);
+          if (d.state) setState(d.state);
+          if (d.pincode) setPincode(d.pincode);
+          if (d.companyName) setCompanyName(d.companyName);
+          if (d.gstin) setGstin(d.gstin);
+          if (d.isB2B !== undefined) setIsB2B(d.isB2B);
+          if (d.deliverySpeed) setDeliverySpeed(d.deliverySpeed);
+          if (d.paymentMethod) setPaymentMethod(d.paymentMethod as PaymentMethod);
+        }
+      })
+      .catch((err) => console.warn("Failed to load checkout draft from Firestore:", err))
+      .finally(() => setIsDraftLoading(false));
+  }, [user]);
+
+  // 2. Prefill contact details from active user profile if available
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.displayName && !fullName) {
+        setFullName(userProfile.displayName);
+      }
+      if (userProfile.phone) {
+        setPhone(userProfile.phone);
+      } else if (user?.phoneNumber) {
+        setPhone(user.phoneNumber);
+      }
+      // Only prefill real email (not phone-auth synthetic fallback)
+      if (
+        userProfile.email &&
+        !userProfile.email.includes("@mobile.udharchi.in") &&
+        !email
+      ) {
+        setEmail(userProfile.email);
+      }
+      if (userProfile.company && !companyName) {
+        setCompanyName(userProfile.company);
+        setIsB2B(true);
+      }
+    } else if (user?.phoneNumber && !phone) {
+      setPhone(user.phoneNumber);
+    }
+  }, [userProfile, user]);
+
   // Payment states
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
   const [upiId, setUpiId] = useState("");
@@ -124,32 +211,63 @@ function CheckoutPage() {
   const [selectedBank, setSelectedBank] = useState("sbi");
   const [poNumber, setPoNumber] = useState("");
 
+  // 3. Persist booking draft to Firestore drafts/{uid} across page reloads (debounced)
+  useEffect(() => {
+    if (!user || isDraftLoading) return;
+    const timer = setTimeout(() => {
+      saveCheckoutDraft(user.uid, {
+        fullName,
+        phone,
+        email,
+        address,
+        city,
+        state,
+        pincode,
+        isB2B,
+        companyName,
+        gstin,
+        deliverySpeed,
+        paymentMethod,
+      }).catch((err) => console.warn("Failed to save checkout draft:", err));
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [user, isDraftLoading, fullName, phone, email, address, city, state, pincode, isB2B, companyName, gstin, deliverySpeed, paymentMethod]);
+
   // Processing & Confirmation states
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState<OrderConfirmationData | null>(null);
   const [validationError, setValidationError] = useState("");
 
-  const extraPriorityShipping = deliverySpeed === "priority" ? 500 : 0;
+  // Task A: Priority dispatch charge from Firestore settings (default 0)
+  const priorityCharge = shippingSettings.priorityCharge || 0;
+  const extraPriorityShipping = deliverySpeed === "priority" ? priorityCharge : 0;
   const finalPayable = totalAmount + extraPriorityShipping;
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError("");
 
-    // Validations
+    // Validations: Full name
     if (!fullName.trim()) {
-      setValidationError("Please enter your full name.");
+      setValidationError("Please enter your full name / contact person name.");
       return;
     }
-    if (!phone.trim() || phone.trim().length < 10) {
-      setValidationError("Please enter a valid 10-digit mobile phone number.");
+
+    // Task B: Mobile phone number strictly required (at least 10 digits)
+    const cleanPhoneDigits = phone.trim().replace(/\D/g, "");
+    if (!cleanPhoneDigits || cleanPhoneDigits.length < 10) {
+      setValidationError("Please enter a valid 10-digit mobile number required to book your order.");
       return;
     }
-    if (!email.trim() || !email.includes("@")) {
-      setValidationError("Please enter a valid email address for invoice delivery.");
+
+    // Task B: Valid email format strictly required
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      setValidationError("Please enter a valid Gmail or corporate email address (e.g. yourname@gmail.com) for official GST billing.");
       return;
     }
+
     if (!address.trim()) {
       setValidationError("Please enter your delivery site/facility address.");
       return;
@@ -195,57 +313,17 @@ function CheckoutPage() {
       setProcessingStep("Authorizing Payment & Reserving Industrial Inventory...");
     }, 1800);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsProcessing(false);
-      const randomOrderNum = Math.floor(10000 + Math.random() * 90000);
-      const orderId = `SUE-2026-${randomOrderNum}`;
-      const now = new Date();
-      const estDate = new Date();
-      estDate.setDate(now.getDate() + (deliverySpeed === "priority" ? 2 : 4));
+      const orderId = generateOrderNumber();
+      const windowInfo = calculateDeliveryWindow(deliverySpeed, shippingSettings);
 
       const confirmation: OrderConfirmationData = {
         orderId,
-        orderDate: now.toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        customerName: fullName,
-        customerPhone: phone,
-        customerEmail: email,
-        shippingAddress: `${address}, ${city}, ${state} - ${pincode}`,
-        companyName: isB2B ? companyName : undefined,
-        gstin: isB2B ? gstin : undefined,
-        paymentMethod,
-        items: cartItems.map((i) => ({
-          name: i.name,
-          quantity: i.quantity,
-          price: i.price,
-        })),
-        subtotal,
-        discount: discountAmount,
-        gst: gstAmount,
-        shipping: shippingFee + extraPriorityShipping,
-        total: finalPayable,
-        estimatedDelivery: estDate.toLocaleDateString("en-IN", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
-      };
-
-      setConfirmedOrder(confirmation);
-      clearCart();
-
-      // Persist real customer order into Firestore /orders collection
-      submitOrder({
-        orderNumber: orderId,
+        orderDate: formatKolkataDisplay(new Date(), true),
         customerName: fullName.trim(),
         customerPhone: phone.trim(),
-        customerEmail: email.trim(),
+        customerEmail: email.trim().toLowerCase(),
         shippingAddress: `${address.trim()}, ${city}, ${state} - ${pincode}`,
         companyName: isB2B ? companyName.trim() : undefined,
         gstin: isB2B ? gstin.trim() : undefined,
@@ -260,18 +338,61 @@ function CheckoutPage() {
         gst: gstAmount,
         shipping: shippingFee + extraPriorityShipping,
         total: finalPayable,
-        status: "pending",
-        createdAt: now.toISOString(),
-        estimatedDelivery: estDate.toLocaleDateString("en-IN", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
-      }).catch((err) => {
-        console.warn("Firestore order submission logged locally:", err);
-      });
-    }, 2800);
+        estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+        shippingType: deliverySpeed,
+        expectedDeliveryFrom: windowInfo.fromISO,
+        expectedDeliveryTo: windowInfo.toISO,
+      };
+
+      // Persist real customer order into Cloud Firestore
+      const customerUid =
+        user?.uid ||
+        userProfile?.id ||
+        `cust-${email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, "").slice(0, 10)}`;
+
+      try {
+        await submitOrder({
+          orderId,
+          orderNumber: orderId,
+          customerId: customerUid,
+          customerName: fullName.trim(),
+          customerPhone: phone.trim(),
+          customerEmail: email.trim().toLowerCase(),
+          shippingAddress: `${address.trim()}, ${city}, ${state} - ${pincode}`,
+          companyName: isB2B && companyName ? companyName.trim() : "",
+          gstin: isB2B && gstin ? gstin.trim() : "",
+          paymentMethod,
+          items: cartItems.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+          })),
+          subtotal,
+          discount: discountAmount,
+          gst: gstAmount,
+          shipping: shippingFee + extraPriorityShipping,
+          total: finalPayable,
+          status: "placed",
+          shippingType: deliverySpeed,
+          expectedDeliveryFrom: windowInfo.fromISO,
+          expectedDeliveryTo: windowInfo.toISO,
+          shippingCharge: shippingFee + extraPriorityShipping,
+          estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+        });
+
+        // Delete server draft after successful placement
+        if (user) {
+          await deleteCheckoutDraft(user.uid).catch(() => {});
+        }
+        clearCart();
+        setConfirmedOrder(confirmation);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setValidationError(`Order submission failed: ${msg}. Please check your connection and retry.`);
+        setIsProcessing(false);
+        return;
+      }
+    }, 1800);
   };
 
   const formatCardNumber = (val: string) => {
@@ -314,9 +435,16 @@ function CheckoutPage() {
                     {confirmedOrder.orderId}
                   </span>
                 </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold backdrop-blur">
-                  <Clock className="size-3.5" /> Estimated Delivery:{" "}
-                  {confirmedOrder.estimatedDelivery}
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold backdrop-blur">
+                    <Clock className="size-3.5" /> Estimated Delivery: {confirmedOrder.estimatedDelivery}
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold backdrop-blur">
+                    <Truck className="size-3.5" />
+                    {confirmedOrder.shippingType === "priority"
+                      ? "Priority / Emergency Dispatch (1-2 days)"
+                      : "Standard Logistics (5-7 days)"}
+                  </div>
                 </div>
               </div>
 
@@ -338,9 +466,23 @@ function CheckoutPage() {
                         GSTIN: {confirmedOrder.gstin}
                       </span>
                     )}
-                    <span className="block text-muted-foreground mt-1">
+                    <span className="block text-muted-foreground mt-1 font-mono">
                       {confirmedOrder.customerPhone} • {confirmedOrder.customerEmail}
                     </span>
+                    <div className="mt-2.5 pt-2 border-t border-border/60">
+                      <span className="text-[11px] text-muted-foreground block">Shipping & Dispatch:</span>
+                      <span className="font-semibold text-foreground flex items-center gap-1.5 mt-0.5">
+                        {confirmedOrder.shippingType === "priority" ? (
+                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold">
+                            <Zap className="size-3" /> Priority Emergency Dispatch (1 to 2 days)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-primary font-bold">
+                            <Truck className="size-3" /> Standard Delivery (5 to 7 days)
+                          </span>
+                        )}
+                      </span>
+                    </div>
                   </div>
 
                   <div>
@@ -556,6 +698,50 @@ function CheckoutPage() {
             </div>
           )}
 
+          {/* Phone OTP Quick Login Banner */}
+          {!user ? (
+            <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Smartphone className="size-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground text-sm">
+                    Already have an enterprise account?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sign in with your mobile OTP to automatically load your billing profile, delivery facilities, and GSTIN.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setIsPhoneOtpModalOpen(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 px-4 gap-1.5 shrink-0"
+              >
+                <Smartphone className="size-3.5" />
+                <span>Login with Phone OTP</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="mb-8 flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-foreground">
+                    Logged in as {userProfile?.displayName || user.displayName || user.phoneNumber}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Your facility delivery information has been automatically populated below.
+                  </span>
+                </div>
+              </div>
+              <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                Active Client
+              </span>
+            </div>
+          )}
+
           <form onSubmit={handlePlaceOrder}>
             <div className="grid gap-10 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
               {/* Left Column: Form Fields */}
@@ -587,31 +773,55 @@ function CheckoutPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">
-                        Mobile Phone Number *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-foreground">
+                          Mobile Phone Number *
+                        </label>
+                        {isPhoneVerified && (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
+                            <CheckCircle2 className="size-3" /> Verified via OTP
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="tel"
                         required
                         value={phone}
+                        readOnly={isPhoneVerified}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="e.g. 9876543210"
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        className={`w-full rounded-xl border border-border px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none ${
+                          isPhoneVerified
+                            ? "bg-muted/50 cursor-not-allowed font-medium text-muted-foreground select-none"
+                            : "bg-background"
+                        }`}
                       />
+                      {isPhoneVerified ? (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Phone pre-filled and locked from authenticated session.
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          10-digit Indian mobile number required for dispatch updates.
+                        </p>
+                      )}
                     </div>
 
                     <div className="sm:col-span-2">
                       <label className="text-xs font-bold text-foreground block mb-1">
-                        Email Address (for Official Tax Invoice & Tracking) *
+                        Email Address (Gmail / Corporate Email Required) *
                       </label>
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="e.g. safety.manager@company.com"
+                        placeholder="e.g. yourname@gmail.com or procurement@company.com"
                         className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
                       />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Required. Official statutory GST invoice, proforma receipt, and carrier tracking links are delivered here.
+                      </p>
                     </div>
 
                     <div className="sm:col-span-2">
@@ -642,7 +852,9 @@ function CheckoutPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-foreground block mb-1">State *</label>
+                      <label className="text-xs font-bold text-foreground block mb-1">
+                        State *
+                      </label>
                       <select
                         value={state}
                         onChange={(e) => setState(e.target.value)}
@@ -744,10 +956,10 @@ function CheckoutPage() {
                       />
                       <div className="text-xs">
                         <strong className="block text-foreground">
-                          Standard Industrial Logistics
+                          Standard Industrial Logistics ({shippingSettings.standardDaysMin} to {shippingSettings.standardDaysMax} days)
                         </strong>
                         <p className="text-muted-foreground mt-0.5">
-                          Delivery within 3 to 5 business days via regional cargo carrier.
+                          Regular cargo dispatch arriving in {shippingSettings.standardDaysMin} to {shippingSettings.standardDaysMax} days via regional transport.
                         </p>
                         <span className="inline-block mt-2 font-bold text-primary">
                           {shippingFee === 0 ? "FREE" : `₹${shippingFee}`}
@@ -771,13 +983,18 @@ function CheckoutPage() {
                       />
                       <div className="text-xs">
                         <strong className="block text-foreground flex items-center gap-1.5">
-                          Priority Emergency Dispatch
+                          <Zap className="size-3.5 text-amber-500 fill-amber-500" />
+                          <span>Priority / Emergency Dispatch ({shippingSettings.priorityDaysMin} to {shippingSettings.priorityDaysMax} days)</span>
                         </strong>
                         <p className="text-muted-foreground mt-0.5">
-                          Direct expedited transit (24-48 hours) for urgent inspection deadlines.
+                          Expedited direct carrier dispatch in {shippingSettings.priorityDaysMin} to {shippingSettings.priorityDaysMax} days for emergency fire audits and urgent site deadlines.
                         </p>
                         <span className="inline-block mt-2 font-bold text-primary">
-                          ₹{(shippingFee + 500).toLocaleString("en-IN")}
+                          {shippingSettings.priorityCharge > 0
+                            ? `₹${(shippingFee + shippingSettings.priorityCharge).toLocaleString("en-IN")}`
+                            : shippingFee === 0
+                              ? "FREE (Special Priority Offer)"
+                              : `₹${shippingFee}`}
                         </span>
                       </div>
                     </label>
@@ -978,9 +1195,9 @@ function CheckoutPage() {
                         Corporate Purchase Order / Proforma Billing
                       </strong>
                       <p className="text-muted-foreground">
-                        For institutional clients, government contractors, and enterprise facilities.
-                        Sri Udharchi Enterprises issues an official proforma invoice with bank NEFT/RTGS
-                        details and payment terms against delivery.
+                        For institutional clients, government contractors, and enterprise
+                        facilities. Sri Udharchi Enterprises issues an official proforma invoice
+                        with bank NEFT/RTGS details and payment terms against delivery.
                       </p>
                       <div>
                         <label className="font-bold text-foreground block mb-1">
@@ -1004,8 +1221,8 @@ function CheckoutPage() {
                         Cash / Pay on Delivery
                       </strong>
                       <p>
-                        Pay in cash or via digital UPI QR directly to the delivery logistics executive
-                        upon physical inspection and handover of equipment.
+                        Pay in cash or via digital UPI QR directly to the delivery logistics
+                        executive upon physical inspection and handover of equipment.
                       </p>
                       <p className="text-primary font-semibold">
                         Verification SMS / Call will be made prior to cargo dispatch.
@@ -1032,7 +1249,9 @@ function CheckoutPage() {
                           className="size-12 shrink-0 rounded-lg object-cover border border-border bg-muted"
                         />
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-foreground truncate">{item.name}</h4>
+                          <h4 className="text-xs font-bold text-foreground truncate">
+                            {item.name}
+                          </h4>
                           <span className="text-[11px] text-muted-foreground">
                             Qty: {item.quantity} × ₹{item.price.toLocaleString("en-IN")}
                           </span>
@@ -1170,6 +1389,14 @@ function CheckoutPage() {
       )}
 
       <SiteFooter />
+
+      {/* Quick Phone OTP Login Modal */}
+      <PhoneOtpModal
+        isOpen={isPhoneOtpModalOpen}
+        onClose={() => setIsPhoneOtpModalOpen(false)}
+        title="Checkout Mobile Login"
+        subtitle="Sign in with your mobile phone to auto-fill address & GSTIN"
+      />
     </main>
   );
 }

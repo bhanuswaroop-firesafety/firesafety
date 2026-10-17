@@ -75,7 +75,7 @@ const PROJECT_CYLINDER_IMAGES = [
   { src: projectHydrant, alt: "High-Pressure Hydrant Networks" },
   { src: projectCctv, alt: "Hazardous Area CCTV Surveillance" },
   { src: projectCable, alt: "Fire-Rated Cable Containment" },
-  { src: manufacturing, alt: "Automotive & Manufacturing Facility Turnkey Protection" },
+  { src: manufacturing, alt: "Automotive & Manufacturing Facility Comprehensive Protection" },
   { src: warehouses, alt: "Cold Storage & High-Density Warehouses" },
   { src: marineSafety, alt: "Marine Offshore Safety Engineering" },
   { src: infrastructure, alt: "Public Infrastructure & Metro Life Safety" },
@@ -85,9 +85,9 @@ const PROJECT_CYLINDER_IMAGES = [
 export const Route = createFileRoute("/")({
   head: () =>
     seoHead({
-      title: "Fire Safety Products & Turnkey Fire Protection Systems | Sri Udharchi Enterprises",
+      title: "Fire Safety Products & Complete Fire Protection Systems | Sri Udharchi Enterprises",
       description:
-        "India's certified supplier of fire safety products and turnkey fire protection engineering. Buy ISI certified fire extinguishers, hydrant systems, fire pumps, PPE safety equipment, and AMC maintenance services.",
+        "India's certified supplier of fire safety products and comprehensive fire protection engineering. Buy ISI certified fire extinguishers, hydrant systems, fire pumps, PPE safety equipment, and AMC maintenance services.",
       path: "/",
       keywords: [
         "fire safety products",
@@ -110,7 +110,7 @@ export const Route = createFileRoute("/")({
         {
           question: "What fire protection services does Sri Udharchi Enterprises provide?",
           answer:
-            "Sri Udharchi Enterprises provides turnkey fire hydrant networks, automatic sprinkler systems, fire pump automation, FM-200 gas flooding, statutory NBC 2016 safety audits, extinguisher refilling, and comprehensive AMC maintenance.",
+            "Sri Udharchi Enterprises provides engineered fire hydrant networks, automatic sprinkler systems, fire pump automation, FM-200 gas flooding, statutory NBC 2016 safety audits, extinguisher refilling, and comprehensive AMC maintenance.",
         },
         {
           question: "Are your fire safety products compliant with Indian standards?",
@@ -125,7 +125,7 @@ export const Route = createFileRoute("/")({
         {
           question: "Which geographic regions do you deliver fire safety equipment to?",
           answer:
-            "We serve industrial clients across Andhra Pradesh, Telangana, Odisha, and provide turnkey equipment supply and engineering pan-India with GST input tax invoices.",
+            "We serve industrial clients across Andhra Pradesh, Telangana, Odisha, and provide complete equipment supply and engineering pan-India with GST input tax invoices.",
         },
       ]),
     }),
@@ -292,7 +292,7 @@ const CLIENT_TESTIMONIALS = [
   },
   {
     quote:
-      "Outstanding vendor for turnkey AMC maintenance. Their technician team conducts quarterly pump churn tests, hydrant pressure checks, and emergency staff drills without failing a single schedule.",
+      "Outstanding vendor for comprehensive AMC maintenance. Their technician team conducts quarterly pump churn tests, hydrant pressure checks, and emergency staff drills without failing a single schedule.",
     author: "Anand Shekar",
     role: "EHS Manager",
     company: "Global Logistics & Cold Chain Parks",
@@ -341,7 +341,7 @@ function Index() {
                 <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                 NBC 2016 & IS 15683 Certified
               </div>
-              <div className="text-sm font-bold text-white">Turnkey Fire Safety Engineering</div>
+              <div className="text-sm font-bold text-white">Complete Fire Safety Engineering</div>
               <div className="text-[11px] text-white/70">
                 Official Contractor in Andhra Pradesh & Pan-India
               </div>
@@ -364,7 +364,7 @@ function Index() {
             </h1>
 
             <p className="mt-3 sm:mt-6 max-w-2xl text-xs sm:text-base md:text-lg leading-relaxed text-primary-foreground/90">
-              Certified fire safety products, ISI extinguishers, turnkey hydrant networks, automated
+              Certified fire safety products, ISI extinguishers, high-pressure hydrant networks, automated
               sprinkler arrays, diesel booster pumps, statutory inspections, hydro-testing, and
               industrial PPE gear.
             </p>
@@ -423,7 +423,7 @@ function Index() {
                 500+
               </span>
               <span className="text-[10px] sm:text-xs text-white/70">
-                Industrial Turnkey Projects
+                Industrial Safety Projects
               </span>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-center sm:border-0 sm:bg-transparent sm:p-0 sm:text-left backdrop-blur-xs">
@@ -457,7 +457,7 @@ function Index() {
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 p-3 sm:gap-4 sm:p-4 lg:grid-cols-4 lg:divide-x lg:divide-border lg:gap-0 lg:p-0 lg:px-8">
           {[
             ["shield", "Certified Equipment", "IS 15683 & BIS compliant"],
-            ["wrench", "Turnkey Installation", "Piping, valves & manifolds"],
+            ["wrench", "System Installation", "Piping, valves & manifolds"],
             ["boxes", "Complete Safety Store", "Direct distributor pricing"],
             ["map", "Across Andhra Pradesh", "Rapid site dispatch & AMC"],
           ].map(([iconKey, title, copy], index) => {
@@ -509,7 +509,10 @@ function Index() {
                 key={prod.id}
                 className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-primary/50 hover:shadow-xl"
               >
-                <div className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted">
+                <a
+                  href={`/products/${prod.id}`}
+                  className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted block cursor-pointer"
+                >
                   <img
                     src={prod.image}
                     alt={`${prod.name} - Fire Safety Product | Sri Udharchi Enterprises`}
@@ -521,12 +524,14 @@ function Index() {
                   <span className="absolute right-2 top-2 sm:right-3 sm:top-3 rounded-full bg-emerald-500/90 text-white px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[9px] sm:text-[10px] font-bold backdrop-blur">
                     In Stock
                   </span>
-                </div>
+                </a>
 
                 <div className="flex flex-1 flex-col p-2.5 sm:p-5">
-                  <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
-                    {prod.name}
-                  </h3>
+                  <a href={`/products/${prod.id}`} className="hover:text-primary transition-colors">
+                    <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
+                      {prod.name}
+                    </h3>
+                  </a>
                   <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
                     {prod.specs}
                   </p>
@@ -564,6 +569,15 @@ function Index() {
                     >
                       Buy Now
                     </Button>
+                  </div>
+
+                  <div className="mt-2 text-center border-t border-border/60 pt-1.5">
+                    <a
+                      href={`/products/${prod.id}`}
+                      className="inline-flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold text-primary hover:underline"
+                    >
+                      View Product Details <ChevronRight className="size-3" />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -659,13 +673,13 @@ function Index() {
         </div>
       </section>
 
-      {/* Turnkey Safety Solutions */}
+      {/* Comprehensive Safety Solutions */}
       <section id="services" className="scroll-mt-24 py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <SectionHeading
-            eyebrow="Turnkey Engineering"
+            eyebrow="Safety Engineering"
             title="Complete Fire & Industrial Safety Solutions"
-            copy="Comprehensive turnkey safety engineering, statutory consultation, certified equipment supply, and round-the-clock maintenance adhering strictly to NBC 2016, NFPA, and BIS standards."
+            copy="Comprehensive safety engineering, statutory consultation, certified equipment supply, and round-the-clock maintenance adhering strictly to NBC 2016, NFPA, and BIS standards."
             action={
               <a href="/services" className="hidden sm:inline-block">
                 <Button variant="outline">
@@ -772,7 +786,7 @@ function Index() {
         </div>
       </section>
 
-      {/* Turnkey Projects Spotlight with 3D Curved Cylindrical Streaming Grid (LIGHT MODE) */}
+      {/* Projects Spotlight with 3D Curved Cylindrical Streaming Grid (LIGHT MODE) */}
       <section
         id="projects"
         className="scroll-mt-24 relative overflow-hidden bg-slate-50 border-y border-slate-200/90 text-foreground"
@@ -800,7 +814,7 @@ function Index() {
                 <span className="text-primary">for Critical Infrastructure</span>
               </h2>
               <p className="mt-3 text-xs sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                Turnkey installations across automotive vendor parks, cold chain complexes, and
+                Engineered installations across automotive vendor parks, cold chain complexes, and
                 high-density industrial corridors in Andhra Pradesh.
               </p>
             </div>
@@ -824,7 +838,7 @@ function Index() {
 
               <a href="/projects" className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md">
-                  View Turnkey Project Portfolio <ArrowRight className="size-4" />
+                  View Project Portfolio <ArrowRight className="size-4" />
                 </Button>
               </a>
             </div>

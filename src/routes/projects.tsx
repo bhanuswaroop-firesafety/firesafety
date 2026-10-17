@@ -64,7 +64,7 @@ const projectsList: Array<{
     location: "Kakinada Port Special Economic Zone, AP",
     client: "Chemical Processing & Bulk Liquid Storage Terminal",
     scope:
-      "Turnkey civil and mechanical installation of a 2500 GPM main electric fire pump, 2500 GPM heavy-duty diesel standby pump, and 150 GPM jockey pump with synchronized auto-start PLC panel.",
+      "Complete civil and mechanical installation of a 2500 GPM main electric fire pump, 2500 GPM heavy-duty diesel standby pump, and 150 GPM jockey pump with synchronized auto-start PLC panel.",
     metrics: ["2500 GPM Capacity", "Under 8-Sec Auto-Start", "NBC & TAC Approved"],
   },
   {
@@ -112,7 +112,7 @@ const projectsList: Array<{
     location: "Guntur Healthcare District, AP",
     client: "350-Bed Tertiary Care Hospital Campus",
     scope:
-      "Turnkey installation of FM-200 clean agent gas flooding systems for 6 server rooms, MRI diagnostics suite, and central electrical LT panel room with zero water damage risk.",
+      "Complete installation of FM-200 clean agent gas flooding systems for 6 server rooms, MRI diagnostics suite, and central electrical LT panel room with zero water damage risk.",
     metrics: ["6 Clean Agent Zones", "10-Sec Discharge Time", "Zero Equipment Residue"],
   },
 ];
@@ -149,7 +149,7 @@ function ProjectsPage() {
             Delivered Fire Protection <span className="text-primary">Projects</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            A portfolio of real-world turnkey installations, engineering audits, and industrial
+            A portfolio of real-world system installations, engineering audits, and industrial
             suppression systems commissioned for leading enterprises across India.
           </p>
 
@@ -239,7 +239,7 @@ function ProjectsPage() {
             Plan Your Next Project with Sri Udharchi Enterprises
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            Our engineering team prepares detailed drawings, hydraulic simulations, and turnkey BOQ
+            Our engineering team prepares detailed drawings, hydraulic simulations, and comprehensive BOQ
             estimates with fast turnaround times.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-4">
