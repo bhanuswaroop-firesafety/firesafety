@@ -12,7 +12,6 @@ import { MotionConfig } from "motion/react";
 import { AuthProvider } from "../lib/auth-context";
 import { CartProvider } from "../lib/cart-context";
 import { CartDrawer } from "../components/cart-drawer";
-import { CompleteProfileModal } from "../components/complete-profile-modal";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -233,7 +232,6 @@ function RootComponent() {
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
             <CartDrawer />
-            <CompleteProfileModal />
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>

@@ -1146,7 +1146,7 @@ function AdminPage() {
       icon: Users,
       badge:
         authorizedAdmins.length > 0
-          ? `${1 + authorizedAdmins.filter((a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com").length} Admins`
+          ? `${authorizedAdmins.length} Admins`
           : usersList.length > 0
             ? usersList.length
             : null,
@@ -3632,11 +3632,7 @@ function AdminPage() {
                       <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2">
                         <span>Authorized Executive Administrators</span>
                         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                          {1 +
-                            authorizedAdmins.filter(
-                              (a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com",
-                            ).length}{" "}
-                          Active
+                          {authorizedAdmins.length} Active
                         </span>
                       </h3>
                       <p className="text-xs text-muted-foreground">
@@ -3661,147 +3657,89 @@ function AdminPage() {
 
                 {/* Admins Grid / List */}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {/* Primary Super Administrator (Bhanu Swaroop) */}
-                  <div className="relative flex flex-col justify-between rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 transition-shadow hover:shadow-xs">
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex size-9 items-center justify-center rounded-full bg-amber-500 text-white font-bold text-xs shadow-xs shrink-0">
-                            <Crown className="size-4.5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-bold text-foreground text-xs">
-                              <span>Bhanu Swaroop</span>
-                              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-400">
-                                ROOT
-                              </span>
+                  {authorizedAdmins.map((admin) => (
+                    <div
+                      key={admin.id || admin.email}
+                      className="relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-xs"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0">
+                              {(admin.displayName || admin.email).charAt(0).toUpperCase()}
                             </div>
-                            <div className="text-[11px] text-muted-foreground font-mono truncate">
-                              bhanuswaroop04@gmail.com
-                            </div>
-                          </div>
-                        </div>
-                        <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 shrink-0">
-                          Super Admin
-                        </span>
-                      </div>
-
-                      <div className="mt-3 space-y-1 text-[11px] text-muted-foreground border-t border-amber-500/10 pt-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-foreground/80">Department:</span>
-                          <span className="font-semibold text-primary">
-                            Platform & Security Root
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-foreground/80">Access Level:</span>
-                          <span className="font-semibold text-foreground">
-                            Unrestricted Command
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3.5 pt-2 border-t border-amber-500/15 flex items-center justify-between text-[10px]">
-                      <span className="text-muted-foreground italic">
-                        Protected root administrator
-                      </span>
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
-                        <ShieldCheck className="size-3" />
-                        <span>System Locked</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Provisioned Additional Administrators */}
-                  {authorizedAdmins
-                    .filter((a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com")
-                    .map((admin) => (
-                      <div
-                        key={admin.id || admin.email}
-                        className="relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-xs"
-                      >
-                        <div>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0">
-                                {(admin.displayName || admin.email).charAt(0).toUpperCase()}
+                            <div className="min-w-0">
+                              <div className="font-bold text-foreground text-xs truncate">
+                                {admin.displayName || admin.email.split("@")[0]}
                               </div>
-                              <div className="min-w-0">
-                                <div className="font-bold text-foreground text-xs truncate">
-                                  {admin.displayName || admin.email.split("@")[0]}
-                                </div>
-                                <div className="text-[11px] text-muted-foreground font-mono truncate">
-                                  {admin.email}
-                                </div>
+                              <div className="text-[11px] text-muted-foreground font-mono truncate">
+                                {admin.email}
                               </div>
                             </div>
-                            <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
-                              Admin
+                          </div>
+                          <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
+                            Admin
+                          </span>
+                        </div>
+
+                        <div className="mt-3 space-y-1 text-[11px] text-muted-foreground border-t border-border/60 pt-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-foreground/80">Unit:</span>
+                            <span className="font-semibold text-foreground truncate max-w-[140px]">
+                              {admin.department || "Operations"}
                             </span>
                           </div>
-
-                          <div className="mt-3 space-y-1 text-[11px] text-muted-foreground border-t border-border/60 pt-2.5">
+                          {admin.phone && (
                             <div className="flex items-center justify-between">
-                              <span className="font-medium text-foreground/80">Unit:</span>
-                              <span className="font-semibold text-foreground truncate max-w-[140px]">
-                                {admin.department || "Operations"}
+                              <span className="font-medium text-foreground/80">Phone:</span>
+                              <span className="font-mono text-muted-foreground">
+                                {admin.phone}
                               </span>
                             </div>
-                            {admin.phone && (
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-foreground/80">Phone:</span>
-                                <span className="font-mono text-muted-foreground">
-                                  {admin.phone}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span>Added by:</span>
-                              <span className="truncate max-w-[120px] text-muted-foreground">
-                                {admin.addedBy || "Super Admin"}
-                              </span>
-                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span>Added by:</span>
+                            <span className="truncate max-w-[120px] text-muted-foreground">
+                              {admin.addedBy || "Admin"}
+                            </span>
                           </div>
                         </div>
-
-                        <div className="mt-3.5 pt-2 border-t border-border/60 flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              copyToClipboard(
-                                `Sri Udharchi Enterprises Admin Portal\nURL: ${typeof window !== "undefined" ? window.location.origin : ""}/admin/login\nEmail: ${admin.email}${admin.initialPassword ? `\nPassword: ${admin.initialPassword}` : ""}`,
-                                `Credentials for ${admin.email}`,
-                              )
-                            }
-                            className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            <Copy className="size-3" />
-                            <span>Copy Details</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setAdminToDelete(admin)}
-                            className="text-[11px] font-semibold text-destructive/80 hover:text-destructive flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Trash2 className="size-3" />
-                            <span>Revoke</span>
-                          </button>
-                        </div>
                       </div>
-                    ))}
+
+                      <div className="mt-3.5 pt-2 border-t border-border/60 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyToClipboard(
+                              `Sri Udharchi Enterprises Admin Portal\nURL: ${typeof window !== "undefined" ? window.location.origin : ""}/admin/login\nEmail: ${admin.email}${admin.initialPassword ? `\nPassword: ${admin.initialPassword}` : ""}`,
+                              `Credentials for ${admin.email}`,
+                            )
+                          }
+                          className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="size-3" />
+                          <span>Copy Details</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAdminToDelete(admin)}
+                          className="text-[11px] font-semibold text-destructive/80 hover:text-destructive flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="size-3" />
+                          <span>Revoke</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {authorizedAdmins.filter(
-                  (a) => a.email.toLowerCase() !== "bhanuswaroop04@gmail.com",
-                ).length === 0 && (
+                {authorizedAdmins.length === 0 && (
                   <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center">
                     <p className="text-xs text-muted-foreground">
-                      No additional secondary administrators provisioned yet. Click{" "}
-                      <span className="font-semibold text-foreground">"+ Add Administrator"</span>{" "}
-                      above to grant administrative privileges to team members by entering their
-                      email address.
+                      No additional administrators provisioned yet. Click{" "}
+                      <span className="font-semibold text-foreground">"Create Admin Login"</span>{" "}
+                      above to provision executive access.
                     </p>
                   </div>
                 )}
@@ -5496,7 +5434,7 @@ function AdminPage() {
                                 adminEmail: e.target.value,
                               })
                             }
-                            placeholder="bhanuswaroop04@gmail.com"
+                            placeholder="admin@udharchienterprises.com"
                             className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
                           />
                         </div>

@@ -363,7 +363,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     setSubmitting(true);
     try {
       await loginWithEmail(email, password);
-      setSuccessMsg("Signed in successfully!");
+      setSuccessMsg("Signed in successfully! Redirecting...");
+      setTimeout(() => {
+        navigate({ to: "/" });
+      }, 400);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(
@@ -421,14 +424,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     setSubmitting(true);
     try {
       await loginWithGoogle();
-      if (mode === "signup" || initialMode === "signup") {
-        setSuccessMsg("Signed up via Google! Redirecting...");
-        setTimeout(() => {
-          navigate({ to: "/" });
-        }, 400);
-      } else {
-        setSuccessMsg("Authenticated via Google successfully!");
-      }
+      setSuccessMsg("Signed in with Google! Redirecting...");
+      setTimeout(() => {
+        navigate({ to: "/" });
+      }, 400);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(
@@ -559,22 +558,32 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {isAdmin && (
                       <Button
                         onClick={() => navigate({ to: "/admin" })}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 gap-1.5"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 gap-1.5 cursor-pointer"
                       >
                         <Shield className="size-3.5" />
-                        <span>Admin Portal</span>
+                        <span>Admin Console</span>
                       </Button>
                     )}
                     <Button
-                      variant="ghost"
-                      onClick={logout}
-                      className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9"
+                      variant="outline"
+                      onClick={() => navigate({ to: "/products" })}
+                      className="text-xs font-semibold border-border hover:bg-muted h-9 cursor-pointer"
                     >
-                      <span>Sign Out</span>
+                      <span>Browse Products</span>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        await logout();
+                      }}
+                      className="text-xs h-9 gap-1 font-semibold cursor-pointer"
+                    >
+                      <RotateCcw className="size-3.5" />
+                      <span>Sign Out / Switch</span>
                     </Button>
                   </div>
                 </div>
@@ -1114,9 +1123,9 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     setErrorMsg("");
                     setSuccessMsg("");
                   }}
-                  className={`rounded-lg py-2.5 transition-all ${
+                  className={`rounded-lg py-2.5 transition-all cursor-pointer ${
                     mode === "login"
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "bg-card text-foreground shadow-sm font-bold"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1129,14 +1138,50 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     setErrorMsg("");
                     setSuccessMsg("");
                   }}
-                  className={`rounded-lg py-2.5 transition-all ${
+                  className={`rounded-lg py-2.5 transition-all cursor-pointer ${
                     mode === "signup"
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "bg-card text-foreground shadow-sm font-bold"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   Create Account
                 </button>
+              </div>
+
+              {/* PRIMARY ONE-CLICK AUTH: GOOGLE */}
+              <button
+                type="button"
+                disabled={submitting || otpSubmitting}
+                onClick={handleGoogleAuth}
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background py-3 px-4 text-xs font-bold text-foreground transition-all hover:bg-muted hover:border-primary/50 shadow-xs active:scale-[0.99] disabled:opacity-50 cursor-pointer mb-5"
+              >
+                <svg className="size-4 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+                <span>{mode === "login" ? "Continue with Google" : "Sign Up with Google"}</span>
+              </button>
+
+              {/* DIVIDER */}
+              <div className="relative mb-5 text-center text-xs text-muted-foreground">
+                <span className="relative z-10 bg-card px-3 uppercase text-[10px] tracking-wider font-semibold text-muted-foreground">
+                  Or continue with mobile or email
+                </span>
+                <div className="absolute inset-0 top-1/2 -z-0 border-t border-border" />
               </div>
 
               {/* AUTH METHOD SELECTOR: Mobile OTP vs Email/Password */}
@@ -1753,43 +1798,24 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                 </form>
               )}
 
-              {/* ALTERNATIVE: GOOGLE AUTH */}
-              <div className="relative my-6 text-center text-xs text-muted-foreground">
-                <span className="relative z-10 bg-card px-3 uppercase text-[10px] tracking-wider font-semibold">
-                  Or Continue With
-                </span>
-                <div className="absolute inset-0 top-1/2 -z-0 border-t border-border" />
-              </div>
-
-              <button
-                type="button"
-                disabled={submitting || otpSubmitting}
-                onClick={handleGoogleAuth}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background py-2.5 px-4 text-xs font-bold text-foreground transition-all hover:bg-muted hover:border-primary/50 disabled:opacity-50"
-              >
-                <svg className="size-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-
               {/* RECAPTCHA CONTAINER (Invisible) */}
               <div id="recaptcha-container" className="my-1 flex justify-center" />
+
+              {/* Trust & Compliance Micro-Badges */}
+              <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/60 pt-4 text-[10px] text-muted-foreground text-center">
+                <div className="flex flex-col items-center gap-1">
+                  <ShieldCheck className="size-3.5 text-emerald-500" />
+                  <span className="font-semibold text-foreground/80">NBC 2016 Certified</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Lock className="size-3.5 text-primary" />
+                  <span className="font-semibold text-foreground/80">256-Bit SSL Encrypted</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Zap className="size-3.5 text-amber-500" />
+                  <span className="font-semibold text-foreground/80">Instant Verification</span>
+                </div>
+              </div>
 
               {/* Footer Switcher & Admin Link */}
               <div className="mt-6 border-t border-border pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
