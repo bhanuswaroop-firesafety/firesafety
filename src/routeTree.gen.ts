@@ -22,9 +22,13 @@ import { Route as InstallationRouteImport } from './routes/installation'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as PaymentRouteImport } from './routes/payment'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminLeadsRouteImport } from './routes/admin/leads'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
@@ -102,6 +106,11 @@ const PaymentRoute = PaymentRouteImport.update({
   path: '/payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -112,9 +121,24 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
+  id: '/shipping-policy',
+  path: '/shipping-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -187,9 +211,13 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/payment': typeof PaymentRoute
+  '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
   '/projects': typeof ProjectsRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/product/$productId': typeof ProductProductIdRoute
@@ -216,9 +244,13 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/payment': typeof PaymentRoute
+  '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
   '/projects': typeof ProjectsRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/product/$productId': typeof ProductProductIdRoute
@@ -246,9 +278,13 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/payment': typeof PaymentRoute
+  '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
   '/projects': typeof ProjectsRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/product_/$productId': typeof ProductProductIdRoute
@@ -277,9 +313,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/payment'
+    | '/privacy'
     | '/products'
     | '/projects'
+    | '/refund-policy'
+    | '/shipping-policy'
     | '/signup'
+    | '/terms'
     | '/admin/leads'
     | '/admin/login'
     | '/product/$productId'
@@ -306,9 +346,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/payment'
+    | '/privacy'
     | '/products'
     | '/projects'
+    | '/refund-policy'
+    | '/shipping-policy'
     | '/signup'
+    | '/terms'
     | '/admin/leads'
     | '/admin/login'
     | '/product/$productId'
@@ -335,9 +379,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/payment'
+    | '/privacy'
     | '/products'
     | '/projects'
+    | '/refund-policy'
+    | '/shipping-policy'
     | '/signup'
+    | '/terms'
     | '/admin/leads'
     | '/admin/login'
     | '/product_/$productId'
@@ -365,9 +413,13 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
   PaymentRoute: typeof PaymentRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProductsRoute: typeof ProductsRoute
   ProjectsRoute: typeof ProjectsRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
+  ShippingPolicyRoute: typeof ShippingPolicyRoute
   SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   ProductProductIdRoute: typeof ProductProductIdRoute
@@ -474,6 +526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products': {
       id: '/products'
       path: '/products'
@@ -488,11 +547,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-policy': {
+      id: '/shipping-policy'
+      path: '/shipping-policy'
+      fullPath: '/shipping-policy'
+      preLoaderRoute: typeof ShippingPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -589,9 +669,13 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
   PaymentRoute: PaymentRoute,
+  PrivacyRoute: PrivacyRoute,
   ProductsRoute: ProductsRoute,
   ProjectsRoute: ProjectsRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
+  ShippingPolicyRoute: ShippingPolicyRoute,
   SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminLoginRoute: AdminLoginRoute,
   ProductProductIdRoute: ProductProductIdRoute,

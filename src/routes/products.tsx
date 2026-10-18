@@ -20,6 +20,8 @@ import {
 import { subscribeProducts, CATEGORIES } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
+import { AuthRequiredModal } from "@/components/auth-required-modal";
 import { seoHead, schemas } from "@/lib/seo";
 import extinguisherImg from "@/assets/fire-extinguisher.jpg";
 
@@ -56,12 +58,39 @@ export const Route = createFileRoute("/products")({
 });
 
 function ProductsPage() {
+  const { user } = useAuth();
   const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "name">("featured");
   const [productsList, setProductsList] = useState<ProductItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [authPromptProduct, setAuthPromptProduct] = useState<{
+    name: string;
+    url: string;
+  } | null>(null);
+
+  const handleProductAction = (
+    e: React.MouseEvent | undefined,
+    prod: ProductItem,
+    action: "open" | "add" | "buy",
+  ) => {
+    if (!user) {
+      if (e) e.preventDefault();
+      setAuthPromptProduct({
+        name: prod.name,
+        url: `/products/${prod.id || prod.sku || prod.name}`,
+      });
+      return;
+    }
+
+    if (action === "add") {
+      addToCart(prod, 1);
+    } else if (action === "buy") {
+      addToCart(prod, 1);
+      window.location.href = "/checkout";
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribeProducts((data) => {
@@ -257,6 +286,7 @@ function ProductsPage() {
                   {/* Product Image */}
                   <a
                     href={`/products/${prod.id || prod.sku || prod.name}`}
+                    onClick={(e) => handleProductAction(e, prod, "open")}
                     className="relative aspect-[4/3] overflow-hidden bg-muted block cursor-pointer"
                   >
                     <img
@@ -282,6 +312,7 @@ function ProductsPage() {
                   <div className="flex flex-1 flex-col p-3 sm:p-4">
                     <a
                       href={`/products/${prod.id || prod.sku || prod.name}`}
+                      onClick={(e) => handleProductAction(e, prod, "open")}
                       className="group-hover:text-primary transition-colors"
                     >
                       <h3 className="font-display text-xs sm:text-sm font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem]">
@@ -345,17 +376,14 @@ function ProductsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => addToCart(prod, 1)}
+                          onClick={() => handleProductAction(undefined, prod, "add")}
                           className="h-7 sm:h-8 w-full justify-center px-1 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all"
                         >
                           <ShoppingBag className="size-3 mr-1" /> Add
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() => {
-                            addToCart(prod, 1);
-                            window.location.href = "/checkout";
-                          }}
+                          onClick={() => handleProductAction(undefined, prod, "buy")}
                           className="h-7 sm:h-8 w-full justify-center px-1 text-[10px] sm:text-xs font-bold"
                         >
                           <Zap className="size-3 mr-1" /> Buy Now
@@ -365,6 +393,7 @@ function ProductsPage() {
                       <div className="flex items-center justify-between border-t border-border/40 pt-1.5 text-[10px]">
                         <a
                           href={`/products/${prod.id || prod.sku || prod.name}`}
+                          onClick={(e) => handleProductAction(e, prod, "open")}
                           className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
                         >
                           <Eye className="size-3" /> Details
@@ -434,6 +463,15 @@ function ProductsPage() {
           </div>
         </div>
       </section>
+
+      {/* Account Required Auth Modal when opening/adding a product */}
+      <AuthRequiredModal
+        isOpen={Boolean(authPromptProduct)}
+        onClose={() => setAuthPromptProduct(null)}
+        productName={authPromptProduct?.name}
+        redirectUrl={authPromptProduct?.url || "/products"}
+        allowDismiss={true}
+      />
 
       <SiteFooter />
     </main>

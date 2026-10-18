@@ -32,6 +32,8 @@ import type {
   ShippingSettings,
   SocialSettings,
   ContactSettings,
+  BusinessProfileSettings,
+  RegionalDepot,
   CartDoc,
   CheckoutDraftDoc,
   FeedbackItem,
@@ -79,6 +81,45 @@ export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   supportEmail: "support@udharchi.in",
   adminEmail: "bhanuswaroop04@gmail.com",
   address: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
+};
+
+// Default Business Profile & Regional Depot Settings
+export const DEFAULT_BUSINESS_SETTINGS: BusinessProfileSettings = {
+  entityName: "Sri Udharchi Enterprises",
+  specialization: "Industrial Fire & Safety Engineering",
+  jurisdiction: "Andhra Pradesh, India",
+  standards: "IS 15683 / NBC 2016 / PESO",
+  primaryDepotName: "Central Logistics & Supply Depot",
+  primaryDepotAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
+  gstin: "37AAEFU1234F1Z5",
+  stateCode: "37 (Andhra Pradesh)",
+  pan: "AAEFU1234F",
+  taxSlab: "18% GST (CGST 9% + SGST 9%)",
+  accountHolder: "Sri Udharchi Enterprises",
+  bankName: "State Bank of India (SBI)",
+  accountNumber: "398582210012",
+  ifscCode: "SBIN0001234",
+  upiId: "8639858221@ybl",
+  depots: [
+    {
+      id: "depot-1",
+      name: "Central Logistics & Supply Depot",
+      address: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
+      description: "Primary dispatch center for fire pumps, hydrant valves, and heavy equipment.",
+    },
+    {
+      id: "depot-2",
+      name: "Coastal & Eastern Logistics Hub",
+      address: "Autonagar Industrial Estate, Gajuwaka Zone, Visakhapatnam, AP - 530012",
+      description: "Regional distribution hub for marine safety, refinery gear, and hydrant systems.",
+    },
+    {
+      id: "depot-3",
+      name: "Capital Logistics Gateway",
+      address: "Express Logistics Corridor, Mangalagiri, Guntur/Vijayawada Corridor, AP - 522503",
+      description: "Rapid distribution of ISI fire extinguishers, smoke detection, and PPE gear.",
+    },
+  ],
 };
 
 /**
@@ -1372,6 +1413,56 @@ export async function updateContactSettings(settings: Partial<ContactSettings>):
     updatedAt: getKolkataISOString(),
   };
   const docRef = doc(db, "settings", "contact");
+  await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
+}
+
+// ========================================================
+// Business Profile & Depot Settings (settings/business)
+// ========================================================
+
+export async function getBusinessSettings(): Promise<BusinessProfileSettings> {
+  try {
+    const docRef = doc(db, "settings", "business");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return { ...DEFAULT_BUSINESS_SETTINGS, ...(snap.data() as BusinessProfileSettings) };
+    }
+  } catch (err) {
+    console.warn("Firestore getBusinessSettings error:", err);
+  }
+  return DEFAULT_BUSINESS_SETTINGS;
+}
+
+export function subscribeBusinessSettings(
+  callback: (settings: BusinessProfileSettings) => void,
+): () => void {
+  callback(DEFAULT_BUSINESS_SETTINGS);
+  const docRef = doc(db, "settings", "business");
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        callback({ ...DEFAULT_BUSINESS_SETTINGS, ...(snap.data() as BusinessProfileSettings) });
+      } else {
+        callback(DEFAULT_BUSINESS_SETTINGS);
+      }
+    },
+    (err) => {
+      console.warn("Firestore business settings subscription error:", err);
+    },
+  );
+}
+
+export async function updateBusinessSettings(
+  settings: Partial<BusinessProfileSettings>,
+): Promise<void> {
+  const current = await getBusinessSettings();
+  const updated: BusinessProfileSettings = {
+    ...current,
+    ...settings,
+    updatedAt: getKolkataISOString(),
+  };
+  const docRef = doc(db, "settings", "business");
   await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
 }
 

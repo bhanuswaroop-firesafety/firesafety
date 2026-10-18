@@ -26,6 +26,8 @@ import {
   Truck,
   Wrench,
   Zap,
+  Lock,
+  UserPlus,
 } from "lucide-react";
 import {
   findProductById,
@@ -35,6 +37,8 @@ import {
 } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
+import { AuthRequiredModal } from "@/components/auth-required-modal";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 import { seoHead, schemas } from "@/lib/seo";
 
@@ -108,15 +112,24 @@ const getCategoryIcon = (category: string): NanoIconName => {
 
 function ProductViewPage() {
   const { productId } = Route.useParams();
+  const { user, loading: authLoading } = useAuth();
   const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
 
   const [product, setProduct] = useState<ProductItem | null>(() => findProductById(productId, []));
   const [allProducts, setAllProducts] = useState<ProductItem[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [addedToast, setAddedToast] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "specs" | "compliance" | "applications" | "maintenance"
   >("specs");
+
+  // Prompt unauthenticated users with the required account modal when opening a product
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setShowAuthModal(true);
+    }
+  }, [authLoading, user]);
 
   // Quick Bulk Quote Form State
   const [quoteForm, setQuoteForm] = useState({
@@ -156,6 +169,10 @@ function ProductViewPage() {
   }, [product]);
 
   const handleAddToCart = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     if (!product) return;
     addToCart(product, quantity);
     setAddedToast(true);
@@ -163,6 +180,10 @@ function ProductViewPage() {
   };
 
   const handleBuyNow = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     if (!product) return;
     addToCart(product, quantity);
     window.location.href = "/checkout";
@@ -170,6 +191,10 @@ function ProductViewPage() {
 
   const handleQuoteSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     if (!quoteForm.name || !quoteForm.phone) return;
     setIsSubmittingQuote(true);
 
@@ -265,6 +290,37 @@ function ProductViewPage() {
       {/* Main Product Showcase Section */}
       <section className="py-8 sm:py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Guest Account Required Prompt Banner */}
+          {!user && (
+            <div className="mb-6 rounded-2xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Lock className="size-4" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-bold text-foreground">
+                    You must have an account. Please signup
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">
+                    Create a free account or sign in to order, view compliance certifications, and access instant quotations.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a href={`/signup?redirect=${encodeURIComponent(`/products/${productId}`)}`}>
+                  <Button size="sm" className="text-xs font-bold gap-1 shadow-xs">
+                    <UserPlus className="size-3.5" /> Sign Up
+                  </Button>
+                </a>
+                <a href={`/login?redirect=${encodeURIComponent(`/products/${productId}`)}`}>
+                  <Button variant="outline" size="sm" className="text-xs font-bold">
+                    Sign In
+                  </Button>
+                </a>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12">
             {/* Left Column: Visual Media Gallery */}
             <div className="lg:col-span-6 space-y-4">
@@ -938,6 +994,15 @@ function ProductViewPage() {
           </button>
         </div>
       )}
+
+      {/* Account Required Auth Modal */}
+      <AuthRequiredModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        productName={product.name}
+        redirectUrl={`/products/${productId}`}
+        allowDismiss={true}
+      />
 
       <SiteFooter />
     </main>

@@ -22,7 +22,13 @@ export function SignupPage() {
 
   useEffect(() => {
     if (user) {
-      navigate({ to: "/" });
+      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const redirect = params?.get("redirect");
+      if (redirect && redirect.startsWith("/") && redirect !== "/signup" && redirect !== "/login") {
+        window.location.href = redirect;
+      } else {
+        navigate({ to: "/" });
+      }
     }
   }, [user, navigate]);
 

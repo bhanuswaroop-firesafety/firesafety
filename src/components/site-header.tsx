@@ -6,6 +6,7 @@ import {
   Phone,
   X,
   User,
+  UserPlus,
   LogOut,
   ShieldCheck,
   ShoppingCart,
@@ -34,7 +35,6 @@ import { PhoneOtpModal } from "./phone-otp-modal";
 
 const navLinks = [
   { name: "Home", href: "/" },
-  { name: "About", href: "/about" },
   { name: "Products", href: "/products", badge: "Shop" },
   {
     name: "Services",
@@ -50,6 +50,7 @@ const navLinks = [
   },
   { name: "Industries", href: "/industries" },
   { name: "Projects", href: "/projects" },
+  { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
 ];
 
@@ -307,12 +308,12 @@ export function SiteHeader() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsPhoneOtpModalOpen(true)}
-                    className="text-xs font-semibold text-foreground hover:text-primary gap-1 px-2.5"
+                    className="text-xs font-semibold text-foreground hover:text-primary gap-1 px-2"
                   >
                     <Smartphone className="size-3.5 text-primary" /> Phone OTP
                   </Button>
@@ -320,18 +321,17 @@ export function SiteHeader() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-xs font-semibold text-foreground hover:text-primary"
+                      className="text-xs font-semibold text-foreground hover:text-primary gap-1 px-2.5"
                     >
                       <User className="size-3.5" /> Sign In
                     </Button>
                   </a>
-                  <a href="/admin">
+                  <a href="/signup">
                     <Button
-                      variant="outline"
                       size="sm"
-                      className="text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
+                      className="text-xs font-bold gap-1 h-8 px-3 shadow-xs"
                     >
-                      <Lock className="size-3.5" /> Admin
+                      <UserPlus className="size-3.5" /> Sign Up
                     </Button>
                   </a>
                 </div>
@@ -403,8 +403,8 @@ export function SiteHeader() {
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", stiffness: 360, damping: 34 }}
               >
-                {/* Drawer Header */}
-                <div className="flex items-center justify-between border-b border-border pb-4">
+                {/* 1. Drawer Header */}
+                <div className="flex items-center justify-between border-b border-border pb-3">
                   <BrandLogo />
                   <Button
                     variant="ghost"
@@ -416,116 +416,79 @@ export function SiteHeader() {
                   </Button>
                 </div>
 
-                {/* Active Cart Quick Card in Mobile Drawer */}
-                <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                        <ShoppingCart className="size-4" />
-                      </div>
-                      <div>
-                        <span className="block text-xs font-bold text-foreground">
-                          Safety Equipment Cart
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {totalItems === 0
-                            ? "0 items in cart"
-                            : `${totalItems} items • ₹${totalAmount.toLocaleString("en-IN")}`}
-                        </span>
-                      </div>
-                    </div>
+                {/* 2. Main Pages Navigation (FIRST as requested) */}
+                <div className="py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 block mb-1">
+                    Main Pages
+                  </span>
+                  <nav className="grid gap-0.5" aria-label="Main Pages Mobile navigation">
+                    {navLinks.map((link, index) => {
+                      if (link.subLinks) {
+                        return (
+                          <div key={link.name} className="border-b border-border/50 py-1.5">
+                            <div className="flex items-center justify-between px-2 py-1 text-sm font-bold text-foreground">
+                              <a
+                                href={link.href}
+                                onClick={() => setOpen(false)}
+                                className="hover:text-primary transition-colors"
+                              >
+                                {link.name}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                                className="p-1 text-muted-foreground"
+                              >
+                                <ChevronDown
+                                  className={`size-4 transition-transform ${
+                                    mobileServicesOpen ? "rotate-180" : ""
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                            {mobileServicesOpen && (
+                              <div className="mt-1 space-y-1 pl-3 border-l-2 border-primary/30 ml-2">
+                                {link.subLinks.map((sub) => (
+                                  <a
+                                    key={sub.name}
+                                    href={sub.href}
+                                    onClick={() => setOpen(false)}
+                                    className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
+                                  >
+                                    {sub.name}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
 
-                    <a
-                      href="/cart"
-                      onClick={() => setOpen(false)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-xs hover:bg-primary/90"
-                    >
-                      {totalItems > 0 ? "View Cart" : "Shop"} <ArrowRight className="size-3" />
-                    </a>
-                  </div>
-
-                  {totalItems > 0 && (
-                    <div className="mt-2.5 pt-2 border-t border-primary/10 flex justify-between items-center text-[11px]">
-                      <span className="text-muted-foreground">Ready to order?</span>
-                      <a
-                        href="/checkout"
-                        onClick={() => setOpen(false)}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        Proceed to Checkout &rarr;
-                      </a>
-                    </div>
-                  )}
+                      return (
+                        <motion.a
+                          key={link.name}
+                          href={link.href}
+                          onClick={() => setOpen(false)}
+                          className="flex items-center justify-between border-b border-border/50 px-2 py-2 text-sm font-bold text-foreground transition-colors hover:text-primary"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.03 + index * 0.02 }}
+                        >
+                          <span>{link.name}</span>
+                          {link.badge && (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                              {link.badge}
+                            </span>
+                          )}
+                        </motion.a>
+                      );
+                    })}
+                  </nav>
                 </div>
 
-                {/* Mobile Navigation List */}
-                <nav className="grid gap-1 py-4" aria-label="Mobile navigation">
-                  {navLinks.map((link, index) => {
-                    if (link.subLinks) {
-                      return (
-                        <div key={link.name} className="border-b border-border/60 py-2">
-                          <div className="flex items-center justify-between px-2 py-1 text-sm font-bold text-foreground">
-                            <a
-                              href={link.href}
-                              onClick={() => setOpen(false)}
-                              className="hover:text-primary transition-colors"
-                            >
-                              {link.name}
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
-                              className="p-1 text-muted-foreground"
-                            >
-                              <ChevronDown
-                                className={`size-4 transition-transform ${
-                                  mobileServicesOpen ? "rotate-180" : ""
-                                }`}
-                              />
-                            </button>
-                          </div>
-                          {mobileServicesOpen && (
-                            <div className="mt-1 space-y-1 pl-3 border-l-2 border-primary/30 ml-2">
-                              {link.subLinks.map((sub) => (
-                                <a
-                                  key={sub.name}
-                                  href={sub.href}
-                                  onClick={() => setOpen(false)}
-                                  className="block rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
-                                >
-                                  {sub.name}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <motion.a
-                        key={link.name}
-                        href={link.href}
-                        onClick={() => setOpen(false)}
-                        className="flex items-center justify-between border-b border-border/60 px-2 py-2.5 text-sm font-bold text-foreground transition-colors hover:text-primary"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.05 + index * 0.03 }}
-                      >
-                        <span>{link.name}</span>
-                        {link.badge && (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                            {link.badge}
-                          </span>
-                        )}
-                      </motion.a>
-                    );
-                  })}
-                </nav>
-
-                {/* Popular Product Categories Shortcuts */}
-                <div className="py-2 border-b border-border/60">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-2 block mb-2">
+                {/* 3. Popular Product Categories Shortcuts */}
+                <div className="py-2.5 border-b border-border/60">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 block mb-1.5">
                     Popular Equipment
                   </span>
                   <div className="flex flex-wrap gap-1.5 px-2">
@@ -542,8 +505,50 @@ export function SiteHeader() {
                   </div>
                 </div>
 
-                {/* Bottom Profile & Actions */}
-                <div className="mt-auto space-y-3 pt-4">
+                {/* 4. Active Cart Quick Card */}
+                <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                        <ShoppingCart className="size-3.5" />
+                      </div>
+                      <div>
+                        <span className="block text-xs font-bold text-foreground">
+                          Safety Equipment Cart
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {totalItems === 0
+                            ? "0 items in cart"
+                            : `${totalItems} items • ₹${totalAmount.toLocaleString("en-IN")}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <a
+                      href="/cart"
+                      onClick={() => setOpen(false)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground shadow-xs hover:bg-primary/90"
+                    >
+                      {totalItems > 0 ? "View Cart" : "Shop"} <ArrowRight className="size-3" />
+                    </a>
+                  </div>
+
+                  {totalItems > 0 && (
+                    <div className="mt-2 pt-2 border-t border-primary/10 flex justify-between items-center text-[11px]">
+                      <span className="text-muted-foreground">Ready to order?</span>
+                      <a
+                        href="/checkout"
+                        onClick={() => setOpen(false)}
+                        className="font-bold text-primary hover:underline"
+                      >
+                        Proceed to Checkout &rarr;
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. User Account & Auth Section (Sign In & Sign Up) */}
+                <div className="mt-3 space-y-2.5 pt-2">
                   {user ? (
                     <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -584,37 +589,38 @@ export function SiteHeader() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-2 rounded-xl border border-border/80 bg-card p-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Account Access
+                      </span>
+                      {/* Side by side Sign In and Sign Up buttons */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <a href="/login" onClick={() => setOpen(false)} className="block">
+                          <Button variant="outline" className="w-full justify-center text-xs font-bold gap-1.5 h-8">
+                            <User className="size-3.5" /> Sign In
+                          </Button>
+                        </a>
+                        <a href="/signup" onClick={() => setOpen(false)} className="block">
+                          <Button className="w-full justify-center text-xs font-bold gap-1.5 h-8 shadow-xs">
+                            <UserPlus className="size-3.5" /> Sign Up
+                          </Button>
+                        </a>
+                      </div>
                       <Button
                         variant="outline"
                         onClick={() => {
                           setOpen(false);
                           setIsPhoneOtpModalOpen(true);
                         }}
-                        className="w-full justify-center text-xs gap-1.5 border-primary/40 text-primary font-bold"
+                        className="w-full justify-center text-xs gap-1.5 border-primary/40 text-primary font-bold h-8 hover:bg-primary/5"
                       >
                         <Smartphone className="size-3.5 text-primary" /> Login with Phone OTP
                       </Button>
-                      <div className="grid grid-cols-2 gap-2">
-                        <a href="/login" onClick={() => setOpen(false)}>
-                          <Button variant="outline" className="w-full justify-center text-xs">
-                            <User className="size-3.5" /> Sign In
-                          </Button>
-                        </a>
-                        <a href="/admin" onClick={() => setOpen(false)}>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-center text-xs border-primary/40 text-primary"
-                          >
-                            <Lock className="size-3.5" /> Admin
-                          </Button>
-                        </a>
-                      </div>
                     </div>
                   )}
 
-                  {/* Hotlines */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* 6. Emergency Hotlines */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <a href={`tel:${contact.supportPhone.replace(/\s+/g, "")}`}>
                       <Button className="w-full text-xs truncate">
                         <Phone className="size-3.5 shrink-0" /> {contact.supportPhone}
@@ -634,7 +640,7 @@ export function SiteHeader() {
                     </a>
                   </div>
 
-                  {/* Official Instagram Profile */}
+                  {/* 7. Official Instagram Profile */}
                   {hasInstagram && (
                     <a
                       href={instagramHref}
@@ -652,8 +658,27 @@ export function SiteHeader() {
                     </a>
                   )}
 
-                  {/* Trust Footer */}
-                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-muted-foreground pt-1">
+                  {/* 8. Quick Legal Policy Links */}
+                  <div className="border-t border-border/50 pt-2.5 pb-1 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground font-medium">
+                    <a href="/privacy" onClick={() => setOpen(false)} className="hover:text-primary">
+                      Privacy Policy
+                    </a>
+                    <span>•</span>
+                    <a href="/terms" onClick={() => setOpen(false)} className="hover:text-primary">
+                      Terms
+                    </a>
+                    <span>•</span>
+                    <a href="/refund-policy" onClick={() => setOpen(false)} className="hover:text-primary">
+                      Refunds
+                    </a>
+                    <span>•</span>
+                    <a href="/shipping-policy" onClick={() => setOpen(false)} className="hover:text-primary">
+                      Shipping
+                    </a>
+                  </div>
+
+                  {/* 9. Trust Footer */}
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-muted-foreground pt-1 pb-2">
                     <ShieldCheck className="size-3 text-primary" />
                     <span>IS 15683 & NBC 2016 Certified Engineering Partner</span>
                   </div>

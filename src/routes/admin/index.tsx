@@ -31,6 +31,9 @@ import {
   subscribeContactSettings,
   updateContactSettings,
   DEFAULT_CONTACT_SETTINGS,
+  subscribeBusinessSettings,
+  updateBusinessSettings,
+  DEFAULT_BUSINESS_SETTINGS,
   syncRegisteredAuthAccounts,
 } from "@/lib/db-service";
 import type {
@@ -46,6 +49,8 @@ import type {
   ShippingSettings,
   SocialSettings,
   ContactSettings,
+  BusinessProfileSettings,
+  RegionalDepot,
 } from "@/lib/types";
 import { formatKolkataDisplay, getKolkataDateString, getDaysDiff } from "@/lib/date-utils";
 import { ProductManager } from "@/components/admin/product-manager";
@@ -107,6 +112,9 @@ import {
   MessageSquare,
   Instagram,
   Calendar,
+  Edit3,
+  Plus,
+  Save,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -174,6 +182,19 @@ function AdminPage() {
   // Contact & Support Settings State
   const [contactSettings, setContactSettings] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
   const [isSavingContact, setIsSavingContact] = useState<boolean>(false);
+
+  // Business Profile & Regional Depot Settings State
+  const [businessSettings, setBusinessSettings] = useState<BusinessProfileSettings>(DEFAULT_BUSINESS_SETTINGS);
+  const [isSavingBusiness, setIsSavingBusiness] = useState<boolean>(false);
+  const [editingDepotId, setEditingDepotId] = useState<string | null>(null);
+  const [editingDepotData, setEditingDepotData] = useState<RegionalDepot | null>(null);
+  const [isAddingDepot, setIsAddingDepot] = useState<boolean>(false);
+  const [newDepotData, setNewDepotData] = useState<RegionalDepot>({
+    id: "",
+    name: "",
+    address: "",
+    description: "",
+  });
 
   // Leads Filter & Search State (Task 3)
   const [leadSearch, setLeadSearch] = useState("");
@@ -276,6 +297,7 @@ function AdminPage() {
     const unsubShipping = subscribeShippingSettings((data) => setShippingSettings(data));
     const unsubSocial = subscribeSocialSettings((data) => setSocialSettings(data));
     const unsubContact = subscribeContactSettings((data) => setContactSettings(data));
+    const unsubBusiness = subscribeBusinessSettings((data) => setBusinessSettings(data));
 
     // Non-Blaze Dashboard Fallback on Load (Task E)
     processDueRemindersFallback().catch(() => {});
@@ -293,6 +315,7 @@ function AdminPage() {
       unsubShipping();
       unsubSocial();
       unsubContact();
+      unsubBusiness();
     };
   }, [user, isAdmin]);
 
@@ -895,6 +918,69 @@ function AdminPage() {
     }
   };
 
+  // Business Profile, Taxation, Banking & Depots Save Handler
+  const handleSaveBusinessSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingBusiness(true);
+    try {
+      await updateBusinessSettings(businessSettings);
+      showSuccessMessage("Business profile, tax, banking & depot configuration successfully saved!");
+    } catch (err: unknown) {
+      showSuccessMessage(
+        "Failed to save business settings: " + (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setIsSavingBusiness(false);
+    }
+  };
+
+  const handleUpdateDepot = async (depot: RegionalDepot) => {
+    const updatedDepots = businessSettings.depots.map((d) => (d.id === depot.id ? depot : d));
+    const updated = { ...businessSettings, depots: updatedDepots };
+    setBusinessSettings(updated);
+    setEditingDepotId(null);
+    setEditingDepotData(null);
+    try {
+      await updateBusinessSettings(updated);
+      showSuccessMessage(`Depot "${depot.name}" updated successfully.`);
+    } catch (err: unknown) {
+      showSuccessMessage("Failed to update depot: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleDeleteDepot = async (depotId: string, depotName: string) => {
+    const updatedDepots = businessSettings.depots.filter((d) => d.id !== depotId);
+    const updated = { ...businessSettings, depots: updatedDepots };
+    setBusinessSettings(updated);
+    try {
+      await updateBusinessSettings(updated);
+      showSuccessMessage(`Depot "${depotName}" removed.`);
+    } catch (err: unknown) {
+      showSuccessMessage("Failed to delete depot: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleCreateDepot = async () => {
+    if (!newDepotData.name.trim() || !newDepotData.address.trim()) {
+      showSuccessMessage("Please enter depot name and location address.");
+      return;
+    }
+    const created: RegionalDepot = {
+      ...newDepotData,
+      id: `depot-${Date.now()}`,
+    };
+    const updated = { ...businessSettings, depots: [...businessSettings.depots, created] };
+    setBusinessSettings(updated);
+    setIsAddingDepot(false);
+    setNewDepotData({ id: "", name: "", address: "", description: "" });
+    try {
+      await updateBusinessSettings(updated);
+      showSuccessMessage(`New depot "${created.name}" added successfully.`);
+    } catch (err: unknown) {
+      showSuccessMessage("Failed to add depot: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   // Task E & C: Confirm Order Delivered & Record Installation Date
   const handleConfirmDeliverOrder = async () => {
     if (!deliveringOrder?.id) return;
@@ -1382,9 +1468,9 @@ function AdminPage() {
               <Phone className="size-3" />
               <span>Dispatch Desk</span>
             </div>
-            <div className="font-bold text-foreground text-xs">+91 8639858221</div>
-            <div className="text-[10px] text-muted-foreground truncate">
-              AP Central Depot, Visakhapatnam
+            <div className="font-bold text-foreground text-xs">{contactSettings.supportPhone}</div>
+            <div className="text-[10px] text-muted-foreground truncate" title={businessSettings.primaryDepotAddress || businessSettings.primaryDepotName}>
+              {businessSettings.primaryDepotName}
             </div>
           </div>
         </nav>
@@ -4888,342 +4974,575 @@ function AdminPage() {
           {/* ======================================================== */}
           {activeTab === "settings" && (
             <div className="space-y-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
                 <div>
                   <h2 className="font-display text-xl font-bold text-foreground">
-                    Business Profile & Statutory Configuration
+                    Business Profile &amp; Statutory Configuration
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Legal registration, GSTIN, dispatch hotlines, and wire settlement details for
-                    formal quotations.
+                    All legal identity, GSTIN, primary logistics depot, banking settlement, and regional warehouse details are fully editable below.
                   </p>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    copyToClipboard(
-                      `Sri Udharchi Enterprises\nGSTIN: 37AAEFU1234F1Z5\nState: Andhra Pradesh (Code 37)\nBank: State Bank of India\nA/C No: 398582210012\nIFSC: SBIN0001234\nHotline: +91 8639858221`,
-                      "All Billing Details",
-                    );
-                    showSuccessMessage("Copied enterprise billing credentials to clipboard!");
-                  }}
-                  className="gap-1.5 text-xs"
-                >
-                  <Copy className="size-3.5 text-primary" />
-                  <span>
-                    {copiedText === "All Billing Details" ? "Copied!" : "Copy Full Billing Pack"}
-                  </span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      copyToClipboard(
+                        `${businessSettings.entityName}\nGSTIN: ${businessSettings.gstin}\nState: ${businessSettings.stateCode}\nBank: ${businessSettings.bankName}\nA/C No: ${businessSettings.accountNumber}\nIFSC: ${businessSettings.ifscCode}\nHotline: ${contactSettings.supportPhone}`,
+                        "All Billing Details",
+                      );
+                      showSuccessMessage("Copied enterprise billing credentials to clipboard!");
+                    }}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Copy className="size-3.5 text-primary" />
+                    <span>
+                      {copiedText === "All Billing Details" ? "Copied!" : "Copy Full Billing Pack"}
+                    </span>
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={handleSaveBusinessSettings}
+                    disabled={isSavingBusiness}
+                    className="gap-1.5 text-xs font-bold"
+                  >
+                    {isSavingBusiness ? (
+                      <RefreshCw className="size-3.5 animate-spin" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    <span>Save All Business Settings</span>
+                  </Button>
+                </div>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 {/* 1. Corporate Identity & Legal Registration */}
                 <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <Building2 className="size-4 text-primary" />
-                    <h3 className="font-display text-sm font-bold text-foreground">
-                      Enterprise Legal Identity
-                    </h3>
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="size-4 text-primary" />
+                      <h3 className="font-display text-sm font-bold text-foreground">
+                        Enterprise Legal Identity
+                      </h3>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                      Editable
+                    </span>
                   </div>
 
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Registered Entity</span>
-                      <span className="font-bold text-foreground">Sri Udharchi Enterprises</span>
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-foreground mb-1">
+                        Registered Entity Name
+                      </label>
+                      <input
+                        type="text"
+                        value={businessSettings.entityName}
+                        onChange={(e) =>
+                          setBusinessSettings({ ...businessSettings, entityName: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none font-semibold"
+                        placeholder="Sri Udharchi Enterprises"
+                      />
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Sector & Specialization</span>
-                      <span className="font-semibold text-foreground">
-                        Industrial Fire & Safety Engineering
-                      </span>
+
+                    <div>
+                      <label className="block font-semibold text-foreground mb-1">
+                        Sector &amp; Specialization
+                      </label>
+                      <input
+                        type="text"
+                        value={businessSettings.specialization}
+                        onChange={(e) =>
+                          setBusinessSettings({ ...businessSettings, specialization: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        placeholder="Industrial Fire & Safety Engineering"
+                      />
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">State Jurisdiction</span>
-                      <span className="font-semibold text-foreground">Andhra Pradesh, India</span>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          State Jurisdiction
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.jurisdiction}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, jurisdiction: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                          placeholder="Andhra Pradesh, India"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Code Standards
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.standards}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, standards: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none font-mono"
+                          placeholder="IS 15683 / NBC 2016 / PESO"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Operating Code Standards</span>
-                      <span className="font-mono font-bold text-primary">
-                        IS 15683 / NBC 2016 / PESO
-                      </span>
+
+                    <div className="pt-1 border-t border-border/50">
+                      <label className="block font-semibold text-foreground mb-1">
+                        Primary Depot Hub Name
+                      </label>
+                      <input
+                        type="text"
+                        value={businessSettings.primaryDepotName}
+                        onChange={(e) =>
+                          setBusinessSettings({ ...businessSettings, primaryDepotName: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        placeholder="Central Logistics & Supply Depot"
+                      />
                     </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-muted-foreground">Primary Depot Hub</span>
-                      <span className="font-semibold text-foreground">
-                        Visakhapatnam Central Depot
-                      </span>
+
+                    <div>
+                      <label className="block font-semibold text-foreground mb-1">
+                        Primary Depot Location / Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={businessSettings.primaryDepotAddress}
+                        onChange={(e) =>
+                          setBusinessSettings({ ...businessSettings, primaryDepotAddress: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        placeholder="H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"
+                      />
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Statutory Taxation & GSTIN Details */}
                 <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <CreditCard className="size-4 text-primary" />
-                    <h3 className="font-display text-sm font-bold text-foreground">
-                      Statutory Taxation & Billing (GSTIN)
-                    </h3>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">GSTIN (Andhra Pradesh)</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-foreground">37AAEFU1234F1Z5</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard("37AAEFU1234F1Z5", "GSTIN")}
-                          className="text-primary hover:opacity-80"
-                          title="Copy GSTIN"
-                        >
-                          {copiedText === "GSTIN" ? (
-                            <Check className="size-3.5" />
-                          ) : (
-                            <Copy className="size-3.5" />
-                          )}
-                        </button>
-                      </div>
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="size-4 text-primary" />
+                      <h3 className="font-display text-sm font-bold text-foreground">
+                        Statutory Taxation &amp; Billing (GSTIN)
+                      </h3>
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">State Code</span>
-                      <span className="font-mono font-bold text-foreground">
-                        37 (Andhra Pradesh)
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Safety Hardware Tax Slab</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        18% GST (CGST 9% + SGST 9%)
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Permanent Account Number (PAN)</span>
-                      <span className="font-mono text-foreground">AAEFU1234F</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-muted-foreground">Invoicing Format</span>
-                      <span className="font-semibold text-foreground">
-                        B2B Tax Invoice with HSN Summary
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Dispatch Hotline & Technical Support Communication */}
-                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <Phone className="size-4 text-primary" />
-                    <h3 className="font-display text-sm font-bold text-foreground">
-                      Official Communication & Dispatch Hotlines
-                    </h3>
+                    <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                      Editable
+                    </span>
                   </div>
 
                   <div className="space-y-3 text-xs">
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-muted/20">
-                      <div>
-                        <div className="font-bold text-foreground">Primary Dispatch Line</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Order dispatches, AMC calls & site audits
-                        </div>
-                      </div>
+                    <div>
+                      <label className="block font-semibold text-foreground mb-1">
+                        GSTIN (Goods &amp; Services Tax Number)
+                      </label>
                       <div className="flex items-center gap-2">
-                        <a
-                          href="tel:+918639858221"
-                          className="font-mono font-bold text-primary hover:underline"
-                        >
-                          +91 8639858221
-                        </a>
+                        <input
+                          type="text"
+                          value={businessSettings.gstin}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, gstin: e.target.value })
+                          }
+                          className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono font-bold text-foreground focus:border-primary focus:outline-none"
+                          placeholder="37AAEFU1234F1Z5"
+                        />
                         <button
                           type="button"
-                          onClick={() => copyToClipboard("+918639858221", "Phone 1")}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground"
+                          onClick={() => copyToClipboard(businessSettings.gstin, "GSTIN")}
+                          className="p-2 rounded-lg border border-border hover:bg-muted text-primary"
+                          title="Copy GSTIN"
                         >
-                          {copiedText === "Phone 1" ? (
-                            <Check className="size-3" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
+                          {copiedText === "GSTIN" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-muted/20">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <div className="font-bold text-foreground">Secondary Technical Desk</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Pump automation, hydrants & NOC support
-                        </div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          State Code
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.stateCode}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, stateCode: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono text-foreground focus:border-primary focus:outline-none"
+                          placeholder="37 (Andhra Pradesh)"
+                        />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href="tel:+919030609171"
-                          className="font-mono font-bold text-primary hover:underline"
-                        >
-                          +91 9030609171
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard("+919030609171", "Phone 2")}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground"
-                        >
-                          {copiedText === "Phone 2" ? (
-                            <Check className="size-3" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
-                        </button>
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          PAN Number
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.pan}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, pan: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono text-foreground focus:border-primary focus:outline-none"
+                          placeholder="AAEFU1234F"
+                        />
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-muted/20">
-                      <div>
-                        <div className="font-bold text-foreground">Official RFQ Mailbox</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Formal quotations & commercial proposals
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href="mailto:info@udharchienterprises.com"
-                          className="font-mono font-bold text-primary hover:underline text-[11px]"
-                        >
-                          info@udharchienterprises.com
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard("info@udharchienterprises.com", "Email")}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground"
-                        >
-                          {copiedText === "Email" ? (
-                            <Check className="size-3" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
-                        </button>
-                      </div>
+                    <div>
+                      <label className="block font-semibold text-foreground mb-1">
+                        Safety Hardware Tax Slab
+                      </label>
+                      <input
+                        type="text"
+                        value={businessSettings.taxSlab}
+                        onChange={(e) =>
+                          setBusinessSettings({ ...businessSettings, taxSlab: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        placeholder="18% GST (CGST 9% + SGST 9%)"
+                      />
+                    </div>
+
+                    <div className="rounded-lg border border-border/50 bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
+                      <strong>Invoicing Standard:</strong> Standard B2B Tax Invoice with HSN code breakdown generated automatically on confirmed orders.
                     </div>
                   </div>
                 </div>
+
+                {/* 3. Official Communication & Dispatch Hotlines (Contact form rendered below) */}
 
                 {/* 4. Banking & RTGS / NEFT Wire Settlement */}
                 <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <IndianRupee className="size-4 text-primary" />
-                    <h3 className="font-display text-sm font-bold text-foreground">
-                      B2B Settlement & Banking Credentials
-                    </h3>
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="size-4 text-primary" />
+                      <h3 className="font-display text-sm font-bold text-foreground">
+                        B2B Settlement &amp; Banking Credentials
+                      </h3>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                      Editable
+                    </span>
                   </div>
 
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Account Holder</span>
-                      <span className="font-bold text-foreground">Sri Udharchi Enterprises</span>
+                  <div className="space-y-3 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Account Holder Name
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.accountHolder}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, accountHolder: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none font-semibold"
+                          placeholder="Sri Udharchi Enterprises"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Bank Name
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.bankName}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, bankName: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                          placeholder="State Bank of India (SBI)"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Bank Name</span>
-                      <span className="font-semibold text-foreground">
-                        State Bank of India (SBI)
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Current Account No.</span>
+
+                    <div>
+                      <label className="block font-semibold text-foreground mb-1">
+                        Current Account Number
+                      </label>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-foreground">398582210012</span>
+                        <input
+                          type="text"
+                          value={businessSettings.accountNumber}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, accountNumber: e.target.value })
+                          }
+                          className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono font-bold text-foreground focus:border-primary focus:outline-none"
+                          placeholder="398582210012"
+                        />
                         <button
                           type="button"
-                          onClick={() => copyToClipboard("398582210012", "Account No")}
-                          className="text-primary hover:opacity-80"
+                          onClick={() => copyToClipboard(businessSettings.accountNumber, "Account No")}
+                          className="p-2 rounded-lg border border-border hover:bg-muted text-primary"
+                          title="Copy Account Number"
                         >
-                          {copiedText === "Account No" ? (
-                            <Check className="size-3.5" />
-                          ) : (
-                            <Copy className="size-3.5" />
-                          )}
+                          {copiedText === "Account No" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">IFSC Code</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-primary">SBIN0001234</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard("SBIN0001234", "IFSC")}
-                          className="text-primary hover:opacity-80"
-                        >
-                          {copiedText === "IFSC" ? (
-                            <Check className="size-3.5" />
-                          ) : (
-                            <Copy className="size-3.5" />
-                          )}
-                        </button>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          IFSC Code
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.ifscCode}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, ifscCode: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono font-bold text-primary focus:border-primary focus:outline-none"
+                          placeholder="SBIN0001234"
+                        />
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-muted-foreground">UPI Virtual ID</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-foreground">8639858221@ybl</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard("8639858221@ybl", "UPI")}
-                          className="text-primary hover:opacity-80"
-                        >
-                          {copiedText === "UPI" ? (
-                            <Check className="size-3.5" />
-                          ) : (
-                            <Copy className="size-3.5" />
-                          )}
-                        </button>
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          UPI Virtual ID
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.upiId}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, upiId: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono text-foreground focus:border-primary focus:outline-none"
+                          placeholder="8639858221@ybl"
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 5. Regional Warehouses & Storage Depots */}
+                {/* 5. Regional Warehouses & Storage Depots (Fully Editable & Customizable) */}
                 <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4 md:col-span-2">
-                  <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <Truck className="size-4 text-primary" />
-                    <h3 className="font-display text-sm font-bold text-foreground">
-                      Authorized Regional Depots & Logistics Gateways (Andhra Pradesh)
-                    </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <Truck className="size-4 text-primary" />
+                      <h3 className="font-display text-sm font-bold text-foreground">
+                        Authorized Regional Depots &amp; Logistics Hubs
+                      </h3>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsAddingDepot(true)}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Plus className="size-3.5" />
+                      <span>Add Regional Depot</span>
+                    </Button>
                   </div>
 
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Manage and edit the physical regional hubs and depot addresses. You can update any depot name, location, or address at any time.
+                  </p>
+
+                  {/* Add Depot Inline Form */}
+                  {isAddingDepot && (
+                    <div className="p-4 rounded-xl border border-primary/40 bg-primary/5 space-y-3 text-xs animate-in fade-in">
+                      <div className="font-bold text-foreground text-sm flex items-center justify-between">
+                        <span>Add New Regional Depot</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingDepot(false)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="block font-semibold text-foreground mb-1">Depot Hub Name</label>
+                          <input
+                            type="text"
+                            value={newDepotData.name}
+                            onChange={(e) => setNewDepotData({ ...newDepotData, name: e.target.value })}
+                            placeholder="e.g. Rayalaseema Regional Gateway"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold text-foreground mb-1">Physical Location / Address</label>
+                          <input
+                            type="text"
+                            value={newDepotData.address}
+                            onChange={(e) => setNewDepotData({ ...newDepotData, address: e.target.value })}
+                            placeholder="e.g. Industrial Area, Palasamudram, AP"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">Service Area &amp; Description</label>
+                        <input
+                          type="text"
+                          value={newDepotData.description}
+                          onChange={(e) => setNewDepotData({ ...newDepotData, description: e.target.value })}
+                          placeholder="e.g. Rapid distribution of fire pumps, valves and safety PPE."
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-1">
+                        <Button size="sm" variant="ghost" onClick={() => setIsAddingDepot(false)} className="text-xs">
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleCreateDepot} className="text-xs font-bold gap-1">
+                          <Plus className="size-3.5" /> Save New Depot
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Depots List */}
                   <div className="grid gap-3 sm:grid-cols-3 text-xs">
-                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
-                      <div className="flex items-center gap-1.5 font-bold text-foreground">
-                        <MapPin className="size-3.5 text-primary" />
-                        <span>Visakhapatnam Central Depot</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Autonagar Industrial Estate, Gajuwaka Zone, Visakhapatnam, AP - 530012.
-                        Primary dispatch center for fire pumps, hydrant valves, and heavy equipment.
-                      </p>
-                    </div>
+                    {businessSettings.depots.map((depot) => {
+                      const isEditingThis = editingDepotId === depot.id;
 
-                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
-                      <div className="flex items-center gap-1.5 font-bold text-foreground">
-                        <MapPin className="size-3.5 text-primary" />
-                        <span>Mangalagiri Hub (Amaravati)</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Express Logistics Corridor, Mangalagiri, Guntur/Vijayawada Corridor, AP -
-                        522503. Rapid distribution of ISI fire extinguishers and PPE gear.
-                      </p>
-                    </div>
+                      if (isEditingThis && editingDepotData) {
+                        return (
+                          <div
+                            key={depot.id}
+                            className="p-3.5 rounded-xl border border-primary/50 bg-card shadow-md space-y-2.5 text-xs"
+                          >
+                            <div className="font-bold text-foreground text-xs text-primary flex items-center justify-between">
+                              <span>Edit Depot</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingDepotId(null);
+                                  setEditingDepotData(null);
+                                }}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            </div>
 
-                    <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1">
-                      <div className="flex items-center gap-1.5 font-bold text-foreground">
-                        <MapPin className="size-3.5 text-primary" />
-                        <span>Rayalaseema & Sri City Hub</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Renigunta Road Industrial Corridor, Tirupati, AP - 517506. Servicing
-                        automotive vendor parks, electronics manufacturing, and southern industrial
-                        corridors.
-                      </p>
-                    </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-foreground mb-0.5">Name</label>
+                              <input
+                                type="text"
+                                value={editingDepotData.name}
+                                onChange={(e) =>
+                                  setEditingDepotData({ ...editingDepotData, name: e.target.value })
+                                }
+                                className="w-full rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-semibold text-foreground mb-0.5">Address</label>
+                              <textarea
+                                rows={2}
+                                value={editingDepotData.address}
+                                onChange={(e) =>
+                                  setEditingDepotData({ ...editingDepotData, address: e.target.value })
+                                }
+                                className="w-full rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-semibold text-foreground mb-0.5">Description</label>
+                              <input
+                                type="text"
+                                value={editingDepotData.description}
+                                onChange={(e) =>
+                                  setEditingDepotData({ ...editingDepotData, description: e.target.value })
+                                }
+                                className="w-full rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="flex justify-end gap-1.5 pt-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingDepotId(null);
+                                  setEditingDepotData(null);
+                                }}
+                                className="text-xs h-7 px-2"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleUpdateDepot(editingDepotData)}
+                                className="text-xs h-7 px-2.5 font-bold"
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={depot.id}
+                          className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-2 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5 font-bold text-foreground text-xs">
+                                <MapPin className="size-3.5 text-primary shrink-0" />
+                                <span>{depot.name}</span>
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-foreground font-medium leading-relaxed">
+                              {depot.address}
+                            </p>
+                            {depot.description && (
+                              <p className="text-[11px] text-muted-foreground leading-relaxed pt-0.5">
+                                {depot.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-end gap-1 pt-2 border-t border-border/50">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingDepotId(depot.id);
+                                setEditingDepotData(depot);
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+                              title="Edit this depot"
+                            >
+                              <Edit3 className="size-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDepot(depot.id, depot.name)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold text-destructive hover:bg-destructive/10 transition-colors"
+                              title="Delete this depot"
+                            >
+                              <Trash2 className="size-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

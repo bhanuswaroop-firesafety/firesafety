@@ -209,6 +209,35 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+// Regional Depot Item
+export interface RegionalDepot {
+  id: string;
+  name: string;
+  address: string;
+  description: string;
+}
+
+// Business Profile & Depot Settings in Firestore (settings/business)
+export interface BusinessProfileSettings {
+  entityName: string;
+  specialization: string;
+  jurisdiction: string;
+  standards: string;
+  primaryDepotName: string;
+  primaryDepotAddress: string;
+  gstin: string;
+  stateCode: string;
+  pan: string;
+  taxSlab: string;
+  accountHolder: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  upiId: string;
+  depots: RegionalDepot[];
+  updatedAt?: string | undefined;
+}
+
 // Contact & Support Settings in Firestore (settings/contact)
 export interface ContactSettings {
   supportPhone: string;

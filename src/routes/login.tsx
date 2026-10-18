@@ -147,6 +147,17 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
   // Order Status History Modal
   const [historyOrder, setHistoryOrder] = useState<OrderItem | null>(null);
 
+  // If user was prompted to login to open a specific product or page, redirect back there
+  useEffect(() => {
+    if (user) {
+      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const redirect = params?.get("redirect");
+      if (redirect && redirect.startsWith("/") && redirect !== "/login" && redirect !== "/signup") {
+        window.location.href = redirect;
+      }
+    }
+  }, [user]);
+
   // Real-time subscriptions for logged-in customer data
   useEffect(() => {
     if (!user) return;
@@ -1364,7 +1375,14 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                             className="size-4 rounded border-input text-primary focus:ring-primary mt-0.5"
                           />
                           <span className="text-[11px] text-muted-foreground leading-relaxed">
-                            I consent to receive quotation notifications and agree to the industrial safety terms of service.
+                            I agree to the{" "}
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
+                              Terms of Service
+                            </a>{" "}
+                            and acknowledge the{" "}
+                            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
+                              Privacy Policy
+                            </a>.
                           </span>
                         </label>
                       )}
@@ -1773,8 +1791,14 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                       className="size-4 rounded border-input text-primary focus:ring-primary mt-0.5"
                     />
                     <span className="text-[11px] text-muted-foreground leading-relaxed">
-                      I agree to the industrial safety terms of service and consent to receiving
-                      quotation updates.
+                      I agree to the{" "}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
+                        Terms of Service
+                      </a>{" "}
+                      and acknowledge the{" "}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
+                        Privacy Policy
+                      </a>.
                     </span>
                   </label>
 
@@ -1817,8 +1841,8 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                 </div>
               </div>
 
-              {/* Footer Switcher & Admin Link */}
-              <div className="mt-6 border-t border-border pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+              {/* Footer Switcher */}
+              <div className="mt-6 border-t border-border pt-4 flex items-center justify-center text-xs text-muted-foreground">
                 <div>
                   {mode === "login" ? (
                     <span>
@@ -1852,14 +1876,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     </span>
                   )}
                 </div>
-
-                <a
-                  href="/admin/login"
-                  className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  <Lock className="size-3 text-primary" />
-                  <span>Admin Portal &rarr;</span>
-                </a>
               </div>
             </div>
           )}

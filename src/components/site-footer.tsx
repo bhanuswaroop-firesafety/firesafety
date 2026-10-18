@@ -90,11 +90,6 @@ export function SiteFooter() {
                 Client Portal / Account
               </a>
             </li>
-            <li>
-              <a href="/admin" className="transition-colors hover:text-primary">
-                Executive Admin Access
-              </a>
-            </li>
           </ul>
         </div>
 
@@ -191,8 +186,25 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-border px-5 py-5 text-xs text-muted-foreground">
-        <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <span>© 2026 Sri Udharchi Enterprises. All rights reserved.</span>
+        <div className="mx-auto flex max-w-7xl flex-col lg:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+            <span>© 2026 Sri Udharchi Enterprises. All rights reserved.</span>
+            <span className="hidden sm:inline text-border">|</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+              <a href="/privacy" className="transition-colors hover:text-primary">
+                Privacy Policy
+              </a>
+              <a href="/terms" className="transition-colors hover:text-primary">
+                Terms of Service
+              </a>
+              <a href="/refund-policy" className="transition-colors hover:text-primary">
+                Cancellation & Refund
+              </a>
+              <a href="/shipping-policy" className="transition-colors hover:text-primary">
+                Shipping & Delivery
+              </a>
+            </div>
+          </div>
           {hasInstagram && (
             <div className="flex items-center gap-4">
               <a
