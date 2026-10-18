@@ -382,10 +382,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useCart() {
+export function useCart(): CartContextType {
   const context = useContext(CartContext);
   if (!context) {
-    throw new Error("useCart must be used within a CartProvider");
+    return {
+      cartItems: [],
+      addToCart: () => {},
+      removeFromCart: () => {},
+      updateQuantity: () => {},
+      clearCart: () => {},
+      subtotal: 0,
+      gstAmount: 0,
+      shippingFee: 0,
+      couponCode: null,
+      couponInfo: null,
+      discountAmount: 0,
+      applyCoupon: () => ({ success: false, message: "Cart not initialized" }),
+      removeCoupon: () => {},
+      totalAmount: 0,
+      totalItems: 0,
+      isCartOpen: false,
+      setIsCartOpen: () => {},
+      isHydrated: true,
+      isCartLoading: false,
+    };
   }
   return context;
 }

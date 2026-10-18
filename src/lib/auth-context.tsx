@@ -570,10 +570,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    return {
+      user: null,
+      userProfile: null,
+      isAdmin: false,
+      isStaff: false,
+      isCustomer: false,
+      loading: false,
+      authConfigError: false,
+      loginWithGoogle: async () => {},
+      loginWithEmail: async () => {},
+      registerWithEmail: async () => {},
+      sendPhoneOtp: async () => ({} as ConfirmationResult),
+      verifyPhoneOtp: async () => ({} as FirebaseUser),
+      clearRecaptchaVerifier: () => {},
+      logout: async () => {},
+    };
   }
   return context;
 }

@@ -146,7 +146,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@graph": [
             schemas.website(),
-            schemas.siteNavigation()["@graph"][0],
+            schemas.siteNavigation(),
             schemas.localBusiness(),
           ],
         }),
