@@ -132,9 +132,77 @@ export const schemas = {
   website: () => ({
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": `${SITE_URL}/#website`,
     name: BRAND,
+    alternateName: [
+      "Sri Udharchi",
+      "Udharchi Safety",
+      "Udharchi Fire Safety",
+      "Sri Udharchi Fire Safety Solutions",
+    ],
     url: SITE_URL,
-    description: `${BRAND} — Leading fire fighting engineering contractor and industrial safety distributor in Andhra Pradesh.`,
+    description: `${BRAND} — Certified fire safety equipment distributor and fire protection engineering contractor in Andhra Pradesh.`,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE_URL}/products?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+    inLanguage: "en-IN",
+  }),
+
+  /** Google Sitelinks SiteNavigationElement schema */
+  siteNavigation: () => ({
+    "@context": "https://schema.org",
+    "@type": "SiteNavigationElement",
+    "@id": `${SITE_URL}/#navigation`,
+    name: "Main Site Navigation",
+    hasPart: [
+      {
+        "@type": "WebPage",
+        name: "Home",
+        description: "Official portal for Sri Udharchi Enterprises fire safety engineering and equipment distribution.",
+        url: `${SITE_URL}/`,
+      },
+      {
+        "@type": "WebPage",
+        name: "Fire Safety Products",
+        description: "Browse and buy ISI/BIS certified fire extinguishers, hydrants, fire pumps, and industrial PPE gear.",
+        url: `${SITE_URL}/products`,
+      },
+      {
+        "@type": "WebPage",
+        name: "Fire Engineering Services",
+        description: "End-to-end fire safety audits, system installation, hydro-testing, and annual maintenance contracts (AMC).",
+        url: `${SITE_URL}/services`,
+      },
+      {
+        "@type": "WebPage",
+        name: "Industry Solutions",
+        description: "Tailored fire protection systems for manufacturing plants, warehouses, marine ports, and hospitals.",
+        url: `${SITE_URL}/industries`,
+      },
+      {
+        "@type": "WebPage",
+        name: "Featured Projects",
+        description: "Showcase of industrial fire hydrant networks, pump houses, and cable management installations.",
+        url: `${SITE_URL}/projects`,
+      },
+      {
+        "@type": "WebPage",
+        name: "About Sri Udharchi",
+        description: "Our certified engineering team, compliance records, mission, and central depot in Palasamudram, AP.",
+        url: `${SITE_URL}/about`,
+      },
+      {
+        "@type": "WebPage",
+        name: "Contact Us & Emergency Dispatch",
+        description: "24/7 emergency dispatch hotline, depot address, quotation inquiries, and WhatsApp support.",
+        url: `${SITE_URL}/contact`,
+      },
+    ],
   }),
 
   /** LocalBusiness schema — used on root layout */

@@ -45,7 +45,7 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div>
+        <nav aria-label="Footer Quick Links">
           <h3 className="font-display text-sm font-bold uppercase tracking-wider text-foreground">
             Quick Links
           </h3>
@@ -91,9 +91,9 @@ export function SiteFooter() {
               </a>
             </li>
           </ul>
-        </div>
+        </nav>
 
-        <div>
+        <nav aria-label="Footer Services Navigation">
           <h3 className="font-display text-sm font-bold uppercase tracking-wider text-foreground">
             Our Services
           </h3>
@@ -124,7 +124,7 @@ export function SiteFooter() {
               </a>
             </li>
           </ul>
-        </div>
+        </nav>
 
         <div>
           <h3 className="font-display text-sm font-bold uppercase tracking-wider text-foreground">

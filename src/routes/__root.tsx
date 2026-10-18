@@ -16,6 +16,7 @@ import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { logAppError } from "../lib/error-logger";
+import { schemas } from "../lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -125,7 +126,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
     links: [
-      { rel: "canonical", href: "https://sriudharchi.com/" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -145,51 +145,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@graph": [
-            {
-              "@type": "WebSite",
-              "@id": "https://sriudharchi.com/#website",
-              url: "https://sriudharchi.com",
-              name: "Sri Udharchi Enterprises",
-              description:
-                "Leading fire fighting engineering contractor and industrial safety distributor in Andhra Pradesh.",
-              publisher: {
-                "@id": "https://sriudharchi.com/#business",
-              },
-            },
-            {
-              "@type": "LocalBusiness",
-              "@id": "https://sriudharchi.com/#business",
-              name: "Sri Udharchi Enterprises",
-              image: "https://sriudharchi.com/sri-udharchi-enterprises-logo.png",
-              description:
-                "Certified fire protection systems, industrial safety equipment, fire hydrants, gas suppression, and comprehensive AMC maintenance in Andhra Pradesh and Pan-India.",
-              telephone: "+918639858221",
-              email: "sriudharchienterprises@gmail.com",
-              url: "https://sriudharchi.com",
-              address: {
-                "@type": "PostalAddress",
-                streetAddress: "H-7, Kubera Hills",
-                addressLocality: "Palasamudram",
-                addressRegion: "Andhra Pradesh",
-                postalCode: "515241",
-                addressCountry: "IN",
-              },
-              geo: {
-                "@type": "GeoCoordinates",
-                latitude: 14.6519,
-                longitude: 77.6006,
-              },
-              openingHoursSpecification: [
-                {
-                  "@type": "OpeningHoursSpecification",
-                  dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-                  opens: "09:00",
-                  closes: "19:00",
-                },
-              ],
-              areaServed: ["Andhra Pradesh", "Telangana", "Odisha", "India"],
-              priceRange: "$$",
-            },
+            schemas.website(),
+            schemas.siteNavigation()["@graph"][0],
+            schemas.localBusiness(),
           ],
         }),
       },

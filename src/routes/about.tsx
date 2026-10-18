@@ -23,9 +23,9 @@ import { seoHead, schemas } from "@/lib/seo";
 export const Route = createFileRoute("/about")({
   head: () =>
     seoHead({
-      title: "About Us | Sri Udharchi Enterprises - Fire & Industrial Safety",
+      title: "About Us & Safety Engineering Leadership | Sri Udharchi Enterprises",
       description:
-        "Learn about Sri Udharchi Enterprises, our mission, certified fire protection engineering team, and commitment to workplace safety across India.",
+        "Learn about Sri Udharchi Enterprises, our mission, certified fire protection engineering team, NBC compliance records, and central depot in Palasamudram, AP.",
       path: "/about",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },

@@ -31,9 +31,9 @@ export const Route = createFileRoute("/contact")({
   },
   head: () =>
     seoHead({
-      title: "Contact Us & Request Quote | Sri Udharchi Enterprises",
+      title: "Contact Us & 24/7 Safety Dispatch | Sri Udharchi Enterprises",
       description:
-        "Get in touch with Sri Udharchi Enterprises for fire safety audits, equipment quotes, complete installation estimates, and 24/7 emergency support.",
+        "Contact Sri Udharchi Enterprises for 24/7 emergency fire safety dispatch, equipment quotations, on-site audits, and depot support in Palasamudram, AP.",
       path: "/contact",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },

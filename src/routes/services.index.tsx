@@ -24,9 +24,9 @@ import { seoHead, schemas } from "@/lib/seo";
 export const Route = createFileRoute("/services/")({
   head: () =>
     seoHead({
-      title: "Our Services | Sri Udharchi Enterprises - Fire & Industrial Safety",
+      title: "Fire Protection Engineering Services & AMC Maintenance | Sri Udharchi Enterprises",
       description:
-        "End-to-end fire safety and industrial protection services: Consultation, Installation, Testing & Inspection, Maintenance & AMC, and Certified Equipment Supply.",
+        "Comprehensive fire protection engineering services across India: Fire Safety Audits & NOCs, Hydrant & Sprinkler Installation, Hydro-Testing Inspections, and 24/7 AMC Maintenance.",
       path: "/services",
       jsonLd: [
         schemas.breadcrumbs([

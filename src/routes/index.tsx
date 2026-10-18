@@ -105,33 +105,36 @@ export const Route = createFileRoute("/")({
         "fire hydrant valve and hoses",
         "Sri Udharchi Enterprises",
       ],
-      jsonLd: schemas.faq([
-        {
-          question: "What certified fire safety products do you supply?",
-          answer:
-            "Sri Udharchi Enterprises supplies IS 15683 certified ABC/CO2/Foam fire extinguishers, fire hydrant landing valves, RRL fire hoses, diesel & electric fire pumps, PPE safety helmets, protective boots, and flame detection hardware.",
-        },
-        {
-          question: "What fire protection services does Sri Udharchi Enterprises provide?",
-          answer:
-            "Sri Udharchi Enterprises provides engineered fire hydrant networks, automatic sprinkler systems, fire pump automation, FM-200 gas flooding, statutory NBC 2016 safety audits, extinguisher refilling, and comprehensive AMC maintenance.",
-        },
-        {
-          question: "Are your fire safety products compliant with Indian standards?",
-          answer:
-            "Yes, all fire safety products supplied by Sri Udharchi Enterprises comply strictly with BIS/ISI certifications, NBC 2016 codes, PESO guidelines, and CE/NFPA standards.",
-        },
-        {
-          question: "Do you offer Annual Maintenance Contracts (AMC) for fire fighting systems?",
-          answer:
-            "Yes, we provide 24/7 preventive and breakdown AMC coverage including quarterly pump runs, pressure hydro-testing, detector sensitivity audits, and statutory Form B inspection certificates.",
-        },
-        {
-          question: "Which geographic regions do you deliver fire safety equipment to?",
-          answer:
-            "We serve industrial clients across Andhra Pradesh, Telangana, Odisha, and provide complete equipment supply and engineering pan-India with GST input tax invoices.",
-        },
-      ]),
+      jsonLd: [
+        schemas.breadcrumbs([{ name: "Home", path: "/" }]),
+        schemas.faq([
+          {
+            question: "What certified fire safety products do you supply?",
+            answer:
+              "Sri Udharchi Enterprises supplies IS 15683 certified ABC/CO2/Foam fire extinguishers, fire hydrant landing valves, RRL fire hoses, diesel & electric fire pumps, PPE safety helmets, protective boots, and flame detection hardware.",
+          },
+          {
+            question: "What fire protection services does Sri Udharchi Enterprises provide?",
+            answer:
+              "Sri Udharchi Enterprises provides engineered fire hydrant networks, automatic sprinkler systems, fire pump automation, FM-200 gas flooding, statutory NBC 2016 safety audits, extinguisher refilling, and comprehensive AMC maintenance.",
+          },
+          {
+            question: "Are your fire safety products compliant with Indian standards?",
+            answer:
+              "Yes, all fire safety products supplied by Sri Udharchi Enterprises comply strictly with BIS/ISI certifications, NBC 2016 codes, PESO guidelines, and CE/NFPA standards.",
+          },
+          {
+            question: "Do you offer Annual Maintenance Contracts (AMC) for fire fighting systems?",
+            answer:
+              "Yes, we provide 24/7 preventive and breakdown AMC coverage including quarterly pump runs, pressure hydro-testing, detector sensitivity audits, and statutory Form B inspection certificates.",
+          },
+          {
+            question: "Which geographic regions do you deliver fire safety equipment to?",
+            answer:
+              "We serve industrial clients across Andhra Pradesh, Telangana, Odisha, and provide complete equipment supply and engineering pan-India with GST input tax invoices.",
+          },
+        ]),
+      ],
     }),
   component: Index,
 });
