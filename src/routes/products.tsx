@@ -23,6 +23,7 @@ import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { AuthRequiredModal } from "@/components/auth-required-modal";
 import { seoHead, schemas } from "@/lib/seo";
+import { DEFAULT_PRODUCTS } from "@/lib/catalog-data";
 import extinguisherImg from "@/assets/fire-extinguisher.jpg";
 
 export const Route = createFileRoute("/products")({
@@ -100,17 +101,20 @@ function ProductsPage() {
     return () => unsub();
   }, []);
 
+  // Active products: prioritize live Firestore collection, fallback to default certified catalog
+  const activeProducts = productsList.length > 0 ? productsList : DEFAULT_PRODUCTS;
+
   // Compute all available categories from default constants + active products
   const allCategories = useMemo(() => {
     const productCategories = Array.from(
-      new Set(productsList.map((p) => p.category).filter(Boolean)),
+      new Set(activeProducts.map((p) => p.category).filter(Boolean)),
     );
     return ["All", ...Array.from(new Set([...CATEGORIES, ...productCategories]))];
-  }, [productsList]);
+  }, [activeProducts]);
 
   // Filtered & Sorted products list
   const filteredProducts = useMemo(() => {
-    return productsList
+    return activeProducts
       .filter((p) => {
         const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
         const q = searchQuery.toLowerCase().trim();
@@ -136,7 +140,7 @@ function ProductsPage() {
         if (sortBy === "price-desc") return numB - numA;
         return 0;
       });
-  }, [productsList, selectedCategory, searchQuery, sortBy]);
+  }, [activeProducts, selectedCategory, searchQuery, sortBy]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -202,8 +206,8 @@ function ProductsPage() {
             {allCategories.map((cat) => {
               const count =
                 cat === "All"
-                  ? productsList.length
-                  : productsList.filter((p) => p.category === cat).length;
+                  ? activeProducts.length
+                  : activeProducts.filter((p) => p.category === cat).length;
               return (
                 <button
                   key={cat}
@@ -239,7 +243,7 @@ function ProductsPage() {
                 </div>
               ))}
             </div>
-          ) : productsList.length === 0 ? (
+          ) : activeProducts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center max-w-md mx-auto my-8">
               <Package className="mx-auto size-12 text-muted-foreground/60" />
               <h3 className="mt-4 font-display text-base font-bold text-foreground">

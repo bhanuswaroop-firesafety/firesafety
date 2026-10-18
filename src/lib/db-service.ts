@@ -41,7 +41,7 @@ import type {
   NotificationItem,
 } from "./types";
 export type { LeadItem, OrderItem };
-import { OFFICIAL_CATALOG_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
+import { OFFICIAL_CATALOG_PRODUCTS, DEFAULT_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
 import {
   getKolkataISOString,
   getKolkataDateString,
@@ -195,8 +195,9 @@ export function findProductById(
   const decoded = decodeURIComponent(idOrSlug).trim().toLowerCase();
   const mappedId = FEATURED_ID_MAP[decoded] || decoded;
 
-  // Check in custom / provided product list
-  const found = productList.find(
+  // Check in custom / provided product list first; fallback to DEFAULT_PRODUCTS if list is empty
+  const listToSearch = productList.length > 0 ? productList : DEFAULT_PRODUCTS;
+  const found = listToSearch.find(
     (p) =>
       p.id?.toLowerCase() === mappedId ||
       p.id?.toLowerCase() === decoded ||
@@ -222,7 +223,8 @@ export async function getProductById(idOrSlug: string): Promise<ProductItem | nu
     console.warn("Firestore getProductById notice:", error);
   }
 
-  return null;
+  // Fallback to default certified product catalog
+  return findProductById(idOrSlug, DEFAULT_PRODUCTS);
 }
 
 export function subscribeProductById(
@@ -238,12 +240,15 @@ export function subscribeProductById(
       if (snap.exists()) {
         callback({ id: snap.id, ...snap.data() } as ProductItem);
       } else {
-        callback(null);
+        // Fallback to default catalog product if not found in Firestore
+        const fallback = findProductById(idOrSlug, DEFAULT_PRODUCTS);
+        callback(fallback);
       }
     },
     (err) => {
       console.warn("Firestore product subscription notice:", err);
-      callback(null);
+      const fallback = findProductById(idOrSlug, DEFAULT_PRODUCTS);
+      callback(fallback);
     },
   );
 }
