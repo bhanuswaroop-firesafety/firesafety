@@ -1,6 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import server from '../.output/server/_ssr/ssr.mjs';
+import { pathToFileURL } from 'url';
+
+// On Vercel, Nitro builds native Vercel Serverless Functions in .vercel/output.
+// Prerendering into .output/public is only needed for static hosting like Firebase.
+if (process.env.VERCEL) {
+  console.log('--- Detected Vercel Build Environment ---');
+  console.log('Skipping Firebase Hosting static prerender (Nitro SSR is handled natively by Vercel).');
+  process.exit(0);
+}
+
+const ssrPath = path.resolve('.output/server/_ssr/ssr.mjs');
+if (!fs.existsSync(ssrPath)) {
+  console.log(`[Notice] SSR entry file not found at ${ssrPath}. Skipping static prerender.`);
+  process.exit(0);
+}
+
+const { default: server } = await import(pathToFileURL(ssrPath).href);
 
 const routes = [
   '/',
