@@ -292,30 +292,8 @@ function Index() {
           videoSrc="https://bhanuswaroop.sirv.com/WhatsApp%20Video%202026-10-19%20at%2011.39.24%20AM%20(2).mp4"
         />
 
-        {/* Floating Nano Trust Badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="absolute bottom-20 right-4 z-20 hidden md:flex flex-col items-end gap-2 md:right-8 lg:right-10"
-        >
-          <div className="flex items-center gap-3.5 rounded-2xl border border-white/20 bg-ink/90 p-4 shadow-2xl backdrop-blur-xl">
-            <NanoIcon name="shield" size="lg" />
-            <div className="text-left pr-2">
-              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-brand-warm">
-                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                NBC 2016 & IS 15683 Certified
-              </div>
-              <div className="text-sm font-bold text-white">Complete Fire Safety Engineering</div>
-              <div className="text-[11px] text-white/70">
-                Official Contractor in Andhra Pradesh & Pan-India
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
         <div className="mx-auto flex min-h-[560px] sm:min-h-[660px] lg:min-h-[720px] max-w-7xl items-center px-4 py-8 sm:px-6 sm:py-16 lg:px-8">
-          <div className="max-w-3xl">
+          <div className="max-w-3xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
             {/* Top Pill */}
             <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-brand-warm/30 bg-brand-warm/15 px-3 py-1 text-[11px] sm:text-xs font-bold text-brand-warm backdrop-blur-md mb-2.5 sm:mb-4">
               <ShieldCheck className="size-3.5 shrink-0 text-brand-warm" />
