@@ -42,6 +42,7 @@ import { ServiceShowcaseGrid } from "@/components/service-showcase-grid";
 import { ContactForm } from "@/components/contact-form";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 import { CategorySwiper } from "@/components/category-swiper";
+import { HeroBannerVideo } from "@/components/hero-banner-video";
 import { useCart } from "@/lib/cart-context";
 import { subscribeProducts } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
@@ -284,30 +285,19 @@ function Index() {
 
       {/* Hero Section */}
       <section className="relative isolate min-h-[580px] sm:min-h-[660px] lg:min-h-[720px] overflow-hidden bg-ink text-primary-foreground">
-        {/* Background Hero Banner */}
-        <div className="absolute inset-0 -z-20 overflow-hidden bg-ink">
-          <picture className="h-full w-full">
-            <source media="(max-width: 639px)" srcSet={heroMobile} />
-            <img
-              src={hero}
-              alt="Safety engineer inspecting industrial fire pump equipment"
-              className="h-full w-full object-cover object-[68%_center] sm:object-center transition-transform duration-1000 scale-100"
-              loading="eager"
-              fetchPriority="high"
-            />
-          </picture>
-          {/* Deep Cinematic Gradient Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-ink/40 sm:bg-gradient-to-r sm:from-ink/95 sm:via-ink/85 sm:to-ink/45" />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/70 via-transparent to-ink/90 sm:hidden" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent pointer-events-none" />
-        </div>
+        {/* Background Hero Banner Video with Graceful Image Fallback while buffering */}
+        <HeroBannerVideo
+          posterImage={hero}
+          mobilePosterImage={heroMobile}
+          videoSrc="https://bhanuswaroop.sirv.com/WhatsApp%20Video%202026-10-19%20at%2011.39.24%20AM%20(2).mp4"
+        />
 
         {/* Floating Nano Trust Badge */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="absolute bottom-6 right-4 z-20 hidden md:flex flex-col items-end gap-2 md:right-8 lg:right-12"
+          className="absolute bottom-20 right-4 z-20 hidden md:flex flex-col items-end gap-2 md:right-8 lg:right-10"
         >
           <div className="flex items-center gap-3.5 rounded-2xl border border-white/20 bg-ink/90 p-4 shadow-2xl backdrop-blur-xl">
             <NanoIcon name="shield" size="lg" />
