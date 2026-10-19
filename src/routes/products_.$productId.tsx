@@ -124,12 +124,6 @@ function ProductViewPage() {
     "specs" | "compliance" | "applications" | "maintenance"
   >("specs");
 
-  // Prompt unauthenticated users with the required account modal when opening a product
-  useEffect(() => {
-    if (!authLoading && !user) {
-      setShowAuthModal(true);
-    }
-  }, [authLoading, user]);
 
   // Quick Bulk Quote Form State
   const [quoteForm, setQuoteForm] = useState({
@@ -288,48 +282,17 @@ function ProductViewPage() {
       </nav>
 
       {/* Main Product Showcase Section */}
-      <section className="py-8 sm:py-12 lg:py-16">
+      <section className="py-6 sm:py-8 lg:py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Guest Account Required Prompt Banner */}
-          {!user && (
-            <div className="mb-6 rounded-2xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Lock className="size-4" />
-                </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-bold text-foreground">
-                    You must have an account. Please signup
-                  </p>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground">
-                    Create a free account or sign in to order, view compliance certifications, and access instant quotations.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <a href={`/signup?redirect=${encodeURIComponent(`/products/${productId}`)}`}>
-                  <Button size="sm" className="text-xs font-bold gap-1 shadow-xs">
-                    <UserPlus className="size-3.5" /> Sign Up
-                  </Button>
-                </a>
-                <a href={`/login?redirect=${encodeURIComponent(`/products/${productId}`)}`}>
-                  <Button variant="outline" size="sm" className="text-xs font-bold">
-                    Sign In
-                  </Button>
-                </a>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 items-start">
             {/* Left Column: Visual Media Gallery */}
-            <div className="lg:col-span-6 space-y-4">
-              <div className="relative aspect-[4/3] sm:aspect-[16/11] overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+            <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24 self-start">
+              <div className="relative flex items-center justify-center h-[360px] sm:h-[420px] lg:h-[480px] w-full overflow-hidden rounded-2xl border border-border bg-slate-50/80 dark:bg-card/40 p-4 sm:p-6 shadow-md">
                 <img
                   src={product.image}
                   alt={`${product.name} - Certified Fire Safety Product | Sri Udharchi Enterprises`}
                   referrerPolicy="no-referrer"
-                  className="size-full object-cover transition-transform duration-700 hover:scale-105"
+                  className="max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-500 hover:scale-105"
                 />
 
                 {/* Badges on Visual */}
@@ -396,7 +359,7 @@ function ProductViewPage() {
             </div>
 
             {/* Right Column: Product Details, Pricing, & Actions */}
-            <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
               <div className="space-y-4">
                 {/* Header info */}
                 <div>

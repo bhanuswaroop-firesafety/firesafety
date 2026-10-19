@@ -76,6 +76,11 @@ function ProductsPage() {
     prod: ProductItem,
     action: "open" | "add" | "buy",
   ) => {
+    // Allow users to freely open and view product details
+    if (action === "open") {
+      return;
+    }
+
     if (!user) {
       if (e) e.preventDefault();
       setAuthPromptProduct({
@@ -290,14 +295,13 @@ function ProductsPage() {
                   {/* Product Image */}
                   <a
                     href={`/products/${prod.id || prod.sku || prod.name}`}
-                    onClick={(e) => handleProductAction(e, prod, "open")}
-                    className="relative aspect-[4/3] overflow-hidden bg-muted block cursor-pointer"
+                    className="relative aspect-[4/3] overflow-hidden bg-slate-50/60 dark:bg-card/40 flex items-center justify-center p-2.5 block cursor-pointer"
                   >
                     <img
                       src={prod.image}
                       alt={prod.name}
                       referrerPolicy="no-referrer"
-                      className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="max-h-full max-w-full object-contain drop-shadow-xs transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = extinguisherImg;
                       }}
@@ -316,7 +320,6 @@ function ProductsPage() {
                   <div className="flex flex-1 flex-col p-3 sm:p-4">
                     <a
                       href={`/products/${prod.id || prod.sku || prod.name}`}
-                      onClick={(e) => handleProductAction(e, prod, "open")}
                       className="group-hover:text-primary transition-colors"
                     >
                       <h3 className="font-display text-xs sm:text-sm font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem]">
@@ -397,7 +400,6 @@ function ProductsPage() {
                       <div className="flex items-center justify-between border-t border-border/40 pt-1.5 text-[10px]">
                         <a
                           href={`/products/${prod.id || prod.sku || prod.name}`}
-                          onClick={(e) => handleProductAction(e, prod, "open")}
                           className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
                         >
                           <Eye className="size-3" /> Details

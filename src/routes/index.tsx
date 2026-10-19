@@ -530,12 +530,12 @@ function Index() {
                   >
                     <a
                       href={`/products/${prod.id || prod.sku || prod.name}`}
-                      className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-muted block cursor-pointer"
+                      className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-50/60 dark:bg-card/40 flex items-center justify-center p-3 block cursor-pointer"
                     >
                       <img
                         src={prod.image || extinguisher}
                         alt={`${prod.name} - Fire Safety Product | Sri Udharchi Enterprises`}
-                        className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="max-h-full max-w-full object-contain drop-shadow-xs transition-transform duration-500 group-hover:scale-105"
                       />
                       <span className="absolute left-2 top-2 sm:left-3 sm:top-3 rounded-md bg-background/90 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
                         {prod.category}

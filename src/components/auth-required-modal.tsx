@@ -64,12 +64,12 @@ export function AuthRequiredModal({
               <DialogDescription className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed pt-1">
                 {productName ? (
                   <>
-                    To open and view full technical specifications, ISI certifications, and pricing for{" "}
+                    To proceed with purchasing, ordering, or requesting an instant quotation for{" "}
                     <span className="font-semibold text-foreground">"{productName}"</span>, please create an account or sign in.
                   </>
                 ) : (
                   <>
-                    To view complete product specifications, download ISI test certificates, and place safety equipment orders, please create an account or sign in.
+                    To proceed with purchasing industrial safety equipment, placing orders, or requesting instant quotations, please create an account or sign in.
                   </>
                 )}
               </DialogDescription>
