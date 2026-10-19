@@ -52,12 +52,17 @@ import {
 } from "./date-utils";
 
 export const CATEGORIES: string[] = [
-  "Fire Safety",
-  "Fire Hydrant",
-  "Fire Pumps",
-  "PPE",
-  "CCTV",
-  "Cable Management",
+  "Apartments",
+  "Buses & Cars",
+  "Electrical / Server Room",
+  "Educational Institutions",
+  "Factories",
+  "Fire Accessories",
+  "Home",
+  "Hospitals",
+  "Offices",
+  "Restaurants",
+  "Renewals",
 ];
 
 // Task A: Default Shipping Settings
@@ -1124,6 +1129,28 @@ export async function saveCategory(category: CategoryItem): Promise<void> {
 export async function deleteCategory(id: string): Promise<void> {
   const docRef = doc(db, "categories", id);
   await deleteDoc(docRef);
+}
+
+export async function seedOfficialCategories(): Promise<number> {
+  const colRef = collection(db, "categories");
+  let count = 0;
+  for (const [i, name] of CATEGORIES.entries()) {
+    if (!name) continue;
+    const catId = `cat-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
+    await setDoc(
+      doc(colRef, catId),
+      cleanFirestoreData({
+        id: catId,
+        name,
+        description: `Official certified equipment and systems for ${name}`,
+        order: i,
+        updatedAt: getKolkataISOString(),
+      }),
+      { merge: true },
+    );
+    count++;
+  }
+  return count;
 }
 
 // ========================================================

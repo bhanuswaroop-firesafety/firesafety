@@ -23,9 +23,9 @@ import { PhoneOtpModal } from "./phone-otp-modal";
 export interface AuthRequiredModalProps {
   isOpen: boolean;
   onClose: () => void;
-  productName?: string;
-  redirectUrl?: string;
-  allowDismiss?: boolean;
+  productName?: string | undefined;
+  redirectUrl?: string | undefined;
+  allowDismiss?: boolean | undefined;
 }
 
 export function AuthRequiredModal({

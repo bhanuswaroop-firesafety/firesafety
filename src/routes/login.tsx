@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/button";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { Signup1, Login1 } from "@/components/ui/signup-1";
+import { PhoneOtpModal } from "@/components/phone-otp-modal";
 import {
   Eye,
   EyeOff,
@@ -125,6 +127,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showPhoneOtpModal, setShowPhoneOtpModal] = useState(false);
 
   // Customer Account Portal State (Tasks A, C, D, E)
   const [accountTab, setAccountTab] = useState<"orders" | "renewals" | "notifications" | "profile">("orders");
@@ -403,7 +406,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (confirmPassword && password !== confirmPassword) {
       setErrorMsg("Passwords do not match.");
       return;
     }
@@ -452,6 +455,77 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
       setSubmitting(false);
     }
   };
+
+  if (!user) {
+    return (
+      <>
+        {mode === "signup" ? (
+          <Signup1
+            mode="signup"
+            heading="Create an account"
+            logo={{
+              url: "/",
+              src: "/sri-udharchi-enterprises-logo.png",
+              alt: "Sri Udharchi Enterprises",
+              title: "Sri Udharchi Enterprises",
+            }}
+            signupText="Create an account"
+            googleText="Sign up with Google"
+            loginText="Already have an account?"
+            loginUrl="/login"
+            linkLabel="Login"
+            email={email}
+            password={password}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onSubmit={handleSignupSubmit}
+            onGoogleClick={handleGoogleAuth}
+            onPhoneOtpClick={() => setShowPhoneOtpModal(true)}
+            isLoading={submitting}
+            errorMessage={errorMsg}
+            successMessage={successMsg}
+          />
+        ) : (
+          <Login1
+            mode="login"
+            heading="Welcome back"
+            logo={{
+              url: "/",
+              src: "/sri-udharchi-enterprises-logo.png",
+              alt: "Sri Udharchi Enterprises",
+              title: "Sri Udharchi Enterprises",
+            }}
+            signupText="Sign in"
+            googleText="Sign in with Google"
+            loginText="Don't have an account?"
+            loginUrl="/signup"
+            linkLabel="Sign up"
+            email={email}
+            password={password}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onSubmit={handleLoginSubmit}
+            onGoogleClick={handleGoogleAuth}
+            onPhoneOtpClick={() => setShowPhoneOtpModal(true)}
+            isLoading={submitting}
+            errorMessage={errorMsg}
+            successMessage={successMsg}
+          />
+        )}
+
+        <PhoneOtpModal
+          isOpen={showPhoneOtpModal}
+          onClose={() => setShowPhoneOtpModal(false)}
+          onSuccess={() => {
+            setShowPhoneOtpModal(false);
+            navigate({ to: "/" });
+          }}
+          title={mode === "signup" ? "Mobile Phone Registration" : "Mobile Phone Login"}
+          subtitle="Instant 6-digit SMS OTP verification"
+        />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">

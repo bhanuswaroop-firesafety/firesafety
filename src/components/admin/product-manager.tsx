@@ -6,6 +6,8 @@ import {
   addCategory,
   deleteCategory,
   seedOfficialCatalog,
+  seedOfficialCategories,
+  CATEGORIES,
 } from "@/lib/db-service";
 import type { ProductItem, CategoryItem } from "@/lib/types";
 import { uploadProductImage, MAX_IMAGE_SIZE_MB } from "@/lib/image-upload";
@@ -172,7 +174,7 @@ export function ProductManager({
   // Product Form State
   const [formData, setFormData] = useState<Partial<ProductItem>>({
     name: "",
-    category: categories[0]?.name || "",
+    category: categories[0]?.name || CATEGORIES[0] || "Apartments",
     price: "",
     unit: "per piece",
     sku: "",
@@ -219,9 +221,9 @@ export function ProductManager({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDeleting, previewProduct, isCategoryModalOpen]);
 
-  // Available category names
+  // Available category names: always include official categories + Firestore categories
   const categoryNames = useMemo(() => {
-    return Array.from(new Set(categories.map((c) => c.name)));
+    return Array.from(new Set([...CATEGORIES, ...categories.map((c) => c.name)]));
   }, [categories]);
 
   // Recently Added Products (Top 4 latest items by createdAt)
@@ -306,7 +308,7 @@ export function ProductManager({
     setUrlInput("");
     setFormData({
       name: "",
-      category: categories[0]?.name || "",
+      category: categories[0]?.name || CATEGORIES[0] || "Apartments",
       price: "",
       unit: "per piece",
       sku: "",
@@ -541,6 +543,20 @@ export function ProductManager({
       onNotify("Error syncing catalog: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  // Seed / Sync All 11 Official Categories to Firestore
+  const [isSeedingCategories, setIsSeedingCategories] = useState(false);
+  const handleSeedCategories = async () => {
+    setIsSeedingCategories(true);
+    try {
+      const count = await seedOfficialCategories();
+      onNotify(`Successfully synced ${count} official categories to Firestore!`);
+    } catch (err: unknown) {
+      onNotify("Error syncing categories: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSeedingCategories(false);
     }
   };
 
@@ -1959,40 +1975,69 @@ export function ProductManager({
               </div>
             </form>
 
+            {/* Quick Action: Seed/Sync All 11 Official Categories */}
+            <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center justify-between gap-3">
+              <div className="text-xs">
+                <span className="font-bold text-foreground block">Sync 11 Official Categories</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Apartments, Buses & Cars, Server Room, Factories, etc.
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isSeedingCategories}
+                onClick={handleSeedCategories}
+                className="gap-1.5 text-xs shrink-0"
+              >
+                {isSeedingCategories ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5 text-primary" />
+                )}
+                <span>Sync to Database</span>
+              </Button>
+            </div>
+
             {/* Existing Categories List */}
             <div className="mt-4 max-h-60 overflow-y-auto space-y-2 border-t border-border pt-4">
-              <span className="text-[11px] font-bold uppercase text-muted-foreground">
-                Existing Categories
-              </span>
-              {categories.length === 0 ? (
-                <div className="py-6 text-center text-xs text-muted-foreground">
-                  No categories added yet. Create one using the form above.
-                </div>
-              ) : (
-                categories.map((cat) => (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                  Available Categories ({categoryNames.length})
+                </span>
+                <span className="text-[10px] text-muted-foreground">Products in catalog</span>
+              </div>
+
+              {categoryNames.map((name) => {
+                const prodCount = products.filter((p) => p.category === name).length;
+                const matchedFirestoreCat = categories.find((c) => c.name === name);
+
+                return (
                   <div
-                    key={cat.id}
+                    key={name}
                     className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-2.5 text-xs"
                   >
-                    <div>
-                      <strong className="text-foreground">{cat.name}</strong>
-                      {cat.description && (
-                        <span className="block text-[11px] text-muted-foreground">
-                          {cat.description}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <strong className="text-foreground">{name}</strong>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                        {prodCount} products
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                      className="rounded p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                      title="Delete Category"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+
+                    {matchedFirestoreCat && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(matchedFirestoreCat.id, matchedFirestoreCat.name)}
+                        className="rounded p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                        title="Delete Custom Category"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
                   </div>
-                ))
-              )}
+                );
+              })}
             </div>
           </div>
         </div>

@@ -55,11 +55,12 @@ const navLinks = [
 ];
 
 const QUICK_CATEGORIES = [
-  { name: "Fire Extinguishers", href: "/products" },
-  { name: "Hydrant Valves", href: "/products" },
-  { name: "Fire Pumps", href: "/products" },
-  { name: "Industrial PPE", href: "/products" },
-  { name: "CCTV Surveillance", href: "/products" },
+  { name: "Apartments", href: "/products?category=Apartments" },
+  { name: "Offices", href: "/products?category=Offices" },
+  { name: "Factories", href: "/products?category=Factories" },
+  { name: "Hospitals", href: "/products?category=Hospitals" },
+  { name: "Electrical / Server Room", href: "/products?category=Electrical+%2F+Server+Room" },
+  { name: "Fire Accessories", href: "/products?category=Fire+Accessories" },
 ];
 
 export function SiteHeader() {

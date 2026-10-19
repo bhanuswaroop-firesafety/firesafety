@@ -512,8 +512,8 @@ function Index() {
             <div className="mt-6 sm:mt-10 grid grid-cols-2 gap-2.5 sm:gap-6 lg:grid-cols-3">
               {featuredDisplayProducts.map((prod) => {
                 const priceFormatted =
-                  typeof prod.price === "number"
-                    ? `₹${prod.price.toLocaleString("en-IN")}`
+                  prod.price && !isNaN(Number(String(prod.price).replace(/,/g, "")))
+                    ? `₹${Number(String(prod.price).replace(/,/g, "")).toLocaleString("en-IN")}`
                     : prod.price
                       ? String(prod.price).startsWith("₹")
                         ? prod.price
