@@ -65,6 +65,9 @@ if (!firebaseConfig.apiKey && typeof window !== "undefined") {
 // Initialize Firebase singleton
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+if (typeof window !== "undefined") {
+  auth.useDeviceLanguage();
+}
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 export const analytics =

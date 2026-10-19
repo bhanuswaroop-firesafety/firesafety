@@ -33,6 +33,7 @@ import {
   Bell,
   X,
   Package,
+  Info,
 } from "lucide-react";
 import {
   SUPPORTED_COUNTRY_CODES,
@@ -1519,6 +1520,40 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           </div>
                         )}
                       </Button>
+
+                      {/* Carrier Delay & Fallback Notice */}
+                      <div className="mt-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-muted-foreground space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Info className="size-4 shrink-0 text-amber-500 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="font-semibold text-foreground">OTP taking time to arrive?</p>
+                            <p className="leading-relaxed">
+                              Due to TRAI DLT regulations in India or daily project quotas, telecom carriers may delay or filter SMS on DND numbers. If you configured a <strong>Test Number in Firebase Console</strong>, enter your test code (e.g. <code className="font-mono font-bold text-foreground">123456</code>).
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-border/40 flex flex-wrap gap-2 justify-center text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthMethod("password");
+                              setOtpStep("input_phone");
+                              setErrorMsg("");
+                            }}
+                            className="text-primary font-bold hover:underline"
+                          >
+                            Sign in with Email &amp; Password
+                          </button>
+                          <span className="text-muted-foreground">•</span>
+                          <button
+                            type="button"
+                            onClick={() => loginWithGoogle()}
+                            className="text-primary font-bold hover:underline"
+                          >
+                            Sign in with Google
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

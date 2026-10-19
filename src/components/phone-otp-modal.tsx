@@ -29,6 +29,7 @@ import {
   User,
   Building2,
   ChevronDown,
+  Info,
 } from "lucide-react";
 
 export interface PhoneOtpModalProps {
@@ -443,6 +444,16 @@ export function PhoneOtpModal({
                 </div>
               )}
             </Button>
+
+            {/* Carrier Delay Notice */}
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-[11px] text-muted-foreground space-y-1">
+              <div className="flex items-start gap-1.5">
+                <Info className="size-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  OTP not arriving? Indian telecom carriers often delay international SMS or numbers with DND active. If using a <strong>Firebase Test Number</strong>, enter your test code (e.g. <strong>123456</strong>).
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

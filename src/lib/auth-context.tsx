@@ -395,12 +395,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (code === "auth/too-many-requests" || msg.includes("too-many-requests")) {
         throw new Error(
-          "Too many requests have been made to this phone number. Please wait a few minutes before trying again.",
+          "Too many requests have been made to this phone number. Please wait a few minutes, or use a Test Phone Number in Firebase Console.",
         );
       }
       if (code === "auth/quota-exceeded" || msg.includes("quota-exceeded")) {
         throw new Error(
-          "SMS quota for this project has been exceeded. Please contact enterprise support.",
+          "Firebase daily SMS quota exceeded (10 SMS/day on free plan). To test immediately without quota limits, configure a Test Phone Number (e.g. your number + code 123456) in Firebase Console under Authentication > Sign-in method > Phone.",
+        );
+      }
+      if (code === "auth/billing-not-enabled" || msg.includes("billing-not-enabled")) {
+        throw new Error(
+          "SMS dispatch requires enabling billing or configuring a Test Phone Number in Firebase Console under Authentication > Sign-in method > Phone.",
+        );
+      }
+      if (code === "auth/operation-not-allowed" || msg.includes("operation-not-allowed")) {
+        throw new Error(
+          "Phone authentication is not enabled. Please enable Phone provider in Firebase Console under Authentication > Sign-in method.",
         );
       }
       if (code === "auth/captcha-check-failed" || msg.includes("captcha-check-failed")) {
