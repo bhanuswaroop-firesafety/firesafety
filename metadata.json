@@ -1,0 +1,6 @@
+{
+  "name": "Udharchi Enterprises",
+  "description": "Fire and industrial safety solutions showcase and equipment catalog.",
+  "requestFramePermissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

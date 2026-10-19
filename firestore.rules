@@ -1,0 +1,205 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check authorized_admins collection
+    function isEmailInAuthorizedAdmins(cleanEmail) {
+      return exists(/databases/$(database)/documents/authorized_admins/$(cleanEmail));
+    }
+
+    // Authoritative Admin Check:
+    // 1. bhanuswaroop04@gmail.com is designated super admin
+    // 2. OR user has role == "admin" in users collection
+    // 3. OR email exists in authorized_admins collection
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email != null && request.auth.token.email.lower() == "bhanuswaroop04@gmail.com") ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin") ||
+        (request.auth.token.email != null &&
+         isEmailInAuthorizedAdmins(request.auth.token.email.lower()))
+      );
+    }
+
+    // Designated super admin check
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() == "bhanuswaroop04@gmail.com";
+    }
+
+    // Default Deny all unknown collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ========================================================
+    // Authorized Admins Collection
+    // ========================================================
+    match /authorized_admins/{adminEmail} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isSuperAdmin();
+    }
+
+    // ========================================================
+    // Products Catalog: Public read, Admin write
+    // ========================================================
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
+    // Categories: Public read, Admin write
+    // ========================================================
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
+    // Inquiries / Lead Submissions:
+    // Anyone can create (submit an inquiry form).
+    // Only verified Admins can read, update status, or delete.
+    // ========================================================
+    match /inquiries/{inquiryId} {
+      allow create: if request.resource.data.name is string &&
+        request.resource.data.phone is string;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ========================================================
+    // Users Collection (Registered Members & Staff):
+    // - Signed-in user can read and update their own profile.
+    // - Admins can read all profiles (shows registered users in admin panel).
+    // - Self-registration allowed for authenticated users.
+    // - Non-admins cannot elevate their role to admin.
+    // ========================================================
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && (
+          (request.resource.data.role == "admin" && (
+            isSuperAdmin() ||
+            (request.auth.token.email != null && isEmailInAuthorizedAdmins(request.auth.token.email.lower()))
+          )) ||
+          request.resource.data.role != "admin" ||
+          !('role' in request.resource.data)
+        )) ||
+        isAdmin()
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (request.auth.uid == userId && (
+          !('role' in request.resource.data) ||
+          request.resource.data.role == resource.data.role ||
+          isAdmin()
+        ))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
+    // Orders:
+    // - Authenticated users can create orders and view their own orders.
+    // - Admins can view and manage all orders.
+    // - Customers can cancel their own placed/confirmed orders.
+    // ========================================================
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          request.resource.data.customerId == request.auth.uid &&
+          request.resource.data.customerPhone is string &&
+          request.resource.data.customerPhone.size() >= 10
+        )
+      );
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.customerId == request.auth.uid ||
+        (resource.data.customerEmail != null && request.auth.token.email != null &&
+         resource.data.customerEmail.lower() == request.auth.token.email.lower())
+      );
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.customerId == request.auth.uid &&
+        request.resource.data.status == 'cancelled' &&
+        resource.data.status in ['placed', 'confirmed']
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
+    // Leads / Captured Customers:
+    // - User can create, update, or read their own lead record.
+    // - Admins can read, filter, search, and manage all leads.
+    // ========================================================
+    match /leads/{leadId} {
+      allow read: if isSignedIn() && (request.auth.uid == leadId || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == leadId || isAdmin());
+    }
+
+    // ========================================================
+    // Settings: Public read, Admin write
+    // ========================================================
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
+    // Feedback: Authenticated user create, Admin manage
+    // ========================================================
+    match /feedback/{orderId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        isAdmin() ||
+        request.resource.data.userId == request.auth.uid
+      );
+    }
+
+    // ========================================================
+    // Carts: Strictly owner-only or Admin read & write
+    // Fixes cart sync permissions error
+    // ========================================================
+    match /carts/{uid} {
+      allow read, write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // ========================================================
+    // Checkout Drafts: Owner-only or Admin
+    // ========================================================
+    match /drafts/{uid} {
+      allow read, write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // ========================================================
+    // Reminders: Equipment refills and renewal alerts
+    // ========================================================
+    match /reminders/{reminderId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
+    // Notifications: In-app alerts
+    // ========================================================
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.userId == 'all'
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+      allow create, delete: if isAdmin();
+    }
+  }
+}
