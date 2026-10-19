@@ -19,9 +19,10 @@ dist-ssr
 .env.*
 !.env.example
 
-# Wrangler / Cloudflare
+# Wrangler / Cloudflare / Firebase
 .wrangler/
 .dev.vars
+.firebase/
 
 # Editor directories and files
 .vscode/*
