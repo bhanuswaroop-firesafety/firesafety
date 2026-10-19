@@ -403,9 +403,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           "Firebase daily SMS quota exceeded (10 SMS/day on free plan). To test immediately without quota limits, configure a Test Phone Number (e.g. your number + code 123456) in Firebase Console under Authentication > Sign-in method > Phone.",
         );
       }
-      if (code === "auth/billing-not-enabled" || msg.includes("billing-not-enabled")) {
+      if (
+        code === "auth/billing-not-enabled" ||
+        msg.toLowerCase().includes("billing") ||
+        msg.includes("BILLING_NOT_ENABLED")
+      ) {
         throw new Error(
-          "SMS dispatch requires enabling billing or configuring a Test Phone Number in Firebase Console under Authentication > Sign-in method > Phone.",
+          "Real SMS requires enabling billing on Firebase (Blaze plan). Alternatively, you can add your number as a Test Phone Number in Firebase Console under Authentication > Sign-in method > Phone > Phone numbers for testing (code: 123456) to log in instantly without SMS fees.",
         );
       }
       if (code === "auth/operation-not-allowed" || msg.includes("operation-not-allowed")) {
@@ -424,7 +428,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      throw new Error(msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim());
+      const cleaned = msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
+      if (!cleaned || cleaned === "Error" || cleaned === "Error ." || cleaned === ".") {
+        throw new Error(msg.replace("Firebase: ", "").trim() || `Authentication error: ${code}`);
+      }
+      throw new Error(cleaned);
     }
   };
 
@@ -533,7 +541,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("The verification session has expired. Please request a new OTP.");
       }
 
-      throw new Error(msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim());
+      const cleaned = msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
+      if (!cleaned || cleaned === "Error" || cleaned === "Error ." || cleaned === ".") {
+        throw new Error(msg.replace("Firebase: ", "").trim() || `Authentication error: ${code}`);
+      }
+      throw new Error(cleaned);
     }
   };
 
