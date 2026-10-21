@@ -40,6 +40,11 @@ import {
   subscribeProducts,
   submitInquiry,
 } from "@/lib/db-service";
+import {
+  resolveProductDisplayImage,
+  getProductFallbackImage,
+  isCylinderAsset,
+} from "@/lib/catalog-data";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
@@ -121,7 +126,9 @@ function ProductViewPage() {
   const { user, loading: authLoading } = useAuth();
   const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
 
-  const [product, setProduct] = useState<ProductItem | null>(() => findProductById(productId, []));
+  const initialProduct = useMemo(() => findProductById(productId, []), [productId]);
+  const [product, setProduct] = useState<ProductItem | null>(initialProduct);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialProduct);
   const [allProducts, setAllProducts] = useState<ProductItem[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [addedToast, setAddedToast] = useState(false);
@@ -130,14 +137,35 @@ function ProductViewPage() {
     "specs" | "compliance" | "applications" | "maintenance"
   >("specs");
 
-  // Multi-image list for the current product
+  // Multi-image list for the current product with automatic fake cylinder resolution
   const galleryImages = useMemo(() => {
     if (!product) return [];
-    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      const valid = product.images.filter((img) => typeof img === "string" && img.trim().length > 0);
-      if (valid.length > 0) return valid;
+    const resolvedCover = resolveProductDisplayImage(product);
+    const isExt =
+      (product.name || "").toLowerCase().includes("extinguisher") ||
+      (product.name || "").toLowerCase().includes("cylinder") ||
+      (product.category || "").toLowerCase().includes("extinguisher");
+
+    const allCandidates = [
+      resolvedCover,
+      ...(product.images || []),
+      ...(product.image ? [product.image] : []),
+    ];
+
+    const cleaned: string[] = [];
+    for (const img of allCandidates) {
+      if (!img || typeof img !== "string" || !img.trim()) continue;
+      // Filter out generic cylinder placeholder if product is not a fire extinguisher
+      if (!isExt && isCylinderAsset(img)) continue;
+      if (!cleaned.includes(img.trim())) {
+        cleaned.push(img.trim());
+      }
     }
-    return product.image ? [product.image] : [];
+
+    if (cleaned.length === 0) {
+      return [resolvedCover || getProductFallbackImage(product.category, product.name)];
+    }
+    return cleaned;
   }, [product]);
 
   // Touch & drag swiper for product photos
@@ -243,16 +271,19 @@ function ProductViewPage() {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   const handleProductTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      setTouchStartX(e.touches[0].clientX);
-      setTouchStartY(e.touches[0].clientY);
+    const touch = e.touches[0];
+    if (e.touches.length === 1 && touch) {
+      setTouchStartX(touch.clientX);
+      setTouchStartY(touch.clientY);
     }
   };
 
   const handleProductTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX === null || touchStartY === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
 
     const diffX = touchStartX - touchEndX;
     const diffY = touchStartY - touchEndY;
@@ -303,16 +334,68 @@ function ProductViewPage() {
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
   const [quoteSuccess, setQuoteSuccess] = useState(false);
 
-  // Subscribe to live Firestore product update
+  // Subscribe to live Firestore product update with loading protection
   useEffect(() => {
+    let isMounted = true;
+    let resolved = false;
+
+    // 1. Check immediate in-memory cache and default catalog (0ms latency)
+    const directFound = findProductById(productId, []);
+    if (directFound) {
+      setProduct(directFound);
+      setIsLoading(false);
+      resolved = true;
+    } else {
+      setIsLoading(true);
+    }
+
+    // 2. Subscribe to specific document by ID
     const unsubProduct = subscribeProductById(productId, (found) => {
-      if (found) setProduct(found);
-    });
-    const unsubAll = subscribeProducts((list) => {
-      if (list && list.length > 0) setAllProducts(list);
+      if (!isMounted) return;
+      if (found) {
+        setProduct(found);
+        setIsLoading(false);
+        resolved = true;
+      }
     });
 
+    // 3. Subscribe to products collection (handles custom items, slug/SKU lookups, newly added equipment)
+    const unsubAll = subscribeProducts((list) => {
+      if (!isMounted) return;
+      if (list && list.length > 0) {
+        setAllProducts(list);
+        const match = findProductById(productId, list);
+        if (match) {
+          setProduct(match);
+          setIsLoading(false);
+          resolved = true;
+          return;
+        }
+      }
+      // If full catalog is loaded and product is still not found anywhere
+      if (!resolved) {
+        const finalLookup = findProductById(productId, list || []);
+        if (finalLookup) {
+          setProduct(finalLookup);
+        }
+        setIsLoading(false);
+      }
+    });
+
+    // 4. Safety timer: prevent indefinite loading state if network or Firestore encounters delays
+    const safetyTimer = setTimeout(() => {
+      if (isMounted && !resolved) {
+        const fallback = findProductById(productId, []);
+        if (fallback) {
+          setProduct(fallback);
+        }
+        setIsLoading(false);
+      }
+    }, 2500);
+
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
       unsubProduct();
       unsubAll();
     };
@@ -388,9 +471,67 @@ function ProductViewPage() {
     return [...sameCat, ...others].slice(0, 3);
   }, [product, allProducts]);
 
+  // Skeleton Loading View: Prevents jarring "Not Found" flash while Firestore subscription resolves
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-background text-foreground animate-in fade-in duration-200">
+        <SiteHeader />
+        <div className="border-b border-border bg-muted/30 py-3 text-xs">
+          <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
+            <div className="h-4 w-12 rounded-sm bg-muted animate-pulse" />
+            <ChevronRight className="size-3.5 text-muted-foreground/40" />
+            <div className="h-4 w-32 rounded-sm bg-muted animate-pulse" />
+            <ChevronRight className="size-3.5 text-muted-foreground/40" />
+            <div className="h-4 w-24 rounded-sm bg-muted animate-pulse" />
+          </div>
+        </div>
+
+        <section className="py-6 sm:py-8 lg:py-10">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 items-start">
+              {/* Left Column Skeleton */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="relative h-[360px] sm:h-[420px] lg:h-[480px] w-full rounded-2xl border border-border bg-muted/40 animate-pulse flex flex-col items-center justify-center p-6 text-muted-foreground/50">
+                  <RefreshCw className="size-8 animate-spin text-primary/60 mb-2" />
+                  <span className="text-xs font-semibold">Loading certified product specifications...</span>
+                </div>
+                <div className="flex gap-2">
+                  <div className="size-16 rounded-xl bg-muted/40 animate-pulse" />
+                  <div className="size-16 rounded-xl bg-muted/40 animate-pulse" />
+                  <div className="size-16 rounded-xl bg-muted/40 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Right Column Skeleton */}
+              <div className="lg:col-span-7 space-y-5">
+                <div className="space-y-2">
+                  <div className="h-4 w-28 rounded-md bg-muted animate-pulse" />
+                  <div className="h-8 w-3/4 rounded-lg bg-muted animate-pulse" />
+                  <div className="h-4 w-1/2 rounded-md bg-muted animate-pulse" />
+                </div>
+                <div className="h-12 w-48 rounded-xl bg-muted/60 animate-pulse" />
+                <div className="space-y-2 pt-2">
+                  <div className="h-4 w-full rounded-md bg-muted/50 animate-pulse" />
+                  <div className="h-4 w-5/6 rounded-md bg-muted/50 animate-pulse" />
+                  <div className="h-4 w-4/6 rounded-md bg-muted/50 animate-pulse" />
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-3">
+                  <div className="h-12 rounded-xl bg-muted/50 animate-pulse" />
+                  <div className="h-12 rounded-xl bg-muted/50 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <SiteFooter />
+      </main>
+    );
+  }
+
+  // Only displayed after loading has finished and the product is truly not in Firestore or catalog
   if (!product) {
     return (
-      <main className="min-h-screen bg-background text-foreground">
+      <main className="min-h-screen bg-background text-foreground animate-in fade-in duration-300">
         <SiteHeader />
         <div className="mx-auto max-w-3xl px-5 py-24 text-center">
           <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
@@ -539,6 +680,11 @@ function ProductViewPage() {
                           referrerPolicy="no-referrer"
                           className="max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-300 hover:scale-105 cursor-zoom-in"
                           onClick={() => setIsLightboxOpen(true)}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = getProductFallbackImage(product.category, product.name);
+                          }}
                         />
                       </div>
                     ))}

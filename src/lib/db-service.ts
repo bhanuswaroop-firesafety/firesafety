@@ -162,6 +162,13 @@ export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
 // Product Services (Direct Firestore with Default Catalog)
 // ========================================================
 
+// In-memory runtime cache of active products across page views to eliminate flicker & lag
+let cachedProducts: ProductItem[] = [];
+
+export function getCachedProducts(): ProductItem[] {
+  return cachedProducts;
+}
+
 export function subscribeProducts(callback: (products: ProductItem[]) => void): () => void {
   const colRef = collection(db, "products");
   return onSnapshot(
@@ -174,12 +181,13 @@ export function subscribeProducts(callback: (products: ProductItem[]) => void): 
           id: d.id,
           ...d.data(),
         })) as ProductItem[];
+        cachedProducts = customItems;
         callback(customItems);
       }
     },
     (err) => {
       console.warn("Firestore products fetch notice:", err.message);
-      callback([]);
+      callback(cachedProducts.length > 0 ? cachedProducts : []);
     },
   );
 }
@@ -198,17 +206,31 @@ export function findProductById(
 ): ProductItem | null {
   if (!idOrSlug) return null;
   const decoded = decodeURIComponent(idOrSlug).trim().toLowerCase();
-  const mappedId = FEATURED_ID_MAP[decoded] || decoded;
+  const mappedId = (FEATURED_ID_MAP[decoded] || decoded).toLowerCase();
 
-  // Check in custom / provided product list first; fallback to DEFAULT_PRODUCTS if list is empty
-  const listToSearch = productList.length > 0 ? productList : DEFAULT_PRODUCTS;
-  const found = listToSearch.find(
+  // Search through all available sources: provided list, runtime cache, and default catalog
+  const listToSearch = [
+    ...productList,
+    ...cachedProducts,
+    ...DEFAULT_PRODUCTS,
+  ];
+
+  const seen = new Set<string>();
+  const uniqueList = listToSearch.filter((p) => {
+    if (!p) return false;
+    const key = (p.id || p.sku || p.name || "").toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const found = uniqueList.find(
     (p) =>
       p.id?.toLowerCase() === mappedId ||
       p.id?.toLowerCase() === decoded ||
       p.sku?.toLowerCase() === decoded ||
-      slugify(p.name) === decoded ||
-      p.name.toLowerCase() === decoded,
+      slugify(p.name || "") === decoded ||
+      p.name?.toLowerCase() === decoded,
   );
   return found ?? null;
 }
@@ -222,14 +244,18 @@ export async function getProductById(idOrSlug: string): Promise<ProductItem | nu
     const docRef = doc(db, "products", mappedId);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      return { id: snap.id, ...snap.data() } as ProductItem;
+      const item = { id: snap.id, ...snap.data() } as ProductItem;
+      const idx = cachedProducts.findIndex((p) => p.id === item.id);
+      if (idx >= 0) cachedProducts[idx] = item;
+      else cachedProducts.unshift(item);
+      return item;
     }
   } catch (error) {
     console.warn("Firestore getProductById notice:", error);
   }
 
   // Fallback to default certified product catalog
-  return findProductById(idOrSlug, DEFAULT_PRODUCTS);
+  return findProductById(idOrSlug, cachedProducts);
 }
 
 export function subscribeProductById(
@@ -243,16 +269,20 @@ export function subscribeProductById(
     docRef,
     (snap) => {
       if (snap.exists()) {
-        callback({ id: snap.id, ...snap.data() } as ProductItem);
+        const item = { id: snap.id, ...snap.data() } as ProductItem;
+        const idx = cachedProducts.findIndex((p) => p.id === item.id);
+        if (idx >= 0) cachedProducts[idx] = item;
+        else cachedProducts.unshift(item);
+        callback(item);
       } else {
         // Fallback to default catalog product if not found in Firestore
-        const fallback = findProductById(idOrSlug, DEFAULT_PRODUCTS);
+        const fallback = findProductById(idOrSlug, cachedProducts);
         callback(fallback);
       }
     },
     (err) => {
       console.warn("Firestore product subscription notice:", err);
-      const fallback = findProductById(idOrSlug, DEFAULT_PRODUCTS);
+      const fallback = findProductById(idOrSlug, cachedProducts);
       callback(fallback);
     },
   );

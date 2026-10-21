@@ -8,28 +8,49 @@ export interface ImageUploadResult {
   originalSizeKB: number;
   compressedSizeKB: number;
   fileName: string;
+  wasCompressed?: boolean;
 }
 
 /**
  * Modern smartphones & DSLRs capture 12MB - 30MB photos.
- * We set the acceptance limit to 35 MB and auto-compress on the client before upload.
+ * Maximum acceptance limit set to 35 MB.
  */
 export const MAX_IMAGE_SIZE_MB = 35;
 export const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
+/**
+ * 1 MB threshold:
+ * Photos <= 1 MB (1024 KB) are uploaded in ORIGINAL quality without any compression.
+ * Photos > 1 MB are compressed client-side to optimize upload speed and storage.
+ */
+export const ONE_MB_BYTES = 1024 * 1024;
 
 // Firestore has a hard limit of 1,048,576 bytes (1 MiB) per document.
 export const FIRESTORE_MAX_DOC_SIZE_BYTES = 1048576;
 export const FIRESTORE_SAFE_DOC_LIMIT_KB = 800; // Safe threshold before warning
 
 /**
+ * Reads a File directly as a data URL without canvas processing or quality degradation.
+ */
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Failed to read image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Compresses an image file client-side using an HTML5 Canvas.
  * - Resizes images to maxDimension preserving aspect ratio.
  * - Compresses to WebP (fallback to JPEG).
- * - Drastically reduces 10MB-35MB photos down to ~35KB-120KB for fast loading and Firestore safety.
+ * - High-speed processing using ObjectURL (avoids reading large files into base64).
+ * - Protected by timeout to prevent hanging.
  */
 export async function compressImage(
   file: File,
-  maxDimension = 1200,
+  maxDimension = 1400,
   quality = 0.82,
 ): Promise<{ blob: Blob; dataUrl: string; sizeKB: number }> {
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
@@ -39,15 +60,35 @@ export async function compressImage(
   }
 
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read image file."));
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = () =>
-        reject(new Error("Invalid image format. Please upload JPG, PNG, or WebP."));
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    // 10s safety timeout to prevent hanging on corrupted or massive files
+    const timeout = setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Image compression timed out."));
+    }, 10000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    img.onerror = () => {
+      cleanup();
+      reject(new Error("Invalid image format or failed to load image."));
+    };
+
+    img.onload = () => {
+      try {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (width === 0 || height === 0) {
+          cleanup();
+          reject(new Error("Image has invalid dimensions."));
+          return;
+        }
 
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
@@ -65,47 +106,52 @@ export async function compressImage(
 
         const ctx = canvas.getContext("2d", { alpha: true });
         if (!ctx) {
+          cleanup();
           reject(new Error("Could not initialize 2D canvas context."));
           return;
         }
 
-        // High quality scaling
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Try WebP first, canvas fallback to JPEG
-        const outputMime = "image/webp";
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              // Fallback to jpeg if webp canvas export failed
-              canvas.toBlob(
-                (fallbackBlob) => {
-                  if (!fallbackBlob) {
-                    reject(new Error("Failed to compress image canvas."));
-                    return;
-                  }
-                  const dataUrl = canvas.toDataURL("image/jpeg", quality);
-                  const sizeKB = Math.round(fallbackBlob.size / 1024);
-                  resolve({ blob: fallbackBlob, dataUrl, sizeKB });
-                },
-                "image/jpeg",
-                quality,
-              );
-              return;
-            }
-            const dataUrl = canvas.toDataURL(outputMime, quality);
-            const sizeKB = Math.round(blob.size / 1024);
-            resolve({ blob, dataUrl, sizeKB });
-          },
-          outputMime,
-          quality,
-        );
-      };
-      img.src = e.target?.result as string;
+        const exportFormat = (mime: string, fallbackMime?: string) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                if (fallbackMime) {
+                  exportFormat(fallbackMime);
+                  return;
+                }
+                cleanup();
+                reject(new Error("Failed to export image canvas."));
+                return;
+              }
+              try {
+                const dataUrl = canvas.toDataURL(mime, quality);
+                const sizeKB = Math.round(blob.size / 1024);
+                cleanup();
+                resolve({ blob, dataUrl, sizeKB });
+              } catch {
+                const sizeKB = Math.round(blob.size / 1024);
+                cleanup();
+                resolve({ blob, dataUrl: "", sizeKB });
+              }
+            },
+            mime,
+            quality,
+          );
+        };
+
+        // Try WebP first, fallback to JPEG
+        exportFormat("image/webp", "image/jpeg");
+      } catch (err) {
+        cleanup();
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
     };
-    reader.readAsDataURL(file);
+
+    img.src = objectUrl;
   });
 }
 
@@ -114,15 +160,17 @@ export async function compressImage(
  */
 async function uploadToFirebaseStorage(
   uniquePath: string,
-  blob: Blob,
+  blobOrFile: Blob | File,
   fileName: string,
 ): Promise<string> {
   const bucketsToTry = [
     // 1. Default configured storage bucket
     undefined,
-    // 2. Explicit .firebasestorage.app bucket
+    // 2. Direct bucket names
+    "sri-udharchi-enterprises-c3be7.firebasestorage.app",
+    "sri-udharchi-enterprises-c3be7.appspot.com",
+    // 3. gs:// bucket URIs
     "gs://sri-udharchi-enterprises-c3be7.firebasestorage.app",
-    // 3. Alternative standard GCP appspot.com bucket
     "gs://sri-udharchi-enterprises-c3be7.appspot.com",
   ];
 
@@ -132,11 +180,10 @@ async function uploadToFirebaseStorage(
     try {
       const storage = bucket ? getStorage(app, bucket) : getStorage(app);
       const storageRef = ref(storage, uniquePath);
-      await uploadBytes(storageRef, blob, {
-        contentType: blob.type || "image/webp",
+      await uploadBytes(storageRef, blobOrFile, {
+        contentType: blobOrFile.type || "image/jpeg",
         customMetadata: {
           originalName: fileName,
-          compressed: "true",
           uploadedAt: new Date().toISOString(),
         },
       });
@@ -151,17 +198,15 @@ async function uploadToFirebaseStorage(
 }
 
 /**
- * Uploads a single product image.
- * 1. Automatically compresses image client-side to optimized WebP.
- * 2. Uploads to Firebase Storage `products/` path to obtain permanent CDN download URL.
- * 3. If Firebase Storage has permission/CORS restrictions, safely falls back to a strongly
- *    compressed data URL (~30KB) so the product can still be saved directly.
+ * Uploads a single product image adhering to user specification:
+ * 1. If file is <= 1 MB, DO NOT compress. Upload original image directly.
+ * 2. If file is > 1 MB, compress client-side to keep size optimal for Firebase upload.
+ * 3. If compression fails on large images, seamlessly fallback to original file without breaking upload.
+ * 4. Uploads to Firebase Storage `products/` path.
+ * 5. If Firebase Storage has permission/network restrictions, safely falls back to data URL for Firestore.
  */
 export async function uploadProductImage(file: File): Promise<ImageUploadResult> {
   const originalSizeKB = Math.round(file.size / 1024);
-
-  // Compress for storage upload
-  const { blob, dataUrl, sizeKB: compressedSizeKB } = await compressImage(file, 1200, 0.82);
 
   const cleanFileName = file.name
     .toLowerCase()
@@ -169,20 +214,75 @@ export async function uploadProductImage(file: File): Promise<ImageUploadResult>
     .replace(/-+/g, "-");
   const uniquePath = `products/${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${cleanFileName}`;
 
+  // REQUIREMENT 1: Do NOT compress images <= 1 MB. Keep original quality!
+  if (file.size <= ONE_MB_BYTES) {
+    try {
+      const downloadUrl = await uploadToFirebaseStorage(uniquePath, file, file.name);
+      return {
+        url: downloadUrl,
+        isStorageUrl: true,
+        originalSizeKB,
+        compressedSizeKB: originalSizeKB,
+        fileName: file.name,
+        wasCompressed: false,
+      };
+    } catch (storageErr) {
+      console.warn("Firebase Storage direct upload skipped for <=1MB image, using direct data URL:", storageErr);
+      const dataUrl = await fileToDataUrl(file);
+      return {
+        url: dataUrl,
+        isStorageUrl: false,
+        originalSizeKB,
+        compressedSizeKB: originalSizeKB,
+        fileName: file.name,
+        wasCompressed: false,
+      };
+    }
+  }
+
+  // REQUIREMENT 2: For images > 1 MB, optimize/compress client-side
+  let uploadBlob: Blob = file;
+  let uploadDataUrl: string | null = null;
+  let finalSizeKB = originalSizeKB;
+  let wasCompressed = false;
+
   try {
-    const downloadUrl = await uploadToFirebaseStorage(uniquePath, blob, file.name);
+    const compressed = await compressImage(file, 1400, 0.82);
+    uploadBlob = compressed.blob;
+    uploadDataUrl = compressed.dataUrl;
+    finalSizeKB = compressed.sizeKB;
+    wasCompressed = true;
+  } catch (compErr) {
+    console.warn("Image compression encountered an issue, uploading original image instead:", compErr);
+    uploadBlob = file;
+    finalSizeKB = originalSizeKB;
+    wasCompressed = false;
+  }
+
+  try {
+    const downloadUrl = await uploadToFirebaseStorage(uniquePath, uploadBlob, file.name);
     return {
       url: downloadUrl,
       isStorageUrl: true,
       originalSizeKB,
-      compressedSizeKB,
+      compressedSizeKB: finalSizeKB,
       fileName: file.name,
+      wasCompressed,
     };
   } catch (storageErr) {
-    console.warn("Firebase Storage direct upload skipped, using ultra-optimized compressed image:", storageErr);
+    console.warn("Firebase Storage direct upload skipped, using data URL fallback:", storageErr);
 
-    // If falling back to data URL, generate a more compact version (max 900px, 0.72 quality)
-    // to strictly preserve Firestore document size limits when storing multiple images!
+    if (uploadDataUrl) {
+      return {
+        url: uploadDataUrl,
+        isStorageUrl: false,
+        originalSizeKB,
+        compressedSizeKB: finalSizeKB,
+        fileName: file.name,
+        wasCompressed,
+      };
+    }
+
     try {
       const compact = await compressImage(file, 900, 0.72);
       return {
@@ -191,14 +291,17 @@ export async function uploadProductImage(file: File): Promise<ImageUploadResult>
         originalSizeKB,
         compressedSizeKB: compact.sizeKB,
         fileName: file.name,
+        wasCompressed: true,
       };
     } catch {
+      const rawDataUrl = await fileToDataUrl(file);
       return {
-        url: dataUrl,
+        url: rawDataUrl,
         isStorageUrl: false,
         originalSizeKB,
-        compressedSizeKB,
+        compressedSizeKB: originalSizeKB,
         fileName: file.name,
+        wasCompressed: false,
       };
     }
   }
@@ -242,7 +345,6 @@ export function calculateProductPayloadSizeKB(product: Partial<ProductItem>): {
 } {
   try {
     const jsonStr = JSON.stringify(product || {});
-    // Approximate byte length for UTF-8 string
     const bytes = new Blob([jsonStr]).size;
     const sizeKB = Math.round((bytes / 1024) * 10) / 10;
     const isOverLimit = bytes >= FIRESTORE_MAX_DOC_SIZE_BYTES;

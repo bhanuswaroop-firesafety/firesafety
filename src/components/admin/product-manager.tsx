@@ -9,6 +9,7 @@ import {
   seedOfficialCategories,
   CATEGORIES,
 } from "@/lib/db-service";
+import { resolveProductDisplayImage, getProductFallbackImage } from "@/lib/catalog-data";
 import type { ProductItem, CategoryItem } from "@/lib/types";
 import {
   uploadProductImage,
@@ -206,8 +207,8 @@ export function ProductManager({
     minOrderQty: "1",
     description: "",
     specs: [],
-    image: extinguisherImg,
-    images: [extinguisherImg],
+    image: "",
+    images: [],
     inStock: true,
     featured: false,
     renewalMonths: undefined,
@@ -229,6 +230,7 @@ export function ProductManager({
     compressedKB: number;
     name: string;
     isStorage: boolean;
+    wasCompressed?: boolean;
   } | null>(null);
   const [urlInput, setUrlInput] = useState("");
 
@@ -351,8 +353,8 @@ export function ProductManager({
       minOrderQty: "1",
       description: "",
       specs: [],
-      image: extinguisherImg,
-      images: [extinguisherImg],
+      image: "",
+      images: [],
       inStock: true,
       featured: false,
       renewalMonths: undefined,
@@ -375,11 +377,28 @@ export function ProductManager({
     setUrlInput(isUrl ? product.image : "");
 
     const initialImages =
-      product.images && product.images.length > 0
+      Array.isArray(product.images) && product.images.length > 0
         ? [...product.images]
         : product.image
           ? [product.image]
           : [];
+
+    const isExtinguisher =
+      (product.name || "").toLowerCase().includes("extinguisher") ||
+      (product.name || "").toLowerCase().includes("cylinder");
+
+    const cleanedImages = initialImages.filter((img) => {
+      if (!isExtinguisher && (img === extinguisherImg || (typeof img === "string" && img.includes("fire-extinguisher")))) {
+        return false;
+      }
+      return Boolean(img);
+    });
+
+    const rawCover = product.image || cleanedImages[0] || "";
+    const cleanedCover =
+      !isExtinguisher && (rawCover === extinguisherImg || rawCover.includes("fire-extinguisher"))
+        ? cleanedImages[0] || ""
+        : rawCover;
 
     setFormData({
       name: product.name,
@@ -390,8 +409,8 @@ export function ProductManager({
       minOrderQty: product.minOrderQty || "1",
       description: product.description,
       specs: [...(product.specs || [])],
-      image: product.image || initialImages[0] || extinguisherImg,
-      images: initialImages.length > 0 ? initialImages : [product.image || extinguisherImg],
+      image: cleanedCover,
+      images: cleanedImages,
       inStock: product.inStock !== false,
       featured: !!product.featured,
       renewalMonths: product.renewalMonths,
@@ -431,16 +450,15 @@ export function ProductManager({
 
       const newUrls = results.map((r) => r.url);
       setFormData((prev) => {
-        const currentList = prev.images || (prev.image ? [prev.image] : []);
-        // If current gallery only contained the initial default placeholder preset, replace it
-        const hasOnlyDefaultPreset =
-          currentList.length === 1 && PRESET_IMAGES.some((p) => p.src === currentList[0]);
-        const baseList = hasOnlyDefaultPreset ? [] : currentList;
-        const combined = [...baseList, ...newUrls];
+        // Strip out any stale extinguisher placeholders when uploading new real photos
+        const currentList = (prev.images || (prev.image ? [prev.image] : [])).filter(
+          (img) => img && img !== extinguisherImg && !img.includes("fire-extinguisher"),
+        );
+        const combined = [...currentList, ...newUrls];
         const nextCover =
-          prev.image && !PRESET_IMAGES.some((p) => p.src === prev.image)
+          prev.image && prev.image !== extinguisherImg && !prev.image.includes("fire-extinguisher")
             ? prev.image
-            : combined[0] || newUrls[0];
+            : combined[0] || newUrls[0] || "";
         return {
           ...prev,
           images: combined,
@@ -450,6 +468,7 @@ export function ProductManager({
 
       const totalOrigKB = results.reduce((acc, r) => acc + r.originalSizeKB, 0);
       const totalCompKB = results.reduce((acc, r) => acc + r.compressedSizeKB, 0);
+      const anyCompressed = results.some((r) => r.wasCompressed);
       const allStorage = results.every((r) => r.isStorageUrl);
 
       setUploadStats({
@@ -457,11 +476,14 @@ export function ProductManager({
         compressedKB: totalCompKB,
         name: `${results.length} image${results.length > 1 ? "s" : ""}`,
         isStorage: allStorage,
+        wasCompressed: anyCompressed,
       });
 
-      onNotify(
-        `Added ${results.length} photo${results.length > 1 ? "s" : ""}: ${totalOrigKB} KB → ${totalCompKB} KB (${allStorage ? "Cloud Storage CDN" : "Optimized"})`,
-      );
+      const notifyMsg = anyCompressed
+        ? `Added ${results.length} photo${results.length > 1 ? "s" : ""}: ${totalOrigKB} KB → ${totalCompKB} KB (${allStorage ? "Cloud Storage CDN" : "Optimized"})`
+        : `Added ${results.length} photo${results.length > 1 ? "s" : ""}: ${totalOrigKB} KB (Original quality · ${allStorage ? "Cloud Storage CDN" : "Direct"})`;
+
+      onNotify(notifyMsg);
     } catch (err: unknown) {
       setFormError("Error processing image: " + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -502,8 +524,8 @@ export function ProductManager({
       const nextImages = list.filter((_, i) => i !== index);
       const nextCover =
         prev.image === removed
-          ? nextImages[0] || extinguisherImg
-          : prev.image || nextImages[0] || extinguisherImg;
+          ? nextImages[0] || ""
+          : prev.image || nextImages[0] || "";
       return {
         ...prev,
         images: nextImages,
@@ -519,7 +541,9 @@ export function ProductManager({
       const list = [...(prev.images || [])];
       if (toIndex < 0 || toIndex >= list.length) return prev;
       const [moved] = list.splice(fromIndex, 1);
-      list.splice(toIndex, 0, moved);
+      if (moved !== undefined) {
+        list.splice(toIndex, 0, moved);
+      }
       return { ...prev, images: list };
     });
   };
@@ -609,13 +633,24 @@ export function ProductManager({
       return;
     }
 
-    const finalImages =
-      formData.images && formData.images.length > 0
-        ? formData.images
-        : formData.image
-          ? [formData.image]
-          : [extinguisherImg];
-    const primaryImage = formData.image || finalImages[0] || extinguisherImg;
+    const isExtinguisher =
+      (formData.name || "").toLowerCase().includes("extinguisher") ||
+      (formData.name || "").toLowerCase().includes("cylinder");
+
+    const finalImages = (formData.images || [])
+      .filter((img) => Boolean(img))
+      .filter((img) => {
+        if (!isExtinguisher && (img === extinguisherImg || (typeof img === "string" && img.includes("fire-extinguisher")))) {
+          return false;
+        }
+        return true;
+      });
+
+    const rawCover = formData.image || finalImages[0] || "";
+    const primaryImage =
+      !isExtinguisher && (rawCover === extinguisherImg || rawCover.includes("fire-extinguisher"))
+        ? finalImages[0] || ""
+        : rawCover;
 
     const payload: Omit<ProductItem, "id"> = {
       name: formData.name.trim(),
@@ -1180,7 +1215,9 @@ export function ProductManager({
                       alt="Primary cover preview"
                       className="size-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = extinguisherImg;
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = getProductFallbackImage(formData.category, formData.name);
                       }}
                     />
                     <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-xs px-2 py-1 text-[11px] font-bold text-amber-300 shadow-sm">
@@ -1207,8 +1244,8 @@ export function ProductManager({
                     <RefreshCw className="size-6 animate-spin text-primary" />
                     <span>
                       {uploadProgress
-                        ? `Optimizing & uploading ${uploadProgress.current} of ${uploadProgress.total}...`
-                        : "Compressing & uploading photos..."}
+                        ? `Uploading photo ${uploadProgress.current} of ${uploadProgress.total}...`
+                        : "Uploading photos..."}
                     </span>
                     <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
@@ -1252,7 +1289,9 @@ export function ProductManager({
                             className="size-full object-cover cursor-pointer"
                             onClick={() => setActiveGalleryPreview(imgUrl)}
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = extinguisherImg;
+                              const target = e.currentTarget;
+                              target.onerror = null;
+                              target.src = getProductFallbackImage(formData.category, formData.name);
                             }}
                           />
 
@@ -1366,14 +1405,14 @@ export function ProductManager({
                     <div className="text-center">
                       <span className="text-xs font-bold text-foreground block">
                         {isUploadingImage
-                          ? "Compressing & Uploading..."
+                          ? "Uploading photos..."
                           : isDragOver
                             ? "Drop your images here"
                             : "Select Multiple Files or Drag & Drop"}
                       </span>
                       <span className="text-[11px] text-muted-foreground mt-1 block">
                         Accepts JPG, PNG, WebP up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> per file.
-                        Select <strong>multiple photos</strong> at once!
+                        Photos under 1 MB are uploaded in original quality without compression.
                       </span>
                     </div>
                     <input
@@ -1393,10 +1432,18 @@ export function ProductManager({
                         <span className="font-semibold truncate">{uploadStats.name} uploaded</span>
                       </div>
                       <span className="shrink-0 text-[11px] font-mono ml-2">
-                        {uploadStats.originalKB} KB →{" "}
-                        <strong className="text-emerald-600 dark:text-emerald-400">
-                          {uploadStats.compressedKB} KB ({uploadStats.isStorage ? "Cloud Storage" : "Optimized"})
-                        </strong>
+                        {uploadStats.wasCompressed ? (
+                          <>
+                            {uploadStats.originalKB} KB →{" "}
+                            <strong className="text-emerald-600 dark:text-emerald-400">
+                              {uploadStats.compressedKB} KB ({uploadStats.isStorage ? "Cloud Storage" : "Optimized"})
+                            </strong>
+                          </>
+                        ) : (
+                          <strong className="text-emerald-600 dark:text-emerald-400">
+                            {uploadStats.originalKB} KB (Original · {uploadStats.isStorage ? "Cloud Storage" : "Direct"})
+                          </strong>
+                        )}
                       </span>
                     </div>
                   )}
@@ -1572,9 +1619,12 @@ export function ProductManager({
               <div className="rounded-xl border border-border bg-background p-3 shadow-xs space-y-2.5">
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
                   <img
-                    src={formData.image || extinguisherImg}
+                    src={resolveProductDisplayImage(formData)}
                     alt="Preview"
                     className="size-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = getProductFallbackImage(formData.category, formData.name);
+                    }}
                   />
                   <span className="absolute left-2 top-2 rounded bg-background/90 px-2 py-0.5 text-[10px] font-bold text-foreground">
                     {formData.category || "Fire Safety"}
@@ -1826,11 +1876,13 @@ export function ProductManager({
                 <div className="flex items-start gap-3">
                   <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
                     <img
-                      src={prod.image}
+                      src={resolveProductDisplayImage(prod)}
                       alt={prod.name}
                       className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = extinguisherImg;
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = getProductFallbackImage(prod.category, prod.name);
                       }}
                     />
                     <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-semibold text-white text-center py-0.5 truncate">
@@ -2087,11 +2139,13 @@ export function ProductManager({
                       <div className="flex items-center gap-3">
                         <div className="relative size-11 shrink-0">
                           <img
-                            src={prod.image}
+                            src={resolveProductDisplayImage(prod)}
                             alt={prod.name}
                             className="size-11 rounded-lg object-cover border border-border"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = extinguisherImg;
+                              const target = e.currentTarget;
+                              target.onerror = null;
+                              target.src = getProductFallbackImage(prod.category, prod.name);
                             }}
                           />
                           {prod.images && prod.images.length > 1 && (
@@ -2256,11 +2310,13 @@ export function ProductManager({
             >
               <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                 <img
-                  src={prod.image}
+                  src={resolveProductDisplayImage(prod)}
                   alt={prod.name}
                   className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = extinguisherImg;
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = getProductFallbackImage(prod.category, prod.name);
                   }}
                 />
                 <span className="absolute left-2.5 top-2.5 rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-bold text-foreground backdrop-blur">
@@ -2537,11 +2593,13 @@ export function ProductManager({
             <div className="mt-4 space-y-3">
               <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
                 <img
-                  src={previewProduct.image}
+                  src={resolveProductDisplayImage(previewProduct)}
                   alt={previewProduct.name}
                   className="size-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = extinguisherImg;
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = getProductFallbackImage(previewProduct.category, previewProduct.name);
                   }}
                 />
                 <span className="absolute left-2.5 top-2.5 rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-bold">

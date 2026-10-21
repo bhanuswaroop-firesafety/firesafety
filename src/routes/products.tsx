@@ -25,7 +25,7 @@ import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { AuthRequiredModal } from "@/components/auth-required-modal";
 import { seoHead, schemas } from "@/lib/seo";
-import { DEFAULT_PRODUCTS } from "@/lib/catalog-data";
+import { DEFAULT_PRODUCTS, resolveProductDisplayImage, getProductFallbackImage } from "@/lib/catalog-data";
 import extinguisherImg from "@/assets/fire-extinguisher.jpg";
 
 export const Route = createFileRoute("/products")({
@@ -387,11 +387,14 @@ export function ProductsPage() {
                         className="relative aspect-[4/3] overflow-hidden bg-slate-50/60 dark:bg-card/40 flex items-center justify-center p-2.5 block cursor-pointer"
                       >
                         <img
-                          src={prod.image}
+                          src={resolveProductDisplayImage(prod)}
                           alt={prod.name}
+                          loading="lazy"
                           className="size-full object-contain transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = extinguisherImg;
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = getProductFallbackImage(prod.category, prod.name);
                           }}
                         />
 

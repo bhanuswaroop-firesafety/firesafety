@@ -594,3 +594,111 @@ export const FEATURED_ID_MAP: Record<string, string> = {
   "def-safety-gloves": "sue-cat-11",
   "def-cctv-camera": "sue-cat-17",
 };
+
+/**
+ * Resolves a context-aware fallback image based on product category and name.
+ * Prevents non-extinguisher products (call points, detectors, CCTV, PPE, pumps)
+ * from displaying an unrelated fire extinguisher cylinder.
+ */
+export function getProductFallbackImage(category?: string, name?: string): string {
+  const cat = (category || "").toLowerCase();
+  const n = (name || "").toLowerCase();
+
+  if (cat.includes("cctv") || n.includes("camera") || n.includes("cctv")) return cctvImg;
+  if (cat.includes("cable") || n.includes("wire") || n.includes("cable")) return cableImg;
+  if (cat.includes("road") || n.includes("cone") || n.includes("barricade") || n.includes("road")) return roadSafetyImg;
+  if (cat.includes("medical") || n.includes("first aid") || n.includes("stretcher")) return medicalSafetyImg;
+  if (n.includes("helmet")) return helmetImg;
+  if (n.includes("glove")) return glovesImg;
+  if (cat.includes("ppe") || n.includes("vest") || n.includes("jacket") || n.includes("suit")) return helmetImg;
+  if (cat.includes("pump") || n.includes("pump") || n.includes("engine")) return pumpImg;
+  if (cat.includes("hydrant") || n.includes("hydrant") || n.includes("landing valve") || n.includes("hose reel")) return hydrantSystemImg;
+  if (n.includes("valve") || n.includes("nozzle") || n.includes("coupling")) return hydrantValveImg;
+
+  // Manual call points, smoke detectors, heat detectors, fire alarm panels, hooters
+  if (
+    n.includes("smoke") ||
+    n.includes("detector") ||
+    n.includes("call point") ||
+    n.includes("manual call") ||
+    n.includes("alarm") ||
+    n.includes("panel") ||
+    n.includes("hooter") ||
+    n.includes("sensor")
+  ) {
+    return safetyProductsImg;
+  }
+
+  // Only use extinguisher if name or category explicitly refers to an extinguisher / cylinder / CO2 / ABC powder
+  if (
+    n.includes("extinguisher") ||
+    n.includes("cylinder") ||
+    n.includes("co2") ||
+    n.includes("abc powder") ||
+    n.includes("foam extinguisher") ||
+    cat.includes("extinguisher")
+  ) {
+    return extinguisherImg;
+  }
+
+  // General industrial fire safety equipment fallback
+  return safetyProductsImg;
+}
+
+/**
+ * Checks whether an image source points to the generic fire extinguisher cylinder asset
+ */
+export function isCylinderAsset(img: unknown): boolean {
+  if (typeof img !== "string" || !img) return false;
+  return (
+    img === extinguisherImg ||
+    img.includes("fire-extinguisher") ||
+    img.includes("assets/fire-extinguisher")
+  );
+}
+
+/**
+ * Resolves the display image for a product.
+ * If a non-extinguisher product was previously saved with a generic extinguisher placeholder,
+ * this automatically returns the appropriate category visual instead of showing a fake cylinder.
+ */
+export function resolveProductDisplayImage(product?: Partial<ProductItem> | null): string {
+  if (!product) return safetyProductsImg;
+  const name = (product.name || "").toLowerCase();
+  const category = (product.category || "").toLowerCase();
+
+  const isActuallyExtinguisher =
+    name.includes("extinguisher") ||
+    name.includes("cylinder") ||
+    name.includes("co2") ||
+    name.includes("abc powder") ||
+    category.includes("extinguisher");
+
+  // 1. Gather all candidate images in order of priority (primary image first, then gallery images)
+  const candidates: string[] = [];
+  if (product.image && typeof product.image === "string" && product.image.trim()) {
+    candidates.push(product.image.trim());
+  }
+  if (Array.isArray(product.images)) {
+    for (const img of product.images) {
+      if (typeof img === "string" && img.trim() && !candidates.includes(img.trim())) {
+        candidates.push(img.trim());
+      }
+    }
+  }
+
+  // 2. Prioritize genuine uploaded images (storage URL, data URL, or non-cylinder asset)
+  const genuineUploadedImage = candidates.find((img) => !isCylinderAsset(img));
+  if (genuineUploadedImage) {
+    return genuineUploadedImage;
+  }
+
+  // 3. If product is an extinguisher and cylinder asset is available, use it
+  if (isActuallyExtinguisher) {
+    const cylinderCandidate = candidates.find((img) => isCylinderAsset(img));
+    return cylinderCandidate || extinguisherImg;
+  }
+
+  // 4. Otherwise, for non-extinguisher equipment, NEVER show a cylinder. Return appropriate category visual.
+  return getProductFallbackImage(product.category, product.name);
+}
