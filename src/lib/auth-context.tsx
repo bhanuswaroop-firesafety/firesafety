@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPhoneNumber,
   RecaptchaVerifier,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   doc,
@@ -41,6 +42,7 @@ interface AuthContextType {
     name?: string,
     metadata?: UserRegistrationMeta,
   ) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   sendPhoneOtp: (
     phoneNumber: string,
     recaptchaContainerId?: string,
@@ -294,7 +296,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     metadata?: UserRegistrationMeta,
   ) => {
     const cleanEmail = email.trim().toLowerCase();
-    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    let cred;
+    try {
+      cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code || "";
+      const msg = err instanceof Error ? err.message : String(err);
+      if (code === "auth/email-already-in-use" || msg.includes("email-already-in-use")) {
+        throw new Error("This account is already registered. Please log in.");
+      }
+      if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
+        throw new Error("Please enter a valid work email address.");
+      }
+      if (code === "auth/weak-password" || msg.includes("weak-password")) {
+        throw new Error("Password must be at least 6 characters long.");
+      }
+      const cleaned = msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
+      throw new Error(cleaned || "Failed to create account. Please try again.");
+    }
     const now = new Date().toISOString();
 
     const isSuper = SUPER_ADMIN_EMAILS.includes(cleanEmail);
@@ -327,6 +346,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       company: newProfile.company,
       source: "email_registration",
     });
+  };
+
+  /**
+   * Dispatches a password reset email via Firebase Auth to the specified email address.
+   */
+  const sendPasswordReset = async (rawEmail: string) => {
+    const cleanEmail = rawEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      throw new Error("Please enter a valid email address.");
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, cleanEmail);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code || "";
+      const msg = err instanceof Error ? err.message : String(err);
+
+      if (code === "auth/user-not-found" || msg.includes("user-not-found")) {
+        throw new Error(
+          "No account found registered with this email address. Please check your spelling or register.",
+        );
+      }
+      if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
+        throw new Error("Invalid email format. Please enter a valid email address.");
+      }
+      if (code === "auth/too-many-requests" || msg.includes("too-many-requests")) {
+        throw new Error(
+          "Too many password reset requests. Please wait a few moments before trying again, or check your spam/junk folder.",
+        );
+      }
+      const cleaned = msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
+      throw new Error(cleaned || "Failed to send password reset email. Please try again.");
+    }
   };
 
   /**
@@ -581,6 +633,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
+        sendPasswordReset,
         sendPhoneOtp,
         verifyPhoneOtp,
         clearRecaptchaVerifier: clearGlobalRecaptchaVerifier,
@@ -606,6 +659,7 @@ export function useAuth(): AuthContextType {
       loginWithGoogle: async () => {},
       loginWithEmail: async () => {},
       registerWithEmail: async () => {},
+      sendPasswordReset: async () => {},
       sendPhoneOtp: async () => ({} as ConfirmationResult),
       verifyPhoneOtp: async () => ({} as FirebaseUser),
       clearRecaptchaVerifier: () => {},

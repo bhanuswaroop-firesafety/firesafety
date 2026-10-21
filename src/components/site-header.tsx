@@ -18,6 +18,7 @@ import {
   MessageCircle,
   Smartphone,
   Instagram,
+  Search,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "@/lib/auth-context";
@@ -416,6 +417,30 @@ export function SiteHeader() {
                     <X className="size-5" />
                   </Button>
                 </div>
+
+                {/* Mobile Search Bar */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = (e.currentTarget.elements.namedItem("mobile-search") as HTMLInputElement)?.value;
+                    if (input?.trim()) {
+                      setOpen(false);
+                      window.location.href = `/products?q=${encodeURIComponent(input.trim())}`;
+                    }
+                  }}
+                  className="pt-3 pb-1"
+                >
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+                    <input
+                      name="mobile-search"
+                      type="text"
+                      placeholder="Search products by name, SKU, specs..."
+                      aria-label="Search fire safety products"
+                      className="w-full rounded-xl border border-input bg-card pl-8 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                    />
+                  </div>
+                </form>
 
                 {/* 2. Main Pages Navigation (FIRST as requested) */}
                 <div className="py-2">

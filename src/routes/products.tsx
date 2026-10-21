@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   Layers,
   Filter,
+  Info,
 } from "lucide-react";
 import { subscribeProducts, CATEGORIES } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
@@ -74,15 +75,58 @@ export function ProductsPage() {
     url: string;
   } | null>(null);
 
-  // Sync with URL ?category= parameter if present
+  // Sync with URL (?category=, ?q=, ?search=)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const urlCat = new URLSearchParams(window.location.search).get("category");
+      const params = new URLSearchParams(window.location.search);
+      const urlCat = params.get("category");
+      const urlQ = params.get("q") || params.get("search");
       if (urlCat) {
         setSelectedCategory(urlCat);
       }
+      if (urlQ) {
+        setSearchQuery(urlQ);
+      }
     }
   }, []);
+
+  // Synchronize URL parameters with live search and category state
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      let changed = false;
+
+      if (searchQuery.trim()) {
+        if (url.searchParams.get("q") !== searchQuery.trim()) {
+          url.searchParams.set("q", searchQuery.trim());
+          url.searchParams.delete("search");
+          changed = true;
+        }
+      } else {
+        if (url.searchParams.has("q") || url.searchParams.has("search")) {
+          url.searchParams.delete("q");
+          url.searchParams.delete("search");
+          changed = true;
+        }
+      }
+
+      if (selectedCategory && selectedCategory !== "All") {
+        if (url.searchParams.get("category") !== selectedCategory) {
+          url.searchParams.set("category", selectedCategory);
+          changed = true;
+        }
+      } else {
+        if (url.searchParams.has("category")) {
+          url.searchParams.delete("category");
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, [searchQuery, selectedCategory]);
 
   const handleProductAction = (
     e: React.MouseEvent | undefined,
@@ -131,35 +175,72 @@ export function ProductsPage() {
     return ["All", ...combined];
   }, [activeProducts]);
 
-  // Filtered & Sorted products list
+  // Multi-token intelligent product search matcher
+  const doesProductMatchSearch = (p: ProductItem, query: string): boolean => {
+    if (!query) return true;
+    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return true;
+
+    const searchableFields = [
+      p.name || "",
+      p.category || "",
+      p.description || "",
+      p.sku || "",
+      ...(p.specs || []),
+      p.price || "",
+    ];
+    const combined = searchableFields.join(" ").toLowerCase();
+    const cleanCombined = combined.replace(/[^a-z0-9]/g, "");
+
+    return tokens.every((token) => {
+      // 1. Direct text substring match
+      if (combined.includes(token)) return true;
+      // 2. Alphanumeric match (handles "4kg" vs "4 kg", "co2" vs "co-2", "9ltr" vs "9 ltr")
+      const cleanToken = token.replace(/[^a-z0-9]/g, "");
+      if (cleanToken && cleanCombined.includes(cleanToken)) return true;
+      return false;
+    });
+  };
+
+  const trimmedQuery = searchQuery.trim();
+
+  // All matches across the catalog for current query
+  const allSearchMatches = useMemo(() => {
+    if (!trimmedQuery) return activeProducts;
+    return activeProducts.filter((p) => doesProductMatchSearch(p, trimmedQuery));
+  }, [activeProducts, trimmedQuery]);
+
+  // Matches within the specifically selected category
+  const categoryMatches = useMemo(() => {
+    if (selectedCategory === "All") return allSearchMatches;
+    return allSearchMatches.filter((p) => p.category === selectedCategory);
+  }, [allSearchMatches, selectedCategory]);
+
+  // Auto-expand search across categories if current category returned 0 results but other categories have matches
+  const isAutoExpandedAcrossCategories = Boolean(
+    trimmedQuery &&
+      selectedCategory !== "All" &&
+      categoryMatches.length === 0 &&
+      allSearchMatches.length > 0,
+  );
+
+  // Filtered & Sorted products list to display
   const filteredProducts = useMemo(() => {
-    return activeProducts
-      .filter((p) => {
-        const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
-        const q = searchQuery.toLowerCase().trim();
-        const matchesSearch =
-          !q ||
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          (p.description && p.description.toLowerCase().includes(q)) ||
-          (p.sku && p.sku.toLowerCase().includes(q)) ||
-          (p.specs && p.specs.some((s) => s.toLowerCase().includes(q)));
-        return matchesCategory && matchesSearch;
-      })
-      .sort((a, b) => {
-        if (sortBy === "featured") {
-          if (a.featured && !b.featured) return -1;
-          if (!a.featured && b.featured) return 1;
-          return 0;
-        }
-        if (sortBy === "name") return a.name.localeCompare(b.name);
-        const numA = Number(a.price?.replace(/[^0-9.]/g, "") || 0);
-        const numB = Number(b.price?.replace(/[^0-9.]/g, "") || 0);
-        if (sortBy === "price-asc") return numA - numB;
-        if (sortBy === "price-desc") return numB - numA;
+    const list = isAutoExpandedAcrossCategories ? allSearchMatches : categoryMatches;
+    return [...list].sort((a, b) => {
+      if (sortBy === "featured") {
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
         return 0;
-      });
-  }, [activeProducts, selectedCategory, searchQuery, sortBy]);
+      }
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      const numA = Number(a.price?.replace(/[^0-9.]/g, "") || 0);
+      const numB = Number(b.price?.replace(/[^0-9.]/g, "") || 0);
+      if (sortBy === "price-asc") return numA - numB;
+      if (sortBy === "price-desc") return numB - numA;
+      return 0;
+    });
+  }, [isAutoExpandedAcrossCategories, allSearchMatches, categoryMatches, sortBy]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -195,9 +276,15 @@ export function ProductsPage() {
                 <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
                 <input
                   type="text"
+                  aria-label="Search fire safety products"
                   placeholder="Search products by name, SKU, or specs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setSearchQuery("");
+                    }
+                  }}
                   className="w-full rounded-lg border border-border bg-background pl-8 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none shadow-2xs"
                 />
                 {searchQuery && (
@@ -324,6 +411,49 @@ export function ProductsPage() {
             {/* RIGHT COLUMN: PRODUCTS CATALOG GRID                      */}
             {/* ======================================================== */}
             <div className="lg:col-span-9">
+              {/* Category Search Auto-Expansion Notice */}
+              {isAutoExpandedAcrossCategories && (
+                <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-foreground flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <Info className="size-4 shrink-0 text-amber-500" />
+                    <span>
+                      No products match <strong>"{searchQuery}"</strong> in <em>"{selectedCategory}"</em>. Showing <strong>{allSearchMatches.length}</strong> matching products from all categories.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("All")}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500 text-white font-bold text-[11px] hover:bg-amber-600 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      Switch to All Categories
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="px-2.5 py-1 rounded-lg border border-border bg-card text-foreground font-semibold text-[11px] hover:bg-muted transition-colors cursor-pointer"
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {trimmedQuery && !isAutoExpandedAcrossCategories && selectedCategory !== "All" && allSearchMatches.length > categoryMatches.length && (
+                <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground bg-muted/40 p-2.5 px-3 rounded-xl border border-border">
+                  <span>
+                    Showing {categoryMatches.length} matches in <strong>"{selectedCategory}"</strong>.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory("All")}
+                    className="text-red-600 dark:text-red-400 font-bold hover:underline cursor-pointer"
+                  >
+                    Search across all categories ({allSearchMatches.length} total) &rarr;
+                  </button>
+                </div>
+              )}
+
               {isLoading ? (
                 <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -353,15 +483,51 @@ export function ProductsPage() {
                   </div>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center my-8 max-w-md mx-auto">
-                  <Package className="mx-auto size-10 text-muted-foreground/60" />
-                  <h3 className="mt-3 font-display text-sm font-bold text-foreground">
-                    No matching products found
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    No items match "{searchQuery}" in category "{selectedCategory}".
-                  </p>
-                  <div className="mt-4 flex justify-center gap-2">
+                <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 sm:p-12 text-center my-6 max-w-lg mx-auto space-y-4">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-600/10 text-red-600">
+                    <Search className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-foreground">
+                      No matching products found
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      We couldn't find any certified fire safety equipment matching <strong>"{searchQuery}"</strong>
+                      {selectedCategory !== "All" && ` in "${selectedCategory}"`}.
+                    </p>
+                  </div>
+
+                  {/* Popular quick searches */}
+                  <div className="pt-2">
+                    <span className="text-[11px] font-semibold text-muted-foreground block mb-2">
+                      Try searching for:
+                    </span>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {[
+                        "ABC Extinguisher",
+                        "CO2 Extinguisher",
+                        "Hydrant Valve",
+                        "Smoke Detector",
+                        "Safety Helmet",
+                        "Fire Pump",
+                        "Refilling",
+                      ].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery(chip);
+                            setSelectedCategory("All");
+                          }}
+                          className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-border flex flex-wrap justify-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -370,8 +536,13 @@ export function ProductsPage() {
                         setSelectedCategory("All");
                       }}
                     >
-                      Clear Filters
+                      Clear Search &amp; View All Products
                     </Button>
+                    <a href="/contact">
+                      <Button size="sm">
+                        Request Custom Equipment Quote
+                      </Button>
+                    </a>
                   </div>
                 </div>
               ) : (

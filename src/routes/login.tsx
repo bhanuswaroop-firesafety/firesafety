@@ -87,6 +87,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
+    sendPasswordReset,
     sendPhoneOtp,
     verifyPhoneOtp,
     clearRecaptchaVerifier,
@@ -126,6 +127,14 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
   const [successMsg, setSuccessMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showPhoneOtpModal, setShowPhoneOtpModal] = useState(false);
+
+  // Password Reset Modal States
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
+  const [isExistingAccountError, setIsExistingAccountError] = useState(false);
 
   // Customer Account Portal State (Tasks A, C, D, E)
   const [accountTab, setAccountTab] = useState<"orders" | "renewals" | "notifications" | "profile">("orders");
@@ -373,6 +382,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+    setIsExistingAccountError(false);
     setSubmitting(true);
     try {
       await loginWithEmail(email, password);
@@ -382,12 +392,27 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
       }, 400);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(
-        msg
+      const code = (err as { code?: string }).code || "";
+      if (code === "auth/user-not-found" || msg.includes("user-not-found")) {
+        setErrorMsg("No account found with this email. Please verify your email or sign up.");
+      } else if (
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-credential" ||
+        msg.includes("wrong-password") ||
+        msg.includes("invalid-credential")
+      ) {
+        setErrorMsg("Incorrect email or password. Please verify your details or reset your password.");
+      } else if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
+        setErrorMsg("Please enter a valid email address.");
+      } else if (code === "auth/too-many-requests" || msg.includes("too-many-requests")) {
+        setErrorMsg("Too many unsuccessful attempts. Please wait a moment or reset your password.");
+      } else {
+        const cleaned = msg
           .replace("Firebase: ", "")
           .replace(/\(auth\/[^)]+\)/, "")
-          .trim(),
-      );
+          .trim();
+        setErrorMsg(cleaned || "Failed to sign in. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -398,6 +423,13 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+    setIsExistingAccountError(false);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setErrorMsg("Please enter a valid work email address.");
+      return;
+    }
 
     const cleanPhone = phone.trim().replace(/\D/g, "");
     if (!cleanPhone || cleanPhone.length < 10) {
@@ -418,21 +450,58 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     setSubmitting(true);
     try {
       const displayName = company ? `${name} (${company})` : name;
-      await registerWithEmail(email, password, displayName, { phone: phone.trim(), company: company.trim() });
+      await registerWithEmail(cleanEmail, password, displayName, { phone: phone.trim(), company: company.trim() });
       setSuccessMsg("Account created successfully! Redirecting...");
       setTimeout(() => {
         navigate({ to: "/" });
       }, 400);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(
-        msg
+      const code = (err as { code?: string }).code || "";
+      if (
+        code === "auth/email-already-in-use" ||
+        msg.includes("email-already-in-use") ||
+        msg.includes("already registered")
+      ) {
+        setErrorMsg("This account is already registered. Please log in.");
+        setIsExistingAccountError(true);
+      } else if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
+        setErrorMsg("Please enter a valid work email address.");
+      } else if (code === "auth/weak-password" || msg.includes("weak-password")) {
+        setErrorMsg("Password is too weak. Please use at least 6 characters.");
+      } else {
+        const cleaned = msg
           .replace("Firebase: ", "")
           .replace(/\(auth\/[^)]+\)/, "")
-          .trim(),
-      );
+          .trim();
+        setErrorMsg(cleaned || "Failed to create account. Please try again.");
+      }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Handle Password Reset Request
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess("");
+    const targetEmail = (resetEmail || email).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes("@")) {
+      setResetError("Please enter a valid email address.");
+      return;
+    }
+    setResetSubmitting(true);
+    try {
+      await sendPasswordReset(targetEmail);
+      setResetSuccess(
+        `A password reset link has been sent to ${targetEmail}. Please check your inbox (and spam folder) to set a new password.`,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setResetError(msg);
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -1241,16 +1310,48 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
               {/* Status Messages */}
               {errorMsg && (
-                <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-start gap-2 animate-in fade-in">
+                <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive flex items-start gap-2.5 animate-in fade-in">
                   <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                  <div className="flex-1 leading-relaxed">{errorMsg}</div>
+                  <div className="flex-1 space-y-2">
+                    <div className="leading-relaxed font-medium">{errorMsg}</div>
+                    {(isExistingAccountError || errorMsg.includes("already registered")) && (
+                      <div className="pt-2 border-t border-destructive/20 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode("login");
+                            setAuthMethod("password");
+                            setErrorMsg("");
+                            setIsExistingAccountError(false);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold text-[11px] shadow-xs hover:bg-primary/90 transition-colors cursor-pointer"
+                        >
+                          <User className="size-3" />
+                          <span>Log In to this Account</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetEmail(email);
+                            setShowResetModal(true);
+                            setResetError("");
+                            setResetSuccess("");
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground font-semibold text-[11px] hover:bg-muted transition-colors cursor-pointer"
+                        >
+                          <Lock className="size-3 text-muted-foreground" />
+                          <span>Reset Password</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {successMsg && (
                 <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-2 animate-in fade-in">
                   <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
-                  <div className="flex-1 leading-relaxed">{successMsg}</div>
+                  <div className="flex-1 leading-relaxed font-medium">{successMsg}</div>
                 </div>
               )}
 
@@ -1599,14 +1700,15 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                       </label>
                       <button
                         type="button"
-                        onClick={() =>
-                          alert(
-                            "Password reset: Please contact dispatch at +91 86398 58221 or email info@udharchienterprises.com.",
-                          )
-                        }
-                        className="text-[11px] text-primary hover:underline"
+                        onClick={() => {
+                          setResetEmail(email);
+                          setShowResetModal(true);
+                          setResetError("");
+                          setResetSuccess("");
+                        }}
+                        className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
                       >
-                        Forgot password?
+                        Forgot / Reset Password?
                       </button>
                     </div>
                     <div className="relative mt-1">
@@ -1845,6 +1947,35 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     </span>
                   </label>
 
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-[11px] text-muted-foreground">
+                      Already registered?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("login");
+                          setAuthMethod("password");
+                          setErrorMsg("");
+                        }}
+                        className="font-bold text-primary hover:underline cursor-pointer"
+                      >
+                        Sign In
+                      </button>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetEmail(email);
+                        setShowResetModal(true);
+                        setResetError("");
+                        setResetSuccess("");
+                      }}
+                      className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                    >
+                      Forgot / Reset Password?
+                    </button>
+                  </div>
+
                   <Button
                     type="submit"
                     disabled={submitting}
@@ -1885,7 +2016,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
               </div>
 
               {/* Footer Switcher */}
-              <div className="mt-6 border-t border-border pt-4 flex items-center justify-center text-xs text-muted-foreground">
+              <div className="mt-6 border-t border-border pt-4 flex flex-col items-center justify-center text-xs text-muted-foreground gap-2">
                 <div>
                   {mode === "login" ? (
                     <span>
@@ -1897,7 +2028,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           setErrorMsg("");
                           setSuccessMsg("");
                         }}
-                        className="font-bold text-primary hover:underline"
+                        className="font-bold text-primary hover:underline cursor-pointer"
                       >
                         Create one now
                       </button>
@@ -1912,13 +2043,167 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           setErrorMsg("");
                           setSuccessMsg("");
                         }}
-                        className="font-bold text-primary hover:underline"
+                        className="font-bold text-primary hover:underline cursor-pointer"
                       >
                         Sign In here
                       </button>
                     </span>
                   )}
                 </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetEmail(email);
+                      setShowResetModal(true);
+                      setResetError("");
+                      setResetSuccess("");
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
+                    Forgot or need to reset your password?{" "}
+                    <span className="font-bold text-primary underline">Reset Password</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FORGOT / RESET PASSWORD MODAL */}
+          {showResetModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/75 backdrop-blur-xs animate-in fade-in">
+              <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-7 shadow-2xl backdrop-blur-xl animate-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setResetError("");
+                    setResetSuccess("");
+                  }}
+                  className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Close dialog"
+                >
+                  <X className="size-4" />
+                </button>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Lock className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base sm:text-lg font-bold text-foreground">
+                      Reset Password
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Receive an official password reset link via email
+                    </p>
+                  </div>
+                </div>
+
+                {resetSuccess ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-700 dark:text-emerald-400 flex items-start gap-2.5">
+                      <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
+                      <div className="flex-1 leading-relaxed font-medium">{resetSuccess}</div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Please check your inbox as well as your <strong>Spam / Junk folder</strong>. Open the secure link from Firebase to set your new password.
+                    </p>
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setResetSuccess("");
+                        }}
+                      >
+                        Send to another email
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          setShowResetModal(false);
+                          setMode("login");
+                          setAuthMethod("password");
+                        }}
+                      >
+                        Back to Login
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Enter your registered email address below. We'll send you a password reset link to securely update your credentials.
+                    </p>
+
+                    {resetError && (
+                      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-start gap-2">
+                        <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                        <div className="flex-1 leading-relaxed">{resetError}</div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label
+                        htmlFor="modal-reset-email"
+                        className="text-xs font-semibold text-foreground mb-1 block"
+                      >
+                        Email Address *
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="modal-reset-email"
+                          type="email"
+                          required
+                          autoComplete="email"
+                          placeholder="client@company.com"
+                          value={resetEmail}
+                          onChange={(e) => {
+                            setResetEmail(e.target.value);
+                            setResetError("");
+                          }}
+                          className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                        />
+                        <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowResetModal(false);
+                          setResetError("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={resetSubmitting || !resetEmail.trim()}
+                        className="gap-1.5"
+                      >
+                        {resetSubmitting ? (
+                          <>
+                            <RefreshCw className="size-3.5 animate-spin" />
+                            <span>Sending Reset Link...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="size-3.5" />
+                            <span>Send Reset Link</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
           )}
