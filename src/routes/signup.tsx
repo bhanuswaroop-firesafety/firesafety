@@ -7,9 +7,9 @@ import { seoHead } from "@/lib/seo";
 export const Route = createFileRoute("/signup")({
   head: () =>
     seoHead({
-      title: "Create Client Account | Sri Udharchi Enterprises",
+      title: "Create Account | Sri Udharchi Enterprises",
       description:
-        "Register for Sri Udharchi Enterprises B2B portal to track quotations, manage safety equipment orders, and access inspection records.",
+        "Create an account on Sri Udharchi Enterprises to order fire safety equipment, track deliveries, and manage quotations.",
       path: "/signup",
       noIndex: true,
     }),

@@ -10,7 +10,6 @@ import { Button } from "@/components/button";
 import {
   UserPlus,
   User,
-  Smartphone,
   ShieldCheck,
   Lock,
   ArrowRight,
@@ -18,7 +17,6 @@ import {
   PackageCheck,
   CheckCircle2,
 } from "lucide-react";
-import { PhoneOtpModal } from "./phone-otp-modal";
 
 export interface AuthRequiredModalProps {
   isOpen: boolean;
@@ -35,8 +33,6 @@ export function AuthRequiredModal({
   redirectUrl = "/products",
   allowDismiss = true,
 }: AuthRequiredModalProps) {
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-
   const signupUrl = `/signup?redirect=${encodeURIComponent(redirectUrl)}`;
   const loginUrl = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
 
@@ -79,7 +75,7 @@ export function AuthRequiredModal({
             <div className="my-4 w-full rounded-xl border border-border/70 bg-muted/40 p-3 text-left space-y-2">
               <div className="flex items-center gap-2 text-xs text-foreground/90">
                 <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                <span>Free instant registration with Phone OTP or Email</span>
+                <span>Quick registration with Email or Google</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-foreground/90">
                 <FileCheck2 className="size-4 text-emerald-500 shrink-0" />
@@ -87,7 +83,7 @@ export function AuthRequiredModal({
               </div>
               <div className="flex items-center gap-2 text-xs text-foreground/90">
                 <PackageCheck className="size-4 text-emerald-500 shrink-0" />
-                <span>Track equipment dispatch, quotations, and AMC renewals</span>
+                <span>Track equipment dispatch, quotations, and service renewals</span>
               </div>
             </div>
 
@@ -100,27 +96,18 @@ export function AuthRequiredModal({
                 </Button>
               </a>
 
-              {/* Grid with Sign In & Phone OTP */}
-              <div className="grid grid-cols-2 gap-2">
-                <a href={loginUrl} className="block">
-                  <Button variant="outline" className="w-full justify-center text-xs font-bold gap-1.5">
-                    <User className="size-3.5" /> Sign In
-                  </Button>
-                </a>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsPhoneModalOpen(true)}
-                  className="w-full justify-center text-xs font-bold gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
-                >
-                  <Smartphone className="size-3.5 text-primary" /> Phone OTP
+              {/* Sign In Button */}
+              <a href={loginUrl} className="block w-full">
+                <Button variant="outline" className="w-full justify-center text-xs font-bold gap-1.5 h-9">
+                  <User className="size-3.5" /> Already have an account? Sign In
                 </Button>
-              </div>
+              </a>
 
               {allowDismiss && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-xs text-muted-foreground hover:text-foreground font-semibold pt-1 transition-colors block mx-auto underline-offset-4 hover:underline"
+                  className="text-xs text-muted-foreground hover:text-foreground font-semibold pt-1 transition-colors block mx-auto underline-offset-4 hover:underline cursor-pointer"
                 >
                   Continue browsing catalog
                 </button>
@@ -129,19 +116,6 @@ export function AuthRequiredModal({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Phone OTP Login fallback modal */}
-      <PhoneOtpModal
-        isOpen={isPhoneModalOpen}
-        onClose={() => setIsPhoneModalOpen(false)}
-        onSuccess={() => {
-          setIsPhoneModalOpen(false);
-          onClose();
-          if (redirectUrl) {
-            window.location.href = redirectUrl;
-          }
-        }}
-      />
     </>
   );
 }

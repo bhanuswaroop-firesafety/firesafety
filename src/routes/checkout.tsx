@@ -32,10 +32,8 @@ import {
   ShoppingBag,
   AlertCircle,
   Clock,
-  Smartphone,
   Zap,
 } from "lucide-react";
-import { PhoneOtpModal } from "@/components/phone-otp-modal";
 
 import { seoHead } from "@/lib/seo";
 
@@ -118,7 +116,6 @@ function CheckoutPage() {
     isHydrated,
   } = useCart();
   const { user, userProfile } = useAuth();
-  const [isPhoneOtpModalOpen, setIsPhoneOtpModalOpen] = useState(false);
 
   // Dynamic Shipping Settings from Firestore (Task A)
   const [shippingSettings, setShippingSettings] =
@@ -698,30 +695,31 @@ function CheckoutPage() {
             </div>
           )}
 
-          {/* Phone OTP Quick Login Banner */}
+          {/* Quick Login Banner */}
           {!user ? (
             <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Smartphone className="size-5" />
+                  <User className="size-5" />
                 </div>
                 <div>
                   <p className="font-bold text-foreground text-sm">
-                    Already have an enterprise account?
+                    Already have an account?
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Sign in with your mobile OTP to automatically load your billing profile, delivery facilities, and GSTIN.
+                    Sign in to automatically load your saved details and complete checkout faster.
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                onClick={() => setIsPhoneOtpModalOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 px-4 gap-1.5 shrink-0"
-              >
-                <Smartphone className="size-3.5" />
-                <span>Login with Phone OTP</span>
-              </Button>
+              <a href="/login?redirect=/checkout">
+                <Button
+                  type="button"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 px-4 gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <User className="size-3.5" />
+                  <span>Sign In</span>
+                </Button>
+              </a>
             </div>
           ) : (
             <div className="mb-8 flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs">
@@ -1389,14 +1387,6 @@ function CheckoutPage() {
       )}
 
       <SiteFooter />
-
-      {/* Quick Phone OTP Login Modal */}
-      <PhoneOtpModal
-        isOpen={isPhoneOtpModalOpen}
-        onClose={() => setIsPhoneOtpModalOpen(false)}
-        title="Checkout Mobile Login"
-        subtitle="Sign in with your mobile phone to auto-fill address & GSTIN"
-      />
     </main>
   );
 }

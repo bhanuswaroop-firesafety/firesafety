@@ -16,7 +16,6 @@ import {
   Boxes,
   Truck,
   MessageCircle,
-  Smartphone,
   Instagram,
   Search,
 } from "lucide-react";
@@ -32,7 +31,6 @@ import {
 import type { SocialSettings, ContactSettings } from "@/lib/types";
 import { BrandLogo } from "./brand-logo";
 import { Button } from "./button";
-import { PhoneOtpModal } from "./phone-otp-modal";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -70,7 +68,6 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [servicesDropdown, setServicesDropdown] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(true);
-  const [isPhoneOtpModalOpen, setIsPhoneOtpModalOpen] = useState(false);
   const [social, setSocial] = useState<SocialSettings>(DEFAULT_SOCIAL_SETTINGS);
   const [contact, setContact] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
 
@@ -311,14 +308,6 @@ export function SiteHeader() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsPhoneOtpModalOpen(true)}
-                    className="text-xs font-semibold text-foreground hover:text-primary gap-1 px-2"
-                  >
-                    <Smartphone className="size-3.5 text-primary" /> Phone OTP
-                  </Button>
                   <a href="/login">
                     <Button
                       variant="ghost"
@@ -632,16 +621,6 @@ export function SiteHeader() {
                           </Button>
                         </a>
                       </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setOpen(false);
-                          setIsPhoneOtpModalOpen(true);
-                        }}
-                        className="w-full justify-center text-xs gap-1.5 border-primary/40 text-primary font-bold h-8 hover:bg-primary/5"
-                      >
-                        <Smartphone className="size-3.5 text-primary" /> Login with Phone OTP
-                      </Button>
                     </div>
                   )}
 
@@ -713,12 +692,6 @@ export function SiteHeader() {
             </>
           )}
         </AnimatePresence>
-
-        {/* Global Phone OTP Login Modal */}
-        <PhoneOtpModal
-          isOpen={isPhoneOtpModalOpen}
-          onClose={() => setIsPhoneOtpModalOpen(false)}
-        />
       </header>
     </>
   );

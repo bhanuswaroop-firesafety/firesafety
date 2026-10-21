@@ -275,18 +275,6 @@ const Signup1 = ({
                   <FcGoogle className="mr-2 size-5 shrink-0" />
                   <span>{resolvedGoogleText}</span>
                 </Button>
-
-                {/* Optional Phone OTP Trigger */}
-                {onPhoneOtpClick && (
-                  <button
-                    type="button"
-                    onClick={onPhoneOtpClick}
-                    className="text-xs text-muted-foreground hover:text-red-600 font-medium transition-colors flex items-center justify-center gap-1.5 pt-1 cursor-pointer"
-                  >
-                    <Smartphone className="size-3.5" />
-                    <span>Or sign in with Mobile SMS OTP</span>
-                  </button>
-                )}
               </div>
             </div>
           </form>

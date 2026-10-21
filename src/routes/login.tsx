@@ -21,11 +21,7 @@ import {
   Layers,
   FileText,
   Clock,
-  Smartphone,
   RotateCcw,
-  Edit2,
-  Sparkles,
-  ChevronDown,
   Star,
   Truck,
   Zap,
@@ -33,19 +29,10 @@ import {
   Bell,
   X,
   Package,
-  Info,
 } from "lucide-react";
 import {
-  SUPPORTED_COUNTRY_CODES,
-  normalizePhoneNumber,
   formatIndianMobileDisplay,
 } from "@/lib/phone-utils";
-import type { ConfirmationResult } from "@/lib/firebase";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import {
   subscribeOrders,
   cancelOrder,
@@ -66,9 +53,9 @@ import { seoHead } from "@/lib/seo";
 export const Route = createFileRoute("/login")({
   head: () =>
     seoHead({
-      title: "Client & User Portal | Sri Udharchi Enterprises",
+      title: "Account Sign In & Sign Up | Sri Udharchi Enterprises",
       description:
-        "Sign in or register for Sri Udharchi Enterprises B2B portal to track quotations, manage safety inspection orders, and access equipment compliance records.",
+        "Sign in or create an account with Sri Udharchi Enterprises to purchase fire safety equipment, track deliveries, and manage quotations.",
       path: "/login",
       noIndex: true,
     }),
@@ -88,30 +75,12 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     loginWithEmail,
     registerWithEmail,
     sendPasswordReset,
-    sendPhoneOtp,
-    verifyPhoneOtp,
-    clearRecaptchaVerifier,
     logout,
   } = useAuth();
   const navigate = useNavigate();
 
   // Mode: "login" or "signup"
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
-  // Auth Method: "phone" (Mobile OTP) or "password" (Email & Password)
-  const [authMethod, setAuthMethod] = useState<"phone" | "password">("phone");
-
-  // Phone OTP States
-  const [selectedCountryCode, setSelectedCountryCode] = useState("+91");
-  const [phoneInput, setPhoneInput] = useState("");
-  const [otpStep, setOtpStep] = useState<"input_phone" | "enter_otp">("input_phone");
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [otpCode, setOtpCode] = useState("");
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [isResending, setIsResending] = useState(false);
-  const [showOptionalProfile, setShowOptionalProfile] = useState(false);
-  const [phoneName, setPhoneName] = useState("");
-  const [phoneCompany, setPhoneCompany] = useState("");
-  const [otpSubmitting, setOtpSubmitting] = useState(false);
 
   // Email / Password Form Fields
   const [email, setEmail] = useState("");
@@ -126,7 +95,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [showPhoneOtpModal, setShowPhoneOtpModal] = useState(false);
 
   // Password Reset Modal States
   const [showResetModal, setShowResetModal] = useState(false);
@@ -229,13 +197,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     });
   }, [userOrders]);
 
-  // Clean up reCAPTCHA verifier when switching away or unmounting
-  useEffect(() => {
-    return () => {
-      clearRecaptchaVerifier();
-    };
-  }, [clearRecaptchaVerifier]);
-
   // Check query parameter ?tab=signup or ?tab=login or initialMode
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -256,29 +217,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     }
   }, [user, mode, initialMode, navigate]);
 
-  // Countdown timer for OTP resend cooldown (45 seconds)
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (resendCooldown > 0) {
-      interval = setInterval(() => {
-        setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [resendCooldown]);
-
-  // Clean phone input and compute live validation
-  const phoneValidation = normalizePhoneNumber(phoneInput, selectedCountryCode);
-
-  const handlePhoneInputChange = (val: string) => {
-    const digitsOnly = val.replace(/\D/g, "");
-    if (digitsOnly.length > 15) return;
-    setPhoneInput(val);
-    setErrorMsg("");
-  };
-
   // Password strength calculation
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { score: 0, label: "", color: "bg-muted" };
@@ -295,87 +233,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
   };
 
   const strength = getPasswordStrength(password);
-
-  // Send real SMS OTP to phone number
-  const handleSendOtp = async (e?: FormEvent) => {
-    if (e) e.preventDefault();
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    if (!phoneValidation.valid) {
-      setErrorMsg(phoneValidation.error || "Please enter a valid phone number.");
-      return;
-    }
-
-    setOtpSubmitting(true);
-    try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "recaptcha-container");
-      setConfirmationResult(confirmation);
-      setOtpStep("enter_otp");
-      setResendCooldown(45);
-      setSuccessMsg(`6-Digit verification code sent via SMS to ${phoneValidation.formatted}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg);
-    } finally {
-      setOtpSubmitting(false);
-    }
-  };
-
-  // Verify real 6-digit SMS OTP
-  const handleVerifyOtp = async (codeToVerify?: string) => {
-    const code = (codeToVerify || otpCode).trim();
-    if (code.length !== 6) {
-      setErrorMsg("Please enter the complete 6-digit verification code sent to your phone.");
-      return;
-    }
-
-    if (!confirmationResult) {
-      setErrorMsg("Verification session missing. Please request a new OTP code.");
-      return;
-    }
-
-    setErrorMsg("");
-    setSuccessMsg("");
-    setOtpSubmitting(true);
-
-    try {
-      await verifyPhoneOtp(confirmationResult, code, {
-        name: mode === "signup" ? (name || phoneName) : phoneName,
-        company: mode === "signup" ? (company || phoneCompany) : phoneCompany,
-      });
-
-      setSuccessMsg("Signed in successfully via Mobile OTP!");
-      setTimeout(() => {
-        navigate({ to: "/" });
-      }, 400);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg);
-    } finally {
-      setOtpSubmitting(false);
-    }
-  };
-
-  // Resend OTP
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0 || isResending) return;
-    setIsResending(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "recaptcha-container");
-      setConfirmationResult(confirmation);
-      setResendCooldown(45);
-      setSuccessMsg(`New 6-digit verification code sent via SMS to ${phoneValidation.formatted}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg);
-    } finally {
-      setIsResending(false);
-    }
-  };
 
   // Handle Email Login
   const handleLoginSubmit = async (e: FormEvent) => {
@@ -427,7 +284,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes("@")) {
-      setErrorMsg("Please enter a valid work email address.");
+      setErrorMsg("Please enter a valid email address.");
       return;
     }
 
@@ -466,7 +323,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
         setErrorMsg("This account is already registered. Please log in.");
         setIsExistingAccountError(true);
       } else if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
-        setErrorMsg("Please enter a valid work email address.");
+        setErrorMsg("Please enter a valid email address.");
       } else if (code === "auth/weak-password" || msg.includes("weak-password")) {
         setErrorMsg("Password is too weak. Please use at least 6 characters.");
       } else {
@@ -540,26 +397,26 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
           <div className="absolute bottom-10 right-10 size-[400px] rounded-full bg-amber-500/10 blur-[120px]" />
         </div>
 
-        <div className={`relative z-10 w-full ${user ? "max-w-5xl" : "max-w-xl"}`}>
+        <div className={`relative z-10 w-full ${user ? "max-w-5xl" : "max-w-lg"}`}>
           {/* Top Headline & Branding */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-bold text-primary mb-3">
               <ShieldCheck className="size-3.5" />
-              <span>B2B Client &amp; Industrial Portal</span>
+              <span>Sri Udharchi Enterprises</span>
             </div>
             <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl tracking-tight">
               {user
-                ? "Your Client Account"
+                ? "My Account"
                 : mode === "login"
                   ? "Welcome Back"
-                  : "Create Client Account"}
+                  : "Create an Account"}
             </h1>
             <p className="mt-2 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
               {user
-                ? "Manage your safety inspection orders, refill schedules, and equipment quotations."
+                ? "Manage your safety equipment orders, renewals, and quotations."
                 : mode === "login"
-                  ? "Sign in with your mobile number via real SMS OTP or company credentials."
-                  : "Register your enterprise with phone verification or work email for instant access."}
+                  ? "Sign in to your account to view orders, quotations, and tracking."
+                  : "Sign up to buy safety equipment, track deliveries, and request quotations."}
             </p>
           </div>
 
@@ -606,7 +463,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="font-display text-lg font-bold text-foreground">
-                          {userProfile?.displayName || user.displayName || "Client Account"}
+                          {userProfile?.displayName || user.displayName || "Customer Account"}
                         </h2>
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${
@@ -1149,16 +1006,16 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                   <div className="grid gap-4 sm:grid-cols-2 text-xs">
                     <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1">
                       <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                        Full Name / Contact Person
+                        Full Name
                       </span>
                       <p className="font-semibold text-foreground text-sm">
-                        {userProfile?.displayName || user.displayName || "Client Account"}
+                        {userProfile?.displayName || user.displayName || "Customer"}
                       </p>
                     </div>
 
                     <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1">
                       <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                        Verified Mobile Phone
+                        Phone Number
                       </span>
                       <p className="font-semibold text-foreground text-sm">
                         {formatIndianMobileDisplay(user.phoneNumber || userProfile?.phone || "")}
@@ -1167,7 +1024,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                     <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1">
                       <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                        Official Email Address
+                        Email Address
                       </span>
                       <p className="font-semibold text-foreground text-sm">
                         {user.email || "Not specified"}
@@ -1176,7 +1033,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                     <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1">
                       <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                        Enterprise / Organization
+                        Company / Business Name
                       </span>
                       <p className="font-semibold text-foreground text-sm">
                         {userProfile?.company || "Not specified"}
@@ -1186,14 +1043,14 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                   <div className="pt-4 border-t border-border flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                      Profile details are synchronized with your verified GST orders.
+                      Your saved account details for orders and services.
                     </span>
                     <Button
                       variant="outline"
                       onClick={() => navigate({ to: "/contact" })}
                       className="text-xs h-9"
                     >
-                      Update Profile via Support
+                      Update Details via Support
                     </Button>
                   </div>
                 </div>
@@ -1201,17 +1058,18 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
             </div>
           ) : (
             /* AUTH FORM CARD */
-            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+            <div className="rounded-3xl border border-border/80 bg-card/95 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
               {/* Primary Mode Tabs: Sign In / Create Account */}
-              <div className="grid grid-cols-2 rounded-xl bg-muted/60 p-1 mb-5 text-xs font-bold">
+              <div className="grid grid-cols-2 rounded-2xl bg-muted/60 p-1 mb-6 text-xs font-bold">
                 <button
                   type="button"
                   onClick={() => {
                     setMode("login");
                     setErrorMsg("");
                     setSuccessMsg("");
+                    setIsExistingAccountError(false);
                   }}
-                  className={`rounded-lg py-2.5 transition-all cursor-pointer ${
+                  className={`rounded-xl py-2.5 transition-all cursor-pointer ${
                     mode === "login"
                       ? "bg-card text-foreground shadow-sm font-bold"
                       : "text-muted-foreground hover:text-foreground"
@@ -1225,8 +1083,9 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                     setMode("signup");
                     setErrorMsg("");
                     setSuccessMsg("");
+                    setIsExistingAccountError(false);
                   }}
-                  className={`rounded-lg py-2.5 transition-all cursor-pointer ${
+                  className={`rounded-xl py-2.5 transition-all cursor-pointer ${
                     mode === "signup"
                       ? "bg-card text-foreground shadow-sm font-bold"
                       : "text-muted-foreground hover:text-foreground"
@@ -1239,7 +1098,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
               {/* PRIMARY ONE-CLICK AUTH: GOOGLE */}
               <button
                 type="button"
-                disabled={submitting || otpSubmitting}
+                disabled={submitting}
                 onClick={handleGoogleAuth}
                 className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background py-3 px-4 text-xs font-bold text-foreground transition-all hover:bg-muted hover:border-primary/50 shadow-xs active:scale-[0.99] disabled:opacity-50 cursor-pointer mb-5"
               >
@@ -1267,45 +1126,9 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
               {/* DIVIDER */}
               <div className="relative mb-5 text-center text-xs text-muted-foreground">
                 <span className="relative z-10 bg-card px-3 uppercase text-[10px] tracking-wider font-semibold text-muted-foreground">
-                  Or continue with mobile or email
+                  {mode === "login" ? "Or sign in with email" : "Or create account with email"}
                 </span>
                 <div className="absolute inset-0 top-1/2 -z-0 border-t border-border" />
-              </div>
-
-              {/* AUTH METHOD SELECTOR: Mobile OTP vs Email/Password */}
-              <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-xl bg-muted/40 border border-border/60 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod("phone");
-                    setErrorMsg("");
-                    setSuccessMsg("");
-                  }}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all ${
-                    authMethod === "phone"
-                      ? "bg-primary text-primary-foreground shadow-sm font-bold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Smartphone className="size-3.5" />
-                  <span>Phone OTP (SMS)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod("password");
-                    setErrorMsg("");
-                    setSuccessMsg("");
-                  }}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all ${
-                    authMethod === "password"
-                      ? "bg-primary text-primary-foreground shadow-sm font-bold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Mail className="size-3.5" />
-                  <span>Email &amp; Password</span>
-                </button>
               </div>
 
               {/* Status Messages */}
@@ -1320,7 +1143,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           type="button"
                           onClick={() => {
                             setMode("login");
-                            setAuthMethod("password");
                             setErrorMsg("");
                             setIsExistingAccountError(false);
                           }}
@@ -1355,320 +1177,8 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                 </div>
               )}
 
-              {/* SECTION A: MOBILE PHONE OTP AUTHENTICATION */}
-              {authMethod === "phone" && (
-                <div className="space-y-4">
-                  {otpStep === "input_phone" ? (
-                    /* STEP 1: PHONE NUMBER INPUT WITH COUNTRY CODE SELECTOR */
-                    <form onSubmit={handleSendOtp} className="space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label
-                            htmlFor="otp-phone"
-                            className="text-xs font-bold text-foreground"
-                          >
-                            Mobile Phone Number *
-                          </label>
-                          <span className="text-[11px] text-muted-foreground">
-                            SMS OTP Verification
-                          </span>
-                        </div>
-
-                        {/* Country Code Selector + Number Input */}
-                        <div className="flex rounded-xl border border-input bg-background focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 overflow-hidden shadow-xs">
-                          <div className="relative border-r border-border bg-muted/40 flex items-center">
-                            <select
-                              value={selectedCountryCode}
-                              onChange={(e) => {
-                                setSelectedCountryCode(e.target.value);
-                                setErrorMsg("");
-                              }}
-                              aria-label="Country Code"
-                              className="h-full pl-3 pr-7 py-3 text-xs font-bold bg-transparent text-foreground appearance-none cursor-pointer focus:outline-none"
-                            >
-                              {SUPPORTED_COUNTRY_CODES.map((c) => (
-                                <option key={c.code} value={c.code} className="bg-card text-foreground">
-                                  {c.flag} {c.code}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-                          </div>
-
-                          <input
-                            id="otp-phone"
-                            name="phone"
-                            type="tel"
-                            inputMode="numeric"
-                            autoComplete="tel-national"
-                            required
-                            placeholder={selectedCountryCode === "+91" ? "98765 43210" : "Mobile number"}
-                            value={phoneInput}
-                            onChange={(e) => handlePhoneInputChange(e.target.value)}
-                            className="flex-1 bg-transparent px-3.5 py-3 text-sm font-semibold tracking-wider text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
-                          />
-
-                          {phoneValidation.valid && (
-                            <div className="flex items-center pr-3">
-                              <CheckCircle2 className="size-4 text-emerald-500 animate-in fade-in" />
-                            </div>
-                          )}
-                        </div>
-
-                        <p className="mt-1.5 text-[11px] text-muted-foreground">
-                          {selectedCountryCode === "+91"
-                            ? "Enter your 10-digit Indian mobile number. A 6-digit SMS OTP will be dispatched via Firebase."
-                            : `Enter your mobile number. A 6-digit SMS OTP will be sent to ${selectedCountryCode}.`}
-                        </p>
-                      </div>
-
-                      {/* Optional Name & Enterprise details (useful for new customers) */}
-                      <div className="pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowOptionalProfile(!showOptionalProfile)}
-                          className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
-                        >
-                          <Sparkles className="size-3" />
-                          <span>
-                            {showOptionalProfile
-                              ? "Hide organization details"
-                              : "+ Add Name & Enterprise details (Optional)"}
-                          </span>
-                        </button>
-
-                        {showOptionalProfile && (
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2 p-3.5 rounded-xl bg-muted/40 border border-border/60 animate-in fade-in duration-200">
-                            <div>
-                              <label className="text-[11px] font-semibold text-muted-foreground">
-                                Your Full Name
-                              </label>
-                              <div className="relative mt-1">
-                                <input
-                                  type="text"
-                                  placeholder="Full Name"
-                                  value={phoneName}
-                                  onChange={(e) => setPhoneName(e.target.value)}
-                                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs"
-                                />
-                                <User className="absolute right-3 top-2.5 size-3.5 text-muted-foreground" />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-muted-foreground">
-                                Company / Facility
-                              </label>
-                              <div className="relative mt-1">
-                                <input
-                                  type="text"
-                                  placeholder="Company Name"
-                                  value={phoneCompany}
-                                  onChange={(e) => setPhoneCompany(e.target.value)}
-                                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs"
-                                />
-                                <Building2 className="absolute right-3 top-2.5 size-3.5 text-muted-foreground" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Terms for Signup Mode */}
-                      {mode === "signup" && (
-                        <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            required
-                            checked={agreedTerms}
-                            onChange={(e) => setAgreedTerms(e.target.checked)}
-                            className="size-4 rounded border-input text-primary focus:ring-primary mt-0.5"
-                          />
-                          <span className="text-[11px] text-muted-foreground leading-relaxed">
-                            I agree to the{" "}
-                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
-                              Terms of Service
-                            </a>{" "}
-                            and acknowledge the{" "}
-                            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
-                              Privacy Policy
-                            </a>.
-                          </span>
-                        </label>
-                      )}
-
-                      {/* Submit Send OTP */}
-                      <Button
-                        type="submit"
-                        disabled={otpSubmitting || !phoneValidation.valid || (mode === "signup" && !agreedTerms)}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-11 shadow-lg shadow-primary/20 gap-2 mt-2"
-                      >
-                        {otpSubmitting ? (
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" />
-                            <span>Requesting SMS Verification Code...</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2">
-                            <span>Send 6-Digit SMS OTP</span>
-                            <ArrowRight className="size-4" />
-                          </div>
-                        )}
-                      </Button>
-                    </form>
-                  ) : (
-                    /* STEP 2: ENTER 6-DIGIT REAL SMS OTP CODE */
-                    <div className="space-y-4">
-                      {/* Phone Number Banner with Change Option */}
-                      <div className="rounded-xl border border-primary/30 bg-primary/10 p-3.5 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xl">📱</span>
-                          <div>
-                            <p className="text-[10px] uppercase font-bold text-muted-foreground">
-                              SMS Verification Code Sent To
-                            </p>
-                            <p className="font-bold text-foreground tracking-wider text-sm font-mono">
-                              {phoneValidation.formatted || phoneInput}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={otpSubmitting}
-                          onClick={() => {
-                            setOtpStep("input_phone");
-                            setOtpCode("");
-                            setErrorMsg("");
-                          }}
-                          className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 bg-background/80 px-2.5 py-1 rounded-md border border-border disabled:opacity-50"
-                        >
-                          <Edit2 className="size-3" />
-                          <span>Change</span>
-                        </button>
-                      </div>
-
-                      {/* 6-Digit OTP Slot Input */}
-                      <div className="flex flex-col items-center justify-center py-2">
-                        <label className="text-xs font-bold text-foreground mb-3 text-center">
-                          Enter 6-Digit Code from SMS
-                        </label>
-                        <InputOTP
-                          maxLength={6}
-                          value={otpCode}
-                          disabled={otpSubmitting}
-                          onChange={(val) => {
-                            setOtpCode(val);
-                            if (val.length === 6) {
-                              handleVerifyOtp(val);
-                            }
-                          }}
-                        >
-                          <InputOTPGroup className="gap-2 sm:gap-2.5">
-                            <InputOTPSlot index={0} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                            <InputOTPSlot index={1} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                            <InputOTPSlot index={2} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                            <InputOTPSlot index={3} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                            <InputOTPSlot index={4} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                            <InputOTPSlot index={5} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                          </InputOTPGroup>
-                        </InputOTP>
-                        <p className="mt-3 text-[11px] text-muted-foreground text-center">
-                          Enter the SMS verification code received on your phone.
-                        </p>
-                      </div>
-
-                      {/* Resend OTP with Cooldown Timer */}
-                      <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
-                        {resendCooldown > 0 ? (
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                            <Clock className="size-3.5 text-muted-foreground" />
-                            <span>Resend OTP in <strong className="text-foreground font-mono">{resendCooldown}s</strong></span>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isResending || otpSubmitting}
-                            onClick={handleResendOtp}
-                            className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 disabled:opacity-50"
-                          >
-                            <RotateCcw className={`size-3.5 ${isResending ? "animate-spin" : ""}`} />
-                            <span>Resend Verification Code</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          disabled={otpSubmitting}
-                          onClick={() => {
-                            setOtpStep("input_phone");
-                            setOtpCode("");
-                          }}
-                          className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
-                        >
-                          Change number
-                        </button>
-                      </div>
-
-                      {/* Verify Button */}
-                      <Button
-                        type="button"
-                        onClick={() => handleVerifyOtp()}
-                        disabled={otpSubmitting || otpCode.length < 6}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-11 shadow-lg shadow-primary/20 gap-2 mt-2"
-                      >
-                        {otpSubmitting ? (
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" />
-                            <span>Verifying Credentials...</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2">
-                            <ShieldCheck className="size-4" />
-                            <span>Verify Code &amp; Sign In</span>
-                            <ArrowRight className="size-4" />
-                          </div>
-                        )}
-                      </Button>
-
-                      {/* Carrier Delay & Fallback Notice */}
-                      <div className="mt-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-muted-foreground space-y-2">
-                        <div className="flex items-start gap-2">
-                          <Info className="size-4 shrink-0 text-amber-500 mt-0.5" />
-                          <div className="space-y-1">
-                            <p className="font-semibold text-foreground">OTP taking time to arrive?</p>
-                            <p className="leading-relaxed">
-                              Due to TRAI DLT regulations in India or daily project quotas, telecom carriers may delay or filter SMS on DND numbers. If you configured a <strong>Test Number in Firebase Console</strong>, enter your test code (e.g. <code className="font-mono font-bold text-foreground">123456</code>).
-                            </p>
-                          </div>
-                        </div>
-                        <div className="pt-2 border-t border-border/40 flex flex-wrap gap-2 justify-center text-[11px]">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAuthMethod("password");
-                              setOtpStep("input_phone");
-                              setErrorMsg("");
-                            }}
-                            className="text-primary font-bold hover:underline"
-                          >
-                            Sign in with Email &amp; Password
-                          </button>
-                          <span className="text-muted-foreground">•</span>
-                          <button
-                            type="button"
-                            onClick={() => loginWithGoogle()}
-                            className="text-primary font-bold hover:underline"
-                          >
-                            Sign in with Google
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* SECTION B: EMAIL & PASSWORD AUTHENTICATION */}
-              {authMethod === "password" && mode === "login" && (
+              {/* LOGIN FORM */}
+              {mode === "login" && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
                     <label htmlFor="login-email" className="text-xs font-semibold text-foreground">
@@ -1681,10 +1191,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                         type="email"
                         autoComplete="email"
                         required
-                        placeholder="client@company.com"
+                        placeholder="name@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                       />
                       <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
                     </div>
@@ -1721,13 +1231,13 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                         placeholder="••••••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground"
+                        className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
@@ -1737,7 +1247,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer"
                   >
                     {submitting ? (
                       <div className="flex items-center gap-2">
@@ -1746,7 +1256,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-2">
-                        <span>Sign In to Account</span>
+                        <span>Sign In</span>
                         <ArrowRight className="size-4" />
                       </div>
                     )}
@@ -1754,8 +1264,8 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                 </form>
               )}
 
-              {/* SECTION C: EMAIL SIGNUP FORM */}
-              {authMethod === "password" && mode === "signup" && (
+              {/* SIGNUP FORM */}
+              {mode === "signup" && (
                 <form onSubmit={handleSignupSubmit} className="space-y-3.5">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
@@ -1772,10 +1282,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           type="text"
                           autoComplete="name"
                           required
-                          placeholder="Your Name"
+                          placeholder="Your Full Name"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                         />
                         <User className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
                       </div>
@@ -1783,23 +1293,25 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                     <div>
                       <label
-                        htmlFor="signup-company"
-                        className="text-xs font-semibold text-foreground"
+                        htmlFor="signup-phone"
+                        className="text-xs font-semibold text-foreground flex items-center justify-between"
                       >
-                        Company / Enterprise
+                        <span>Mobile Number *</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">For order updates</span>
                       </label>
                       <div className="relative mt-1">
                         <input
-                          id="signup-company"
-                          name="company"
-                          type="text"
-                          autoComplete="organization"
-                          placeholder="Steel Mills Ltd. (Optional)"
-                          value={company}
-                          onChange={(e) => setCompany(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          id="signup-phone"
+                          name="phone"
+                          type="tel"
+                          autoComplete="tel"
+                          required
+                          placeholder="98765 43210"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                         />
-                        <Building2 className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
+                        <Phone className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
                       </div>
                     </div>
                   </div>
@@ -1810,7 +1322,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                         htmlFor="signup-email"
                         className="text-xs font-semibold text-foreground"
                       >
-                        Work Email Address *
+                        Email Address *
                       </label>
                       <div className="relative mt-1">
                         <input
@@ -1819,10 +1331,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           type="email"
                           autoComplete="email"
                           required
-                          placeholder="ramesh@steelmills.com"
+                          placeholder="name@example.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                         />
                         <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
                       </div>
@@ -1830,24 +1342,23 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                     <div>
                       <label
-                        htmlFor="signup-phone"
+                        htmlFor="signup-company"
                         className="text-xs font-semibold text-foreground"
                       >
-                        Mobile Number *
+                        Company Name (Optional)
                       </label>
                       <div className="relative mt-1">
                         <input
-                          id="signup-phone"
-                          name="phone"
-                          type="tel"
-                          autoComplete="tel"
-                          required
-                          placeholder="+91 98765 43210"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          id="signup-company"
+                          name="company"
+                          type="text"
+                          autoComplete="organization"
+                          placeholder="e.g. Acme Enterprises"
+                          value={company}
+                          onChange={(e) => setCompany(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                         />
-                        <Phone className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
+                        <Building2 className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
                       </div>
                     </div>
                   </div>
@@ -1869,13 +1380,13 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                         placeholder="At least 6 characters"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground"
+                        className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
@@ -1918,7 +1429,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                       placeholder="Repeat password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                     />
                   </div>
 
@@ -1949,13 +1460,13 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                   <div className="flex items-center justify-between text-xs pt-1">
                     <span className="text-[11px] text-muted-foreground">
-                      Already registered?{" "}
+                      Already have an account?{" "}
                       <button
                         type="button"
                         onClick={() => {
                           setMode("login");
-                          setAuthMethod("password");
                           setErrorMsg("");
+                          setSuccessMsg("");
                         }}
                         className="font-bold text-primary hover:underline cursor-pointer"
                       >
@@ -1979,25 +1490,22 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer"
                   >
                     {submitting ? (
                       <div className="flex items-center gap-2">
                         <RefreshCw className="size-4 animate-spin" />
-                        <span>Registering Account...</span>
+                        <span>Creating Account...</span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-2">
-                        <span>Create Client Account</span>
+                        <span>Create Account</span>
                         <ArrowRight className="size-4" />
                       </div>
                     )}
                   </Button>
                 </form>
               )}
-
-              {/* RECAPTCHA CONTAINER (Invisible) */}
-              <div id="recaptcha-container" className="my-1 flex justify-center" />
 
               {/* Trust & Compliance Micro-Badges */}
               <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/60 pt-4 text-[10px] text-muted-foreground text-center">
@@ -2126,7 +1634,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                         onClick={() => {
                           setShowResetModal(false);
                           setMode("login");
-                          setAuthMethod("password");
                         }}
                       >
                         Back to Login
@@ -2159,7 +1666,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           type="email"
                           required
                           autoComplete="email"
-                          placeholder="client@company.com"
+                          placeholder="name@example.com"
                           value={resetEmail}
                           onChange={(e) => {
                             setResetEmail(e.target.value);

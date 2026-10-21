@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import type { ProductItem } from "./types";
 import { useAuth } from "./auth-context";
 import { subscribeCart, saveCart, clearServerCart } from "./db-service";
-import { PhoneOtpModal } from "@/components/phone-otp-modal";
 
 export interface CartItem {
   id: string;
@@ -103,10 +102,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartLoading, setIsCartLoading] = useState(false);
-
-  // Guest auth interceptor state
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const pendingActionRef = useRef<(() => void) | null>(null);
 
   // Sync with Firestore carts/{uid} when user logs in or out
   useEffect(() => {
@@ -242,16 +237,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToCart: CartContextType["addToCart"] = (item, quantity = 1) => {
-    if (!user) {
-      // Prompt OTP login modal first for logged-out visitors
-      pendingActionRef.current = () => {
-        performAddToCart(item, quantity);
-      };
-      setIsAuthModalOpen(true);
-      toast.info("Please sign in with mobile OTP to save items to your verified account.");
-      return;
-    }
-
     performAddToCart(item, quantity);
   };
 
@@ -329,18 +314,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     toast.info("Coupon removed");
   };
 
-  const handleAuthModalSuccess = () => {
-    setIsAuthModalOpen(false);
-    if (pendingActionRef.current) {
-      const action = pendingActionRef.current;
-      pendingActionRef.current = null;
-      // Execute pending action after state update
-      setTimeout(() => {
-        action();
-      }, 300);
-    }
-  };
-
   return (
     <CartContext.Provider
       value={{
@@ -366,18 +339,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-
-      {/* Guest Login Modal triggered on Add to Cart */}
-      <PhoneOtpModal
-        isOpen={isAuthModalOpen}
-        onClose={() => {
-          setIsAuthModalOpen(false);
-          pendingActionRef.current = null;
-        }}
-        onSuccess={handleAuthModalSuccess}
-        title="Sign In to Add to Cart"
-        subtitle="Verify your mobile number via real SMS OTP to store equipment in your verified server account"
-      />
     </CartContext.Provider>
   );
 }
