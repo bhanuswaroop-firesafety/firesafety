@@ -3,7 +3,8 @@ export interface ProductItem {
   name: string;
   category: string;
   description: string;
-  image: string;
+  image: string; // Primary / cover photo for backwards compatibility
+  images?: string[] | undefined; // Multiple gallery pictures
   specs: string[];
   inStock?: boolean | undefined;
   featured?: boolean | undefined;

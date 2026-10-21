@@ -10,11 +10,17 @@ import {
   CATEGORIES,
 } from "@/lib/db-service";
 import type { ProductItem, CategoryItem } from "@/lib/types";
-import { uploadProductImage, MAX_IMAGE_SIZE_MB } from "@/lib/image-upload";
+import {
+  uploadProductImage,
+  uploadProductImages,
+  calculateProductPayloadSizeKB,
+  MAX_IMAGE_SIZE_MB,
+} from "@/lib/image-upload";
 import { Button } from "@/components/button";
 import {
   AlertCircle,
   ArrowLeft,
+  ArrowRight,
   Calendar,
   Check,
   ChevronDown,
@@ -26,8 +32,11 @@ import {
   Grid,
   Image as ImageIcon,
   IndianRupee,
+  Info,
   Layers,
   List,
+  MoveLeft,
+  MoveRight,
   Package,
   Plus,
   RefreshCw,
@@ -39,6 +48,7 @@ import {
   Trash2,
   Upload,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import extinguisherImg from "@/assets/fire-extinguisher.jpg";
@@ -73,6 +83,21 @@ const PRICING_UNITS = [
   "per kit",
   "per skid setup",
   "custom quote",
+];
+
+const SUGGESTED_SPECS = [
+  "IS 15683 / NBC 2016 Certified",
+  "ISI Marked (Bureau of Indian Standards)",
+  "PESO Approved Cylinder",
+  "Epoxy Polyester Powder Coated",
+  "Controlled Discharge Brass Valve",
+  "Wall Clamp & Mounting Bracket Included",
+  "Pressure Gauge with Safety Seal",
+  "Operating Temp: -30°C to +60°C",
+  "Hydro-Tested to 35 Bar",
+  "5-Year Manufacturer Warranty",
+  "Class A, B, C & Electrical Rated",
+  "Instant Response Nozzle Assembly",
 ];
 
 /**
@@ -182,6 +207,7 @@ export function ProductManager({
     description: "",
     specs: [],
     image: extinguisherImg,
+    images: [extinguisherImg],
     inStock: true,
     featured: false,
     renewalMonths: undefined,
@@ -190,9 +216,14 @@ export function ProductManager({
   const [currentSpec, setCurrentSpec] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Product Image State
+  // Product Image & Multi-Image Gallery State
   const [imageMode, setImageMode] = useState<"upload" | "url" | "presets">("upload");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(
+    null,
+  );
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [activeGalleryPreview, setActiveGalleryPreview] = useState<string | null>(null);
   const [uploadStats, setUploadStats] = useState<{
     originalKB: number;
     compressedKB: number;
@@ -225,6 +256,11 @@ export function ProductManager({
   const categoryNames = useMemo(() => {
     return Array.from(new Set([...CATEGORIES, ...categories.map((c) => c.name)]));
   }, [categories]);
+
+  // Real-time Firestore document payload calculation
+  const payloadStats = useMemo(() => {
+    return calculateProductPayloadSizeKB(formData);
+  }, [formData]);
 
   // Recently Added Products (Top 4 latest items by createdAt)
   const recentlyAddedProducts = useMemo(() => {
@@ -316,6 +352,7 @@ export function ProductManager({
       description: "",
       specs: [],
       image: extinguisherImg,
+      images: [extinguisherImg],
       inStock: true,
       featured: false,
       renewalMonths: undefined,
@@ -336,6 +373,14 @@ export function ProductManager({
     );
     setImageMode(isUrl ? "url" : "upload");
     setUrlInput(isUrl ? product.image : "");
+
+    const initialImages =
+      product.images && product.images.length > 0
+        ? [...product.images]
+        : product.image
+          ? [product.image]
+          : [];
+
     setFormData({
       name: product.name,
       category: product.category,
@@ -345,7 +390,8 @@ export function ProductManager({
       minOrderQty: product.minOrderQty || "1",
       description: product.description,
       specs: [...(product.specs || [])],
-      image: product.image,
+      image: product.image || initialImages[0] || extinguisherImg,
+      images: initialImages.length > 0 ? initialImages : [product.image || extinguisherImg],
       inStock: product.inStock !== false,
       featured: !!product.featured,
       renewalMonths: product.renewalMonths,
@@ -355,55 +401,185 @@ export function ProductManager({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Handle Form Image File Upload (supports up to 10 MB with auto-compression)
-  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Process files from input or drag-and-drop
+  const processImageFiles = async (files: File[]) => {
+    if (files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      setFormError("Please upload a valid image file (JPG, PNG, or WebP).");
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-      setFormError(
-        `Image size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the maximum allowed limit of ${MAX_IMAGE_SIZE_MB} MB. Please upload an image under ${MAX_IMAGE_SIZE_MB} MB.`,
-      );
-      return;
+    const validImages: File[] = [];
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        setFormError(`File "${file.name}" is not a valid image. Please select JPG, PNG, or WebP.`);
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+        setFormError(
+          `Image "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the maximum allowed limit of ${MAX_IMAGE_SIZE_MB} MB. Please select images under ${MAX_IMAGE_SIZE_MB} MB.`,
+        );
+        return;
+      }
+      validImages.push(file);
     }
 
     setIsUploadingImage(true);
+    setUploadProgress({ current: 0, total: validImages.length });
     setFormError("");
 
     try {
-      const result = await uploadProductImage(file);
-      setFormData((prev) => ({ ...prev, image: result.url }));
-      setUploadStats({
-        originalKB: result.originalSizeKB,
-        compressedKB: result.compressedSizeKB,
-        name: file.name,
-        isStorage: result.isStorageUrl,
+      const results = await uploadProductImages(validImages, (curr, total) => {
+        setUploadProgress({ current: curr, total });
       });
+
+      const newUrls = results.map((r) => r.url);
+      setFormData((prev) => {
+        const currentList = prev.images || (prev.image ? [prev.image] : []);
+        // If current gallery only contained the initial default placeholder preset, replace it
+        const hasOnlyDefaultPreset =
+          currentList.length === 1 && PRESET_IMAGES.some((p) => p.src === currentList[0]);
+        const baseList = hasOnlyDefaultPreset ? [] : currentList;
+        const combined = [...baseList, ...newUrls];
+        const nextCover =
+          prev.image && !PRESET_IMAGES.some((p) => p.src === prev.image)
+            ? prev.image
+            : combined[0] || newUrls[0];
+        return {
+          ...prev,
+          images: combined,
+          image: nextCover,
+        };
+      });
+
+      const totalOrigKB = results.reduce((acc, r) => acc + r.originalSizeKB, 0);
+      const totalCompKB = results.reduce((acc, r) => acc + r.compressedSizeKB, 0);
+      const allStorage = results.every((r) => r.isStorageUrl);
+
+      setUploadStats({
+        originalKB: totalOrigKB,
+        compressedKB: totalCompKB,
+        name: `${results.length} image${results.length > 1 ? "s" : ""}`,
+        isStorage: allStorage,
+      });
+
       onNotify(
-        result.isStorageUrl
-          ? `Uploaded to cloud storage (${result.compressedSizeKB} KB)`
-          : `Image compressed & ready (${result.compressedSizeKB} KB)`,
+        `Added ${results.length} photo${results.length > 1 ? "s" : ""}: ${totalOrigKB} KB → ${totalCompKB} KB (${allStorage ? "Cloud Storage CDN" : "Optimized"})`,
       );
     } catch (err: unknown) {
       setFormError("Error processing image: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsUploadingImage(false);
+      setUploadProgress(null);
     }
   };
 
-  // Handle URL change
-  const handleUrlApply = (url: string) => {
-    setUrlInput(url);
-    const cleanUrl = url.trim();
-    if (cleanUrl) {
-      setFormData((prev) => ({ ...prev, image: cleanUrl }));
-      setUploadStats(null);
-    }
+  // Handle Form Image File Upload
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    await processImageFiles(files);
+    if (e.target) e.target.value = "";
+  };
+
+  // Handle Drag & Drop on Image Zone
+  const handleFileDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    await processImageFiles(files);
+  };
+
+  // Set any gallery photo as primary cover photo
+  const handleSetCoverImage = (imgUrl: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      image: imgUrl,
+    }));
+    onNotify("Selected as main cover photo.");
+  };
+
+  // Remove photo from gallery
+  const handleRemoveImage = (index: number) => {
+    setFormData((prev) => {
+      const list = [...(prev.images || [])];
+      const removed = list[index];
+      const nextImages = list.filter((_, i) => i !== index);
+      const nextCover =
+        prev.image === removed
+          ? nextImages[0] || extinguisherImg
+          : prev.image || nextImages[0] || extinguisherImg;
+      return {
+        ...prev,
+        images: nextImages,
+        image: nextCover,
+      };
+    });
+    onNotify("Photo removed from gallery.");
+  };
+
+  // Reorder photos in gallery
+  const handleMoveImage = (fromIndex: number, toIndex: number) => {
+    setFormData((prev) => {
+      const list = [...(prev.images || [])];
+      if (toIndex < 0 || toIndex >= list.length) return prev;
+      const [moved] = list.splice(fromIndex, 1);
+      list.splice(toIndex, 0, moved);
+      return { ...prev, images: list };
+    });
+  };
+
+  // Add Image via URL to gallery
+  const handleUrlAdd = (customUrl?: string) => {
+    const target = (customUrl || urlInput).trim();
+    if (!target) return;
+    setFormData((prev) => {
+      const currentList = prev.images || (prev.image ? [prev.image] : []);
+      const nextList = [...currentList, target];
+      return {
+        ...prev,
+        images: nextList,
+        image: prev.image || target,
+      };
+    });
+    setUrlInput("");
+    setUploadStats(null);
+    onNotify("Image URL added to product gallery.");
+  };
+
+  // Add Preset photo to gallery
+  const handlePresetAdd = (presetSrc: string) => {
+    setFormData((prev) => {
+      const currentList = prev.images || (prev.image ? [prev.image] : []);
+      const hasOnlyDefault =
+        currentList.length === 1 && currentList[0] === extinguisherImg && presetSrc !== extinguisherImg;
+      const base = hasOnlyDefault ? [] : currentList;
+      const nextList = [...base, presetSrc];
+      return {
+        ...prev,
+        images: nextList,
+        image: prev.image || presetSrc,
+      };
+    });
+    onNotify("Equipment photo added to gallery.");
+  };
+
+  // Auto-generate standardized SKU code (e.g. SUE-APT-4921)
+  const handleGenerateSku = () => {
+    const catCode = (formData.category || "GEN")
+      .replace(/[^A-Za-z]/g, "")
+      .substring(0, 3)
+      .toUpperCase();
+    const randomSeq = Math.floor(1000 + Math.random() * 9000);
+    const genSku = `SUE-${catCode}-${randomSeq}`;
+    setFormData((prev) => ({ ...prev, sku: genSku }));
+    onNotify(`Generated SKU: ${genSku}`);
+  };
+
+  // Toggle quick specification tag from suggestion chips
+  const handleToggleSuggestedSpec = (specText: string) => {
+    setFormData((prev) => {
+      const current = prev.specs || [];
+      if (current.includes(specText)) {
+        return { ...prev, specs: current.filter((s) => s !== specText) };
+      }
+      return { ...prev, specs: [...current, specText] };
+    });
   };
 
   // Add Spec Tag
@@ -433,23 +609,41 @@ export function ProductManager({
       return;
     }
 
+    const finalImages =
+      formData.images && formData.images.length > 0
+        ? formData.images
+        : formData.image
+          ? [formData.image]
+          : [extinguisherImg];
+    const primaryImage = formData.image || finalImages[0] || extinguisherImg;
+
+    const payload: Omit<ProductItem, "id"> = {
+      name: formData.name.trim(),
+      category: formData.category,
+      price: formData.price?.trim() || "",
+      unit: formData.unit || "per piece",
+      sku: formData.sku?.trim() || "",
+      minOrderQty: formData.minOrderQty?.trim() || "1",
+      description: formData.description?.trim() || "",
+      specs: formData.specs || [],
+      image: primaryImage,
+      images: finalImages,
+      inStock: formData.inStock ?? true,
+      featured: formData.featured ?? false,
+      renewalMonths: formData.renewalMonths || undefined,
+    };
+
+    // Real-time Firestore document payload safety check
+    const { sizeKB, isOverLimit } = calculateProductPayloadSizeKB(payload);
+    if (isOverLimit) {
+      setFormError(
+        `Total product data size (${sizeKB} KB) exceeds Cloud Firestore's maximum document limit of 1 MB (1,024 KB). Please remove some high-resolution embedded images or upload them using Cloud Storage.`,
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const payload: Omit<ProductItem, "id"> = {
-        name: formData.name.trim(),
-        category: formData.category,
-        price: formData.price?.trim() || "",
-        unit: formData.unit || "per piece",
-        sku: formData.sku?.trim() || "",
-        minOrderQty: formData.minOrderQty?.trim() || "1",
-        description: formData.description?.trim() || "",
-        specs: formData.specs || [],
-        image: formData.image || extinguisherImg,
-        inStock: formData.inStock ?? true,
-        featured: formData.featured ?? false,
-        renewalMonths: formData.renewalMonths || undefined,
-      };
-
       if (editingProduct?.id) {
         await updateProduct(editingProduct.id, payload);
         onNotify(`Updated product "${payload.name}" in Firestore.`);
@@ -727,9 +921,19 @@ export function ProductManager({
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-foreground">
-                      SKU / Model Number
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-foreground">
+                        SKU / Model Number
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleGenerateSku}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                        title="Auto-generate SKU based on category"
+                      >
+                        <Sparkles className="size-3" /> Auto SKU
+                      </button>
+                    </div>
                     <input
                       type="text"
                       placeholder="e.g. SUE-FE-ABC50"
@@ -772,6 +976,24 @@ export function ProductManager({
                         </option>
                       ))}
                     </select>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {["per piece", "per set", "per cylinder", "per assembly", "custom quote"].map(
+                        (quickU) => (
+                          <button
+                            key={quickU}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, unit: quickU })}
+                            className={`rounded-md px-1.5 py-0.5 text-[10px] transition-colors ${
+                              formData.unit === quickU
+                                ? "bg-primary text-primary-foreground font-bold"
+                                : "bg-muted text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {quickU}
+                          </button>
+                        ),
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -864,6 +1086,38 @@ export function ProductManager({
                   ))
                 )}
               </div>
+
+              {/* Quick Clickable Suggestions Library */}
+              <div className="pt-2 border-t border-border/60">
+                <span className="text-[11px] font-bold text-muted-foreground block mb-2 flex items-center gap-1.5">
+                  <Sparkles className="size-3 text-primary" />
+                  <span>Click to add common safety specifications:</span>
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {SUGGESTED_SPECS.map((spec) => {
+                    const isAdded = (formData.specs || []).includes(spec);
+                    return (
+                      <button
+                        key={spec}
+                        type="button"
+                        onClick={() => handleToggleSuggestedSpec(spec)}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
+                          isAdded
+                            ? "bg-primary/15 text-primary border border-primary/30 font-semibold"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/80"
+                        }`}
+                      >
+                        {isAdded ? (
+                          <Check className="size-3 text-primary" />
+                        ) : (
+                          <Plus className="size-3 opacity-60" />
+                        )}
+                        <span>{spec}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* 4. Refill / Maintenance AMC Alert Cycle */}
@@ -900,17 +1154,160 @@ export function ProductManager({
 
           {/* RIGHT COLUMN: Media, Live Card Preview & Settings (4 cols) */}
           <div className="lg:col-span-4 space-y-6">
-            {/* 1. Product Image & Media Card */}
+            {/* 1. Product Image & Multi-Photo Gallery Card */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-              <div className="border-b border-border pb-3">
-                <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
-                  <ImageIcon className="size-4 text-primary" />
-                  <span>Product Image & Media</span>
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Upload photos up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> or paste any image URL.
-                </p>
+              <div className="border-b border-border pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                    <ImageIcon className="size-4 text-primary" />
+                    <span>Product Gallery & Photos</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Upload multiple pictures up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> each.
+                  </p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+                  {(formData.images || []).length} Photo{(formData.images || []).length !== 1 ? "s" : ""}
+                </span>
               </div>
+
+              {/* Primary Cover Image Preview */}
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted/60 shadow-xs flex items-center justify-center group">
+                {formData.image ? (
+                  <>
+                    <img
+                      src={formData.image}
+                      alt="Primary cover preview"
+                      className="size-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = extinguisherImg;
+                      }}
+                    />
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-xs px-2 py-1 text-[11px] font-bold text-amber-300 shadow-sm">
+                      <Star className="size-3 fill-amber-300" />
+                      <span>Primary Cover Photo</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveGalleryPreview(formData.image || null)}
+                      className="absolute bottom-2 right-2 rounded-lg bg-black/60 hover:bg-black/80 text-white p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="View full-screen"
+                    >
+                      <Eye className="size-4" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center p-4">
+                    <ImageIcon className="mx-auto size-8 text-muted-foreground/40" />
+                    <span className="text-xs text-muted-foreground mt-1 block">No photos uploaded</span>
+                  </div>
+                )}
+                {isUploadingImage && (
+                  <div className="absolute inset-0 bg-background/90 backdrop-blur-xs flex flex-col items-center justify-center gap-2 p-4 text-xs font-bold text-primary">
+                    <RefreshCw className="size-6 animate-spin text-primary" />
+                    <span>
+                      {uploadProgress
+                        ? `Optimizing & uploading ${uploadProgress.current} of ${uploadProgress.total}...`
+                        : "Compressing & uploading photos..."}
+                    </span>
+                    <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{
+                          width: uploadProgress
+                            ? `${Math.round((uploadProgress.current / uploadProgress.total) * 100)}%`
+                            : "75%",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Multi-Photo Thumbnails Gallery Strip */}
+              {(formData.images || []).length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                    <span>Gallery Photos ({(formData.images || []).length})</span>
+                    <span className="text-[11px] font-normal text-muted-foreground">
+                      Click ⭐ to set as cover photo
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {(formData.images || []).map((imgUrl, idx) => {
+                      const isCover = formData.image === imgUrl;
+                      return (
+                        <div
+                          key={idx}
+                          className={`group relative aspect-square rounded-xl overflow-hidden border transition-all ${
+                            isCover
+                              ? "border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/5 shadow-xs"
+                              : "border-border bg-muted/30 hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Product gallery photo ${idx + 1}`}
+                            className="size-full object-cover cursor-pointer"
+                            onClick={() => setActiveGalleryPreview(imgUrl)}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = extinguisherImg;
+                            }}
+                          />
+
+                          {/* Cover Badge / Selector */}
+                          <button
+                            type="button"
+                            onClick={() => handleSetCoverImage(imgUrl)}
+                            className={`absolute top-1 left-1 rounded-md p-1 transition-all shadow-xs ${
+                              isCover
+                                ? "bg-amber-500 text-white"
+                                : "bg-black/60 text-white/80 hover:bg-amber-500 hover:text-white opacity-0 group-hover:opacity-100"
+                            }`}
+                            title={isCover ? "Current main cover photo" : "Make this the main cover photo"}
+                          >
+                            <Star className={`size-3 ${isCover ? "fill-white" : ""}`} />
+                          </button>
+
+                          {/* Delete Photo Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx)}
+                            className="absolute top-1 right-1 rounded-md bg-destructive/90 text-destructive-foreground p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive transition-all shadow-xs"
+                            title="Remove photo from gallery"
+                          >
+                            <X className="size-3" />
+                          </button>
+
+                          {/* Move Left / Right Controls */}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-white">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveImage(idx, idx - 1)}
+                              disabled={idx === 0}
+                              className="p-0.5 rounded hover:bg-white/20 disabled:opacity-30"
+                              title="Move photo earlier"
+                            >
+                              <MoveLeft className="size-3" />
+                            </button>
+                            <span className="font-mono text-[9px]">{idx + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveImage(idx, idx + 1)}
+                              disabled={idx === (formData.images?.length || 0) - 1}
+                              className="p-0.5 rounded hover:bg-white/20 disabled:opacity-30"
+                              title="Move photo later"
+                            >
+                              <MoveRight className="size-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Mode Switcher Tabs */}
               <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-muted/50 p-1 text-xs">
@@ -923,7 +1320,7 @@ export function ProductManager({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Upload File
+                  Upload Files
                 </button>
                 <button
                   type="button"
@@ -934,7 +1331,7 @@ export function ProductManager({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Image URL
+                  Paste URL
                 </button>
                 <button
                   type="button"
@@ -945,51 +1342,43 @@ export function ProductManager({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Presets
+                  Official Gear
                 </button>
-              </div>
-
-              {/* Live Preview Display */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted/60 shadow-xs flex items-center justify-center">
-                {formData.image ? (
-                  <img
-                    src={formData.image}
-                    alt="Product preview"
-                    className="size-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = extinguisherImg;
-                    }}
-                  />
-                ) : (
-                  <div className="text-center p-4">
-                    <ImageIcon className="mx-auto size-8 text-muted-foreground/40" />
-                    <span className="text-xs text-muted-foreground mt-1 block">No image selected</span>
-                  </div>
-                )}
-                {isUploadingImage && (
-                  <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 text-xs font-bold text-primary">
-                    <RefreshCw className="size-5 animate-spin" />
-                    <span>Compressing image...</span>
-                  </div>
-                )}
               </div>
 
               {/* Mode Controls */}
               {imageMode === "upload" && (
                 <div className="space-y-2">
-                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 cursor-pointer transition-all">
+                  <label
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(true);
+                    }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={handleFileDrop}
+                    className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 cursor-pointer transition-all ${
+                      isDragOver
+                        ? "border-primary bg-primary/10 scale-[1.01]"
+                        : "border-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40"
+                    }`}
+                  >
                     <Upload className="size-6 text-primary" />
                     <div className="text-center">
                       <span className="text-xs font-bold text-foreground block">
-                        {isUploadingImage ? "Processing..." : "Select File or Drag & Drop"}
+                        {isUploadingImage
+                          ? "Compressing & Uploading..."
+                          : isDragOver
+                            ? "Drop your images here"
+                            : "Select Multiple Files or Drag & Drop"}
                       </span>
                       <span className="text-[11px] text-muted-foreground mt-1 block">
-                        Accepts JPG, PNG, WebP up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong>. Auto-compressed
-                        to ~50–150 KB for blazing fast loads.
+                        Accepts JPG, PNG, WebP up to <strong>{MAX_IMAGE_SIZE_MB} MB</strong> per file.
+                        Select <strong>multiple photos</strong> at once!
                       </span>
                     </div>
                     <input
                       type="file"
+                      multiple
                       accept="image/png, image/jpeg, image/jpg, image/webp"
                       className="hidden"
                       onChange={handleFileUpload}
@@ -1001,12 +1390,12 @@ export function ProductManager({
                     <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
                       <div className="flex items-center gap-2 truncate">
                         <Check className="size-4 text-emerald-600 shrink-0" />
-                        <span className="font-semibold truncate">{uploadStats.name}</span>
+                        <span className="font-semibold truncate">{uploadStats.name} uploaded</span>
                       </div>
                       <span className="shrink-0 text-[11px] font-mono ml-2">
                         {uploadStats.originalKB} KB →{" "}
                         <strong className="text-emerald-600 dark:text-emerald-400">
-                          {uploadStats.compressedKB} KB
+                          {uploadStats.compressedKB} KB ({uploadStats.isStorage ? "Cloud Storage" : "Optimized"})
                         </strong>
                       </span>
                     </div>
@@ -1022,21 +1411,27 @@ export function ProductManager({
                       inputMode="url"
                       placeholder="https://images.unsplash.com/... or cloud storage URL"
                       value={urlInput}
-                      onChange={(e) => handleUrlApply(e.target.value)}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleUrlAdd();
+                        }
+                      }}
                       className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
                     />
-                    {urlInput && (
-                      <button
-                        type="button"
-                        onClick={() => handleUrlApply("")}
-                        className="rounded-xl border border-border px-3 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Clear
-                      </button>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleUrlAdd()}
+                      disabled={!urlInput.trim()}
+                      className="px-3"
+                    >
+                      <Plus className="size-3.5 mr-1" /> Add
+                    </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Direct public links from CDNs, Unsplash, suppliers, or Cloud Storage.
+                    Paste image links from CDNs, Cloud Storage, or manufacturer websites and click Add.
                   </p>
                 </div>
               )}
@@ -1048,33 +1443,76 @@ export function ProductManager({
                       <button
                         key={preset.name}
                         type="button"
-                        onClick={() => {
-                          setFormData((prev) => ({ ...prev, image: preset.src }));
-                          setUploadStats(null);
-                        }}
-                        className={`group relative aspect-square rounded-xl overflow-hidden border p-1 transition-all ${
-                          formData.image === preset.src
-                            ? "border-primary ring-2 ring-primary/40 bg-primary/10"
-                            : "border-border hover:border-muted-foreground/50 bg-muted/40"
-                        }`}
-                        title={preset.name}
+                        onClick={() => handlePresetAdd(preset.src)}
+                        className="group relative aspect-square rounded-xl overflow-hidden border border-border hover:border-primary/80 bg-muted/40 p-1 transition-all"
+                        title={`Add ${preset.name} to gallery`}
                       >
                         <img
                           src={preset.src}
                           alt={preset.name}
-                          className="size-full object-cover rounded-lg"
+                          className="size-full object-cover rounded-lg group-hover:scale-105 transition-transform"
                         />
-                        <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-[9px] text-white text-center truncate">
-                          {preset.name}
+                        <span className="absolute inset-x-0 bottom-0 bg-black/75 py-0.5 text-[9px] text-white text-center truncate">
+                          + {preset.name}
                         </span>
                       </button>
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Select from official Sri Udharchi catalog equipment photographs.
+                    Click any standard photograph to add it directly to this product's photo gallery.
                   </p>
                 </div>
               )}
+
+              {/* Firebase Storage & Firestore Document Payload Safety Meter */}
+              <div className="rounded-xl border border-border/80 bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <Info className="size-3.5 text-primary" />
+                    <span>Firebase Storage & Limit Safety</span>
+                  </span>
+                  <span
+                    className={`font-mono font-bold text-[11px] ${
+                      payloadStats.isOverLimit
+                        ? "text-destructive"
+                        : payloadStats.isSafe
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-amber-500"
+                    }`}
+                  >
+                    {payloadStats.sizeKB} KB / 1,024 KB Max
+                  </span>
+                </div>
+
+                {/* Progress Gauge */}
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      payloadStats.isOverLimit
+                        ? "bg-destructive"
+                        : payloadStats.isSafe
+                          ? "bg-emerald-500"
+                          : "bg-amber-500"
+                    }`}
+                    style={{
+                      width: `${Math.min(100, Math.max(3, (payloadStats.sizeKB / 1024) * 100))}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  {payloadStats.isOverLimit ? (
+                    <strong className="text-destructive">
+                      Document exceeds Firestore's 1 MB limit. Please remove or upload via Cloud Storage.
+                    </strong>
+                  ) : (
+                    <span>
+                      Firebase Cloud Storage accepts up to <strong>5,000 MB (5 GB)</strong> per file. Document payload is currently{" "}
+                      <strong className="text-foreground">{payloadStats.sizeKB} KB</strong> (well within 1 MB limit).
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
 
             {/* 2. Inventory & Visibility Card */}
@@ -1647,14 +2085,24 @@ export function ProductManager({
                     {/* Product Name & Image */}
                     <td className="py-3 pl-4 pr-3">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={prod.image}
-                          alt={prod.name}
-                          className="size-11 shrink-0 rounded-lg object-cover border border-border"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = extinguisherImg;
-                          }}
-                        />
+                        <div className="relative size-11 shrink-0">
+                          <img
+                            src={prod.image}
+                            alt={prod.name}
+                            className="size-11 rounded-lg object-cover border border-border"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = extinguisherImg;
+                            }}
+                          />
+                          {prod.images && prod.images.length > 1 && (
+                            <span
+                              className="absolute -bottom-1 -right-1 rounded-full bg-primary text-primary-foreground px-1 text-[9px] font-bold shadow-xs"
+                              title={`${prod.images.length} gallery photos`}
+                            >
+                              +{prod.images.length - 1}
+                            </span>
+                          )}
+                        </div>
                         <div className="min-w-0 max-w-xs">
                           <strong className="block truncate font-semibold text-foreground">
                             {prod.name}
@@ -2099,7 +2547,33 @@ export function ProductManager({
                 <span className="absolute left-2.5 top-2.5 rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-bold">
                   {previewProduct.category}
                 </span>
+                {previewProduct.images && previewProduct.images.length > 1 && (
+                  <span className="absolute right-2.5 top-2.5 rounded-md bg-black/75 text-white px-2 py-0.5 text-[10px] font-bold backdrop-blur flex items-center gap-1">
+                    <ImageIcon className="size-3" />
+                    <span>{previewProduct.images.length} photos</span>
+                  </span>
+                )}
               </div>
+
+              {/* Multiple Gallery Photos in Quick Preview */}
+              {previewProduct.images && previewProduct.images.length > 1 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {previewProduct.images.map((thumb, tIdx) => (
+                    <button
+                      key={tIdx}
+                      type="button"
+                      onClick={() => setPreviewProduct({ ...previewProduct, image: thumb })}
+                      className={`relative size-12 shrink-0 rounded-lg overflow-hidden border transition-all ${
+                        previewProduct.image === thumb
+                          ? "border-primary ring-2 ring-primary/40 scale-105"
+                          : "border-border opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={thumb} alt={`Photo ${tIdx + 1}`} className="size-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <h4 className="font-display text-base font-bold text-foreground">
@@ -2176,6 +2650,33 @@ export function ProductManager({
                 <span>Edit This Product</span>
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL-SIZE GALLERY PHOTO LIGHTBOX MODAL */}
+      {activeGalleryPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          onClick={() => setActiveGalleryPreview(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-black/60 p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveGalleryPreview(null)}
+              className="absolute top-4 right-4 z-10 rounded-full bg-black/70 p-2 text-white hover:bg-black transition-colors"
+              title="Close full-screen preview"
+            >
+              <X className="size-5" />
+            </button>
+            <img
+              src={activeGalleryPreview}
+              alt="High resolution equipment preview"
+              className="max-h-[82vh] w-auto max-w-full rounded-xl object-contain mx-auto"
+            />
           </div>
         </div>
       )}

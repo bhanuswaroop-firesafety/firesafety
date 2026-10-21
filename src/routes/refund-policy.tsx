@@ -139,7 +139,7 @@ export function RefundPolicyPage() {
               </p>
               <div className="mt-3 space-y-1.5 text-xs text-foreground">
                 <p className="flex items-center gap-2"><Mail className="size-3.5 text-primary" /> <strong>Email:</strong> <a href="mailto:support@udharchi.in" className="hover:text-primary underline">support@udharchi.in</a></p>
-                <p className="flex items-center gap-2"><Phone className="size-3.5 text-primary" /> <strong>Support Line:</strong> <a href="tel:+918639858221" className="hover:text-primary underline">+91 8639858221</a> / <a href="tel:+919030609171" className="hover:text-primary underline">+91 9030609171</a></p>
+                <p className="flex items-center gap-2"><Phone className="size-3.5 text-primary" /> <strong>Support Line:</strong> <a href="tel:+918639858221" className="hover:text-primary underline">+91 8639858221</a> / <a href="tel:+919390326541" className="hover:text-primary underline">+91 9390326541</a></p>
                 <p><strong>Physical Return Facility:</strong> Sri Udharchi Enterprises, H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, Andhra Pradesh - 515241</p>
               </div>
             </section>

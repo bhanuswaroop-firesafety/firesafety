@@ -82,7 +82,7 @@ export const DEFAULT_SOCIAL_SETTINGS: SocialSettings = {
 // Default Contact & Support Settings
 export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   supportPhone: "+91 8639858221",
-  secondaryPhone: "+91 9030609171",
+  secondaryPhone: "+91 9390326541",
   supportEmail: "support@udharchi.in",
   adminEmail: "bhanuswaroop04@gmail.com",
   address: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",

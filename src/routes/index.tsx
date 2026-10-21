@@ -843,7 +843,7 @@ function Index() {
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-1 mt-6">
               {[
                 [Phone, "Primary Dispatch Hotline", "+91 8639858221", "tel:+918639858221"],
-                [Phone, "Secondary Technical Desk", "+91 9030609171", "tel:+919030609171"],
+                [Phone, "Secondary Technical Desk", "+91 9390326541", "tel:+919390326541"],
                 [
                   Mail,
                   "Official Email",
