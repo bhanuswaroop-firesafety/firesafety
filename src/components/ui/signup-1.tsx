@@ -23,12 +23,14 @@ export interface Signup1Props {
   email?: string;
   password?: string;
   name?: string;
+  phone?: string;
   onEmailChange?: (val: string) => void;
   onPasswordChange?: (val: string) => void;
   onNameChange?: (val: string) => void;
+  onPhoneChange?: (val: string) => void;
   onSubmit?: (
     e: FormEvent,
-    data: { email: string; password: string; name?: string },
+    data: { email: string; password: string; name?: string; phone?: string },
   ) => void | Promise<void>;
   onGoogleClick?: () => void | Promise<void>;
   onPhoneOtpClick?: () => void;
@@ -36,6 +38,7 @@ export interface Signup1Props {
   errorMessage?: string;
   successMessage?: string;
   showNameField?: boolean;
+  showPhoneField?: boolean;
 }
 
 const DEFAULT_LOGO = {
@@ -57,9 +60,11 @@ const Signup1 = ({
   email: controlledEmail,
   password: controlledPassword,
   name: controlledName,
+  phone: controlledPhone,
   onEmailChange,
   onPasswordChange,
   onNameChange,
+  onPhoneChange,
   onSubmit,
   onGoogleClick,
   onPhoneOtpClick,
@@ -67,6 +72,7 @@ const Signup1 = ({
   errorMessage,
   successMessage,
   showNameField = false,
+  showPhoneField = false,
 }: Signup1Props) => {
   const isLogin = mode === "login";
 
@@ -74,11 +80,13 @@ const Signup1 = ({
   const [internalEmail, setInternalEmail] = useState("");
   const [internalPassword, setInternalPassword] = useState("");
   const [internalName, setInternalName] = useState("");
+  const [internalPhone, setInternalPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const emailValue = controlledEmail !== undefined ? controlledEmail : internalEmail;
   const passwordValue = controlledPassword !== undefined ? controlledPassword : internalPassword;
   const nameValue = controlledName !== undefined ? controlledName : internalName;
+  const phoneValue = controlledPhone !== undefined ? controlledPhone : internalPhone;
 
   const handleEmailChange = (val: string) => {
     if (onEmailChange) onEmailChange(val);
@@ -95,6 +103,11 @@ const Signup1 = ({
     else setInternalName(val);
   };
 
+  const handlePhoneChange = (val: string) => {
+    if (onPhoneChange) onPhoneChange(val);
+    else setInternalPhone(val);
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (onSubmit) {
@@ -102,6 +115,7 @@ const Signup1 = ({
         email: emailValue,
         password: passwordValue,
         name: nameValue,
+        phone: phoneValue,
       });
     }
   };
@@ -186,7 +200,7 @@ const Signup1 = ({
               <div className="flex flex-col gap-1.5">
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder="Email *"
                   autoComplete="email"
                   required
                   value={emailValue}
@@ -194,6 +208,20 @@ const Signup1 = ({
                   className="h-10 rounded-lg border-input bg-background/50 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:border-red-600 transition-all text-sm"
                 />
               </div>
+
+              {!isLogin && (
+                <div className="flex flex-col gap-1.5">
+                  <Input
+                    type="tel"
+                    placeholder="Mobile Number *"
+                    autoComplete="tel"
+                    required
+                    value={phoneValue}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    className="h-10 rounded-lg border-input bg-background/50 focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:border-red-600 transition-all text-sm"
+                  />
+                </div>
+              )}
 
               <div className="relative flex flex-col gap-1.5">
                 <Input

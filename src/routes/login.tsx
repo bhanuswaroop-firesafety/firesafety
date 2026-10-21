@@ -4,8 +4,6 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/button";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { Signup1, Login1 } from "@/components/ui/signup-1";
-import { PhoneOtpModal } from "@/components/phone-otp-modal";
 import {
   Eye,
   EyeOff,
@@ -401,6 +399,12 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     setErrorMsg("");
     setSuccessMsg("");
 
+    const cleanPhone = phone.trim().replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
     if (password.length < 6) {
       setErrorMsg("Password must be at least 6 characters long.");
       return;
@@ -414,7 +418,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     setSubmitting(true);
     try {
       const displayName = company ? `${name} (${company})` : name;
-      await registerWithEmail(email, password, displayName, { phone, company });
+      await registerWithEmail(email, password, displayName, { phone: phone.trim(), company: company.trim() });
       setSuccessMsg("Account created successfully! Redirecting...");
       setTimeout(() => {
         navigate({ to: "/" });
@@ -455,77 +459,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
       setSubmitting(false);
     }
   };
-
-  if (!user) {
-    return (
-      <>
-        {mode === "signup" ? (
-          <Signup1
-            mode="signup"
-            heading="Create an account"
-            logo={{
-              url: "/",
-              src: "/sri-udharchi-enterprises-logo.png",
-              alt: "Sri Udharchi Enterprises",
-              title: "Sri Udharchi Enterprises",
-            }}
-            signupText="Create an account"
-            googleText="Sign up with Google"
-            loginText="Already have an account?"
-            loginUrl="/login"
-            linkLabel="Login"
-            email={email}
-            password={password}
-            onEmailChange={setEmail}
-            onPasswordChange={setPassword}
-            onSubmit={handleSignupSubmit}
-            onGoogleClick={handleGoogleAuth}
-            onPhoneOtpClick={() => setShowPhoneOtpModal(true)}
-            isLoading={submitting}
-            errorMessage={errorMsg}
-            successMessage={successMsg}
-          />
-        ) : (
-          <Login1
-            mode="login"
-            heading="Welcome back"
-            logo={{
-              url: "/",
-              src: "/sri-udharchi-enterprises-logo.png",
-              alt: "Sri Udharchi Enterprises",
-              title: "Sri Udharchi Enterprises",
-            }}
-            signupText="Sign in"
-            googleText="Sign in with Google"
-            loginText="Don't have an account?"
-            loginUrl="/signup"
-            linkLabel="Sign up"
-            email={email}
-            password={password}
-            onEmailChange={setEmail}
-            onPasswordChange={setPassword}
-            onSubmit={handleLoginSubmit}
-            onGoogleClick={handleGoogleAuth}
-            onPhoneOtpClick={() => setShowPhoneOtpModal(true)}
-            isLoading={submitting}
-            errorMessage={errorMsg}
-            successMessage={successMsg}
-          />
-        )}
-
-        <PhoneOtpModal
-          isOpen={showPhoneOtpModal}
-          onClose={() => setShowPhoneOtpModal(false)}
-          onSuccess={() => {
-            setShowPhoneOtpModal(false);
-            navigate({ to: "/" });
-          }}
-          title={mode === "signup" ? "Mobile Phone Registration" : "Mobile Phone Login"}
-          subtitle="Instant 6-digit SMS OTP verification"
-        />
-      </>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
@@ -1759,7 +1692,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           name="company"
                           type="text"
                           autoComplete="organization"
-                          placeholder="Company Ltd. (Optional)"
+                          placeholder="Steel Mills Ltd. (Optional)"
                           value={company}
                           onChange={(e) => setCompany(e.target.value)}
                           className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -1784,7 +1717,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           type="email"
                           autoComplete="email"
                           required
-                          placeholder="name@company.com"
+                          placeholder="ramesh@steelmills.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -1798,7 +1731,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                         htmlFor="signup-phone"
                         className="text-xs font-semibold text-foreground"
                       >
-                        Phone Contact
+                        Mobile Number *
                       </label>
                       <div className="relative mt-1">
                         <input
@@ -1806,6 +1739,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           name="phone"
                           type="tel"
                           autoComplete="tel"
+                          required
                           placeholder="+91 98765 43210"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
