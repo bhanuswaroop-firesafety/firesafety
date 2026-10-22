@@ -40,9 +40,9 @@ import { seoHead } from "@/lib/seo";
 export const Route = createFileRoute("/checkout")({
   head: () =>
     seoHead({
-      title: "Secure Checkout & Payment | Sri Udharchi Enterprises",
+      title: "Secure Checkout | Sri Udharchi Enterprises",
       description:
-        "Complete your industrial safety equipment order. Multi-option payment with instant UPI, Credit/Debit cards, Net Banking, and B2B Corporate Purchase Orders.",
+        "Complete your industrial safety equipment order. Safe & verified order booking with Cash on Delivery across India.",
       path: "/checkout",
       noIndex: true,
     }),
@@ -163,7 +163,7 @@ function CheckoutPage() {
           if (d.gstin) setGstin(d.gstin);
           if (d.isB2B !== undefined) setIsB2B(d.isB2B);
           if (d.deliverySpeed) setDeliverySpeed(d.deliverySpeed);
-          if (d.paymentMethod) setPaymentMethod(d.paymentMethod as PaymentMethod);
+          setPaymentMethod("cod");
         }
       })
       .catch((err) => console.warn("Failed to load checkout draft from Firestore:", err))
@@ -198,8 +198,8 @@ function CheckoutPage() {
     }
   }, [userProfile, user]);
 
-  // Payment states
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
+  // Payment states (Only COD active for now)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [upiId, setUpiId] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
@@ -298,16 +298,16 @@ function CheckoutPage() {
       setUpiId("sriudharchi@payment");
     }
 
-    // Start authentic interactive payment flow
+    // Start authentic interactive order processing flow
     setIsProcessing(true);
-    setProcessingStep("Connecting to 256-bit SSL Payment Gateway...");
+    setProcessingStep("Verifying order details & reserving inventory...");
 
     setTimeout(() => {
-      setProcessingStep("Verifying Merchant & Account Compliance with RBI...");
+      setProcessingStep("Registering Cash on Delivery shipment...");
     }, 900);
 
     setTimeout(() => {
-      setProcessingStep("Authorizing Payment & Reserving Industrial Inventory...");
+      setProcessingStep("Finalizing your order confirmation...");
     }, 1800);
 
     setTimeout(async () => {
@@ -489,8 +489,10 @@ function CheckoutPage() {
                     </p>
                     <div className="mt-2 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
                       Payment Mode:{" "}
-                      <span className="uppercase font-bold text-primary">
-                        {confirmedOrder.paymentMethod}
+                      <span className="font-bold text-primary">
+                        {confirmedOrder.paymentMethod === "cod"
+                          ? "Cash on Delivery (COD)"
+                          : confirmedOrder.paymentMethod.toUpperCase()}
                       </span>
                     </div>
                   </div>
@@ -677,8 +679,9 @@ function CheckoutPage() {
               <h1 className="font-display text-2xl font-black sm:text-3xl">
                 Secure Equipment Checkout
               </h1>
-              <p className="text-xs text-muted-foreground">
-                256-Bit Encrypted Statutory Procurement • RBI Approved Payment Gateways
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                Verified Order Booking • Cash on Delivery (COD) Available
               </p>
             </div>
           </div>
@@ -999,7 +1002,7 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Step 3: Payment Options */}
+                {/* Step 3: Payment Options (Only COD active) */}
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5">
                   <div className="flex items-center gap-2.5 pb-2 border-b border-border">
                     <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
@@ -1010,223 +1013,46 @@ function CheckoutPage() {
                     </h2>
                   </div>
 
-                  {/* Payment Tabs */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {[
-                      { id: "upi", label: "Instant UPI", icon: QrCode },
-                      { id: "card", label: "Card", icon: CreditCard },
-                      { id: "netbanking", label: "NetBanking", icon: Building2 },
-                      { id: "po", label: "Corp. PO", icon: FileText },
-                      { id: "cod", label: "Pay on Delivery", icon: Truck },
-                    ].map((tab) => {
-                      const Icon = tab.icon;
-                      const active = paymentMethod === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setPaymentMethod(tab.id as PaymentMethod)}
-                          className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-center transition-all ${
-                            active
-                              ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                              : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                          }`}
-                        >
-                          <Icon className="size-4" />
-                          <span className="text-[11px] leading-tight">{tab.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Tab Content: UPI */}
-                  {paymentMethod === "upi" && (
-                    <div className="rounded-xl border border-border bg-muted/20 p-5 space-y-4">
-                      <div className="flex flex-col sm:flex-row items-center gap-6">
-                        {/* Simulated Authentic QR Code */}
-                        <div className="size-36 rounded-xl border-2 border-primary/30 bg-white p-2.5 shadow-sm flex flex-col items-center justify-center">
-                          <div className="grid grid-cols-5 gap-1.5 size-full place-items-center">
-                            {Array.from({ length: 25 }).map((_, i) => (
-                              <div
-                                key={i}
-                                className={`size-4 rounded-xs ${
-                                  [0, 1, 2, 4, 5, 6, 12, 18, 20, 21, 22, 24].includes(i)
-                                    ? "bg-slate-900"
-                                    : [8, 14, 16].includes(i)
-                                      ? "bg-primary"
-                                      : "bg-slate-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[9px] font-mono text-slate-800 font-bold mt-1">
-                            Scan via GPay/PhonePe
-                          </span>
+                  {/* Single Active Method: Cash on Delivery */}
+                  <div className="rounded-2xl border-2 border-primary bg-primary/5 p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                          <Truck className="size-6" />
                         </div>
-
-                        <div className="space-y-2 text-xs text-muted-foreground text-center sm:text-left flex-1">
-                          <strong className="text-foreground text-sm block">
-                            Scan QR Code or Enter UPI ID
-                          </strong>
-                          <p>
-                            UPI ID:{" "}
-                            <span className="font-mono font-bold text-foreground">
-                              sriudharchienterprises@okhdfcbank
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm sm:text-base font-bold text-foreground">
+                              Cash / Pay on Delivery (COD)
+                            </h3>
+                            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 border border-emerald-500/20">
+                              Active
                             </span>
-                          </p>
-                          <p>
-                            Supports Google Pay, PhonePe, Paytm, BHIM, CRED, and all Indian banking
-                            apps.
-                          </p>
-                          <div className="pt-2">
-                            <input
-                              type="text"
-                              value={upiId}
-                              onChange={(e) => setUpiId(e.target.value)}
-                              placeholder="Or enter your UPI ID (e.g. mobile@upi)"
-                              className="w-full max-w-sm rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                            />
                           </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Pay upon physical delivery and inspection of your equipment
+                          </p>
                         </div>
+                      </div>
+                      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs">
+                        <CheckCircle2 className="size-4" />
                       </div>
                     </div>
-                  )}
 
-                  {/* Tab Content: Cards */}
-                  {paymentMethod === "card" && (
-                    <div className="rounded-xl border border-border bg-muted/20 p-5 space-y-3 text-xs">
-                      <div className="flex items-center justify-between text-muted-foreground pb-2">
-                        <span>Accepted: Visa, MasterCard, RuPay, Maestro</span>
-                        <div className="flex gap-1 font-bold text-[10px]">
-                          <span className="rounded bg-card px-1.5 py-0.5 border">RUPAY</span>
-                          <span className="rounded bg-card px-1.5 py-0.5 border">VISA</span>
-                          <span className="rounded bg-card px-1.5 py-0.5 border">MC</span>
-                        </div>
+                    <div className="rounded-xl border border-border/80 bg-background/90 p-4 text-xs space-y-2 text-muted-foreground">
+                      <div className="flex items-center gap-2 text-foreground font-semibold">
+                        <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+                        <span>Zero Advance Risk • Inspect Equipment Before Acceptance</span>
                       </div>
-
-                      <div>
-                        <label className="font-bold text-foreground block mb-1">Card Number</label>
-                        <input
-                          type="text"
-                          value={cardNumber}
-                          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                          placeholder="4532 •••• •••• 8920"
-                          maxLength={19}
-                          className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 font-mono text-xs focus:border-primary focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="font-bold text-foreground block mb-1">
-                            Expiry (MM/YY)
-                          </label>
-                          <input
-                            type="text"
-                            value={cardExpiry}
-                            onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                            placeholder="12/28"
-                            maxLength={5}
-                            className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 font-mono text-xs focus:border-primary focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="font-bold text-foreground block mb-1">
-                            CVV (3 Digits)
-                          </label>
-                          <input
-                            type="password"
-                            value={cardCvv}
-                            onChange={(e) => setCardCvv(e.target.value.slice(0, 4))}
-                            placeholder="•••"
-                            maxLength={4}
-                            className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 font-mono text-xs focus:border-primary focus:outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-foreground block mb-1">
-                          Cardholder Name
-                        </label>
-                        <input
-                          type="text"
-                          value={cardName}
-                          onChange={(e) => setCardName(e.target.value)}
-                          placeholder="Name as printed on card"
-                          className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs focus:border-primary focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab Content: Net Banking */}
-                  {paymentMethod === "netbanking" && (
-                    <div className="rounded-xl border border-border bg-muted/20 p-5 space-y-4 text-xs">
-                      <span className="font-bold text-foreground block">
-                        Select Popular Financial Institution:
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {POPULAR_BANKS.map((b) => (
-                          <button
-                            key={b.id}
-                            type="button"
-                            onClick={() => setSelectedBank(b.id)}
-                            className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition-all ${
-                              selectedBank === b.id
-                                ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                            }`}
-                          >
-                            <Building2 className="size-4 shrink-0" />
-                            <span className="truncate">{b.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab Content: Purchase Order (PO) */}
-                  {paymentMethod === "po" && (
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3 text-xs">
-                      <strong className="block font-bold text-foreground text-sm">
-                        Corporate Purchase Order / Proforma Billing
-                      </strong>
-                      <p className="text-muted-foreground">
-                        For institutional clients, government contractors, and enterprise
-                        facilities. Sri Udharchi Enterprises issues an official proforma invoice
-                        with bank NEFT/RTGS details and payment terms against delivery.
+                      <p className="leading-relaxed">
+                        Online payment gateways are currently turned off. You can pay conveniently via cash or through your UPI app (Google Pay, PhonePe, Paytm, BHIM) directly to the delivery logistics executive at your doorstep or facility site.
                       </p>
-                      <div>
-                        <label className="font-bold text-foreground block mb-1">
-                          PO Reference Number / Work Order ID (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={poNumber}
-                          onChange={(e) => setPoNumber(e.target.value)}
-                          placeholder="e.g. PO/2026/AP-8841"
-                          className="w-full max-w-sm rounded-xl border border-border bg-background px-3 py-2 text-xs focus:border-primary focus:outline-none"
-                        />
+                      <div className="flex items-center gap-1.5 pt-1 text-[11px] text-primary font-medium">
+                        <Phone className="size-3.5 shrink-0" />
+                        <span>Our dispatch desk will verify your order on your registered mobile number prior to cargo shipment.</span>
                       </div>
                     </div>
-                  )}
-
-                  {/* Tab Content: Cash on Delivery */}
-                  {paymentMethod === "cod" && (
-                    <div className="rounded-xl border border-border bg-muted/20 p-5 space-y-2 text-xs text-muted-foreground">
-                      <strong className="block font-bold text-foreground text-sm">
-                        Cash / Pay on Delivery
-                      </strong>
-                      <p>
-                        Pay in cash or via digital UPI QR directly to the delivery logistics
-                        executive upon physical inspection and handover of equipment.
-                      </p>
-                      <p className="text-primary font-semibold">
-                        Verification SMS / Call will be made prior to cargo dispatch.
-                      </p>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -1323,14 +1149,12 @@ function CheckoutPage() {
                       {isProcessing ? (
                         <span className="flex items-center gap-2">
                           <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          Processing Security...
+                          Processing Order...
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          <Lock className="size-4" />
-                          {paymentMethod === "po"
-                            ? "Generate PO & Confirm Order"
-                            : `Pay ₹${finalPayable.toLocaleString("en-IN")}`}
+                          <CheckCircle2 className="size-4" />
+                          Confirm Order (Cash on Delivery) • ₹{finalPayable.toLocaleString("en-IN")}
                         </span>
                       )}
                     </Button>

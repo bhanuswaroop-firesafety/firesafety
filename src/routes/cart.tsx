@@ -558,12 +558,11 @@ function CartPage() {
                   <strong className="block font-bold text-foreground mb-1">
                     Corporate & Government Procurement
                   </strong>
-                  Need a formal Proforma Invoice or Purchase Order (PO) approval before
-                  disbursement? Proceed to checkout and select{" "}
+                  Need a formal Proforma Invoice or custom procurement terms? Proceed to checkout with{" "}
                   <span className="font-semibold text-foreground">
-                    "Corporate Purchase Order / Proforma Invoice"
+                    Cash on Delivery
                   </span>{" "}
-                  as your payment method.
+                  or contact our dispatch desk at <span className="font-semibold text-foreground">+91 8639858221</span>.
                 </div>
               </div>
             </div>
