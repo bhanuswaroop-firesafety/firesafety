@@ -890,7 +890,7 @@ function ProductViewPage() {
                     </span>
                     <span className="inline-flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
                       <Zap className="size-3.5 fill-amber-500" />
-                      <span>Priority Dispatch: 1 to 2 days</span>
+                      <span>Priority Dispatch: 2 to 4 days</span>
                     </span>
                   </div>
                   {product.minOrderQty && (

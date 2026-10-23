@@ -632,7 +632,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                                 {isPriority ? (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                                     <Zap className="size-3 fill-current" />
-                                    <span>Priority Dispatch (1 to 2 days)</span>
+                                    <span>Priority Dispatch (2 to 4 days)</span>
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border border-border">

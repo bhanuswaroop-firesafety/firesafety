@@ -117,8 +117,8 @@ export function calculateDeliveryWindow(
   const today = getKolkataDateString();
   const stdMin = settings?.standardDaysMin ?? 5;
   const stdMax = settings?.standardDaysMax ?? 7;
-  const prioMin = settings?.priorityDaysMin ?? 1;
-  const prioMax = settings?.priorityDaysMax ?? 2;
+  const prioMin = settings?.priorityDaysMin ?? 2;
+  const prioMax = settings?.priorityDaysMax ?? 4;
 
   const minDays = shippingType === "priority" ? prioMin : stdMin;
   const maxDays = shippingType === "priority" ? prioMax : stdMax;

@@ -69,9 +69,10 @@ export const CATEGORIES: string[] = [
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
   standardDaysMin: 5,
   standardDaysMax: 7,
-  priorityDaysMin: 1,
-  priorityDaysMax: 2,
-  priorityCharge: 0,
+  priorityDaysMin: 2,
+  priorityDaysMax: 4,
+  standardCharge: 250,
+  priorityCharge: 400,
 };
 
 // Task F: Default Social Settings (Instagram defaults to empty to hide if unconfigured)
@@ -597,8 +598,8 @@ export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
     order.shippingCharge !== undefined
       ? order.shippingCharge
       : shippingType === "priority"
-        ? shippingSettings.priorityCharge
-        : 0;
+        ? (shippingSettings.priorityCharge || 400)
+        : (shippingSettings.standardCharge || 250);
 
   // Task C: Status audit history initialized to "placed"
   const initialStatus = order.status || "placed";

@@ -5642,25 +5642,48 @@ function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="text-xs">
-                      <label className="block font-semibold text-foreground mb-1">
-                        Priority / Emergency Dispatch Fee in ₹ (INR)
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={shippingSettings.priorityCharge}
-                        onChange={(e) =>
-                          setShippingSettings({
-                            ...shippingSettings,
-                            priorityCharge: Number(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
-                      />
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        Default is ₹0 (Free priority emergency dispatch for industrial clients).
-                      </p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Standard Logistics Fee in ₹ (INR)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={shippingSettings.standardCharge ?? 250}
+                          onChange={(e) =>
+                            setShippingSettings({
+                              ...shippingSettings,
+                              standardCharge: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        />
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Default is ₹250 (Standard regional freight).
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Priority / Emergency Dispatch Fee in ₹ (INR)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={shippingSettings.priorityCharge ?? 400}
+                          onChange={(e) =>
+                            setShippingSettings({
+                              ...shippingSettings,
+                              priorityCharge: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        />
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Default is ₹400 (Direct carrier priority dispatch).
+                        </p>
+                      </div>
                     </div>
 
                     <div className="pt-2 flex justify-end">

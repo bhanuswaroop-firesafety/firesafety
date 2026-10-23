@@ -140,9 +140,10 @@ export interface AuthorizedAdminItem {
 export interface ShippingSettings {
   standardDaysMin: number; // default: 5
   standardDaysMax: number; // default: 7
-  priorityDaysMin: number; // default: 1
-  priorityDaysMax: number; // default: 2
-  priorityCharge: number; // default: 0
+  priorityDaysMin: number; // default: 2
+  priorityDaysMax: number; // default: 4
+  priorityCharge: number; // default: 400
+  standardCharge?: number; // default: 250
   updatedAt?: string | undefined;
 
   // Backward-compatible aliases

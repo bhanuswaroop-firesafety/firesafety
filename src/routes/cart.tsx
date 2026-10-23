@@ -548,7 +548,7 @@ function CartPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Truck className="size-4 text-primary shrink-0" />
-                      <span>Pan-India Safe Cargo (Standard 5 to 7 days | Priority 1 to 2 days)</span>
+                      <span>Pan-India Safe Cargo (Standard 5 to 7 days | Priority 2 to 4 days)</span>
                     </div>
                   </div>
                 </div>

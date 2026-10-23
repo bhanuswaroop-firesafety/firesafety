@@ -236,10 +236,14 @@ function CheckoutPage() {
   const [confirmedOrder, setConfirmedOrder] = useState<OrderConfirmationData | null>(null);
   const [validationError, setValidationError] = useState("");
 
-  // Task A: Priority dispatch charge from Firestore settings (default 0)
-  const priorityCharge = shippingSettings.priorityCharge || 0;
-  const extraPriorityShipping = deliverySpeed === "priority" ? priorityCharge : 0;
-  const finalPayable = totalAmount + extraPriorityShipping;
+  // Priority dispatch vs Standard shipping fee
+  // Standard is flat ₹250 (free above ₹5,000 threshold), Priority is flat ₹400 (or custom from shippingSettings)
+  const standardFee = shippingFee;
+  const priorityFee = shippingSettings.priorityCharge || 400;
+  const selectedShippingFee = deliverySpeed === "priority" ? priorityFee : standardFee;
+  const extraPriorityShipping = deliverySpeed === "priority" ? Math.max(0, priorityFee - shippingFee) : 0;
+  const finalPayable =
+    Math.max(0, subtotal - discountAmount) + gstAmount + selectedShippingFee;
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,7 +337,7 @@ function CheckoutPage() {
         subtotal,
         discount: discountAmount,
         gst: gstAmount,
-        shipping: shippingFee + extraPriorityShipping,
+        shipping: selectedShippingFee,
         total: finalPayable,
         estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
         shippingType: deliverySpeed,
@@ -367,13 +371,13 @@ function CheckoutPage() {
           subtotal,
           discount: discountAmount,
           gst: gstAmount,
-          shipping: shippingFee + extraPriorityShipping,
+          shipping: selectedShippingFee,
           total: finalPayable,
           status: "placed",
           shippingType: deliverySpeed,
           expectedDeliveryFrom: windowInfo.fromISO,
           expectedDeliveryTo: windowInfo.toISO,
-          shippingCharge: shippingFee + extraPriorityShipping,
+          shippingCharge: selectedShippingFee,
           estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
         });
 
@@ -439,8 +443,8 @@ function CheckoutPage() {
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold backdrop-blur">
                     <Truck className="size-3.5" />
                     {confirmedOrder.shippingType === "priority"
-                      ? "Priority / Emergency Dispatch (1-2 days)"
-                      : "Standard Logistics (5-7 days)"}
+                      ? `Priority / Emergency Dispatch (${shippingSettings.priorityDaysMin}-${shippingSettings.priorityDaysMax} days)`
+                      : `Standard Logistics (${shippingSettings.standardDaysMin}-${shippingSettings.standardDaysMax} days)`}
                   </div>
                 </div>
               </div>
@@ -471,11 +475,11 @@ function CheckoutPage() {
                       <span className="font-semibold text-foreground flex items-center gap-1.5 mt-0.5">
                         {confirmedOrder.shippingType === "priority" ? (
                           <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold">
-                            <Zap className="size-3" /> Priority Emergency Dispatch (1 to 2 days)
+                            <Zap className="size-3" /> Priority Emergency Dispatch ({shippingSettings.priorityDaysMin} to {shippingSettings.priorityDaysMax} days)
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-primary font-bold">
-                            <Truck className="size-3" /> Standard Delivery (5 to 7 days)
+                            <Truck className="size-3" /> Standard Delivery ({shippingSettings.standardDaysMin} to {shippingSettings.standardDaysMax} days)
                           </span>
                         )}
                       </span>
@@ -963,7 +967,7 @@ function CheckoutPage() {
                           Regular cargo dispatch arriving in {shippingSettings.standardDaysMin} to {shippingSettings.standardDaysMax} days via regional transport.
                         </p>
                         <span className="inline-block mt-2 font-bold text-primary">
-                          {shippingFee === 0 ? "FREE" : `₹${shippingFee}`}
+                          {standardFee === 0 ? "FREE" : `₹${standardFee}`}
                         </span>
                       </div>
                     </label>
@@ -991,11 +995,7 @@ function CheckoutPage() {
                           Expedited direct carrier dispatch in {shippingSettings.priorityDaysMin} to {shippingSettings.priorityDaysMax} days for emergency fire audits and urgent site deadlines.
                         </p>
                         <span className="inline-block mt-2 font-bold text-primary">
-                          {shippingSettings.priorityCharge > 0
-                            ? `₹${(shippingFee + shippingSettings.priorityCharge).toLocaleString("en-IN")}`
-                            : shippingFee === 0
-                              ? "FREE (Special Priority Offer)"
-                              : `₹${shippingFee}`}
+                          ₹{priorityFee.toLocaleString("en-IN")}
                         </span>
                       </div>
                     </label>
@@ -1113,10 +1113,10 @@ function CheckoutPage() {
                     <div className="flex justify-between text-muted-foreground">
                       <span>Logistics & Freight</span>
                       <span>
-                        {shippingFee + extraPriorityShipping === 0 ? (
+                        {selectedShippingFee === 0 ? (
                           <span className="font-bold text-emerald-600">FREE</span>
                         ) : (
-                          `₹${(shippingFee + extraPriorityShipping).toLocaleString("en-IN")}`
+                          `₹${selectedShippingFee.toLocaleString("en-IN")}`
                         )}
                       </span>
                     </div>
