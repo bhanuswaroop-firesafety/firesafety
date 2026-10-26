@@ -109,7 +109,7 @@ export function PhoneOtpModal({
 
     setIsSubmitting(true);
     try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "modal-recaptcha-container");
+      const confirmation = await sendPhoneOtp(phoneValidation.e164);
       setConfirmationResult(confirmation);
       setStep("enter_otp");
       setResendCooldown(45);
@@ -164,7 +164,7 @@ export function PhoneOtpModal({
     setSuccessMsg("");
 
     try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "modal-recaptcha-container");
+      const confirmation = await sendPhoneOtp(phoneValidation.e164);
       setConfirmationResult(confirmation);
       setResendCooldown(45);
       setSuccessMsg(`New OTP sent via SMS to ${phoneValidation.formatted}`);
@@ -456,9 +456,6 @@ export function PhoneOtpModal({
             </div>
           </div>
         )}
-
-        {/* reCAPTCHA Invisible Container */}
-        <div id="modal-recaptcha-container" className="my-0.5 flex justify-center" />
       </DialogContent>
     </Dialog>
   );

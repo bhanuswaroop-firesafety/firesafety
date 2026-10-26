@@ -139,7 +139,6 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     sendPasswordReset,
     sendPhoneOtp,
     verifyPhoneOtp,
-    clearRecaptchaVerifier,
     logout,
   } = useAuth();
   const navigate = useNavigate();
@@ -402,7 +401,6 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     setErrorMsg("");
     setSuccessMsg("");
     setIsExistingAccountError(false);
-    clearRecaptchaVerifier();
   };
 
   const switchAuthMethod = (newMethod: "otp" | "password") => {
@@ -412,7 +410,6 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     setErrorMsg("");
     setSuccessMsg("");
     setIsExistingAccountError(false);
-    clearRecaptchaVerifier();
   };
 
   // Send OTP for Login
@@ -432,7 +429,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
     setIsSendingOtp(true);
     try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "auth-recaptcha-container");
+      const confirmation = await sendPhoneOtp(phoneValidation.e164);
       setConfirmationResult(confirmation);
       setOtpStep("otp");
       setResendCooldown(45);
@@ -501,7 +498,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
     setIsSendingOtp(true);
     try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "auth-recaptcha-container");
+      const confirmation = await sendPhoneOtp(phoneValidation.e164);
       setConfirmationResult(confirmation);
       setOtpStep("otp");
       setResendCooldown(45);
@@ -563,7 +560,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
     setIsSendingOtp(true);
     try {
-      const confirmation = await sendPhoneOtp(phoneValidation.e164, "auth-recaptcha-container");
+      const confirmation = await sendPhoneOtp(phoneValidation.e164);
       setConfirmationResult(confirmation);
       setResendCooldown(45);
       setSuccessMsg("A new 6-digit verification code has been dispatched via SMS.");
@@ -1677,9 +1674,6 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                   <span>Password {mode === "login" ? "Login" : "Sign Up"}</span>
                 </button>
               </div>
-
-              {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
-              <div id="auth-recaptcha-container" className="my-1 flex justify-center" />
 
               {/* Status Messages */}
               {errorMsg && (
