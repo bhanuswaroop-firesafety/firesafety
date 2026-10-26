@@ -1675,6 +1675,9 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                 </button>
               </div>
 
+              {/* Invisible anchor for background phone OTP verification */}
+              <div id="firebase-phone-auth-container" />
+
               {/* Status Messages */}
               {errorMsg && (
                 <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive flex items-start gap-2.5 animate-in fade-in">

@@ -272,18 +272,7 @@
   contain-intrinsic-size: 1px 700px;
 }
 
-/* Hide all Google reCAPTCHA floating badges, overlays, and iframes from user view */
-.grecaptcha-badge,
-iframe[title*="recaptcha"],
-div[style*="z-index: 2000000000"] {
-  display: none !important;
-  opacity: 0 !important;
+/* Hide Google reCAPTCHA floating corner badge while allowing seamless background verification */
+.grecaptcha-badge {
   visibility: hidden !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  position: absolute !important;
-  left: -9999px !important;
-  top: -9999px !important;
-  overflow: hidden !important;
 }

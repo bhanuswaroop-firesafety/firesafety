@@ -439,8 +439,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Dispatches a 6-digit SMS verification code to an E.164 phone number via Firebase Phone Auth.
-   * Completely bypasses reCAPTCHA puzzles, runs headlessly in the background, and requires no visible DOM container.
+   * Dispatches a real 6-digit SMS verification code to an E.164 phone number via Firebase Phone Auth (Blaze Plan).
+   * Runs an invisible background verification without intrusive user challenges.
    */
   const sendPhoneOtp = async (
     rawPhoneNumber: string,
@@ -457,38 +457,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Phone authentication must be performed in the browser environment.");
     }
 
-    // Auto-create an off-screen, completely invisible DOM container if not already present
-    const targetContainerId = recaptchaContainerId || "app-headless-phone-verifier";
+    // Ensure app verification is active for real SMS delivery on Firebase Blaze plan
+    try {
+      auth.settings.appVerificationDisabledForTesting = false;
+    } catch {
+      // ignore
+    }
+
+    const targetContainerId = recaptchaContainerId || "firebase-phone-auth-container";
     let containerElem = document.getElementById(targetContainerId);
     if (!containerElem) {
       containerElem = document.createElement("div");
       containerElem.id = targetContainerId;
-      containerElem.style.position = "fixed";
-      containerElem.style.top = "-9999px";
-      containerElem.style.left = "-9999px";
-      containerElem.style.width = "0";
-      containerElem.style.height = "0";
-      containerElem.style.opacity = "0";
-      containerElem.style.pointerEvents = "none";
-      containerElem.setAttribute("aria-hidden", "true");
       document.body.appendChild(containerElem);
     }
 
-    // Clean up previous instance before creating a new one
+    // Clean previous widget to avoid "reCAPTCHA has already been rendered"
     clearGlobalRecaptchaVerifier();
-
-    // Enable appVerificationDisabledForTesting to bypass reCAPTCHA challenges entirely
-    try {
-      auth.settings.appVerificationDisabledForTesting = true;
-    } catch {
-      // ignore
-    }
+    containerElem.innerHTML = "";
 
     let verifier: RecaptchaVerifier;
     try {
       verifier = new RecaptchaVerifier(auth, targetContainerId, {
         size: "invisible",
-        callback: () => {},
+        callback: () => {
+          // Invisible verification successful
+        },
         "expired-callback": () => {
           clearGlobalRecaptchaVerifier();
         },
@@ -501,88 +495,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // First attempt with app verification disabled (zero reCAPTCHA challenge)
       const confirmation = await signInWithPhoneNumber(auth, normalized.e164, verifier);
       return confirmation;
     } catch (err: unknown) {
+      clearGlobalRecaptchaVerifier();
+
       const code = (err as { code?: string }).code || "";
       const msg = err instanceof Error ? err.message : String(err);
 
-      // If app verification is strictly needed by Firebase for a real non-test carrier phone number,
-      // silently toggle app verification back on with the invisible headless verifier
-      if (
-        code === "auth/quota-exceeded" ||
-        code === "auth/invalid-app-credential" ||
-        code === "auth/missing-app-credential" ||
-        msg.includes("app-credential")
-      ) {
-        try {
-          auth.settings.appVerificationDisabledForTesting = false;
-          clearGlobalRecaptchaVerifier();
-          const fallbackVerifier = new RecaptchaVerifier(auth, targetContainerId, {
-            size: "invisible",
-            callback: () => {},
-            "expired-callback": () => {
-              clearGlobalRecaptchaVerifier();
-            },
-          });
-          (window as any).recaptchaVerifier = fallbackVerifier;
-          const liveConfirmation = await signInWithPhoneNumber(auth, normalized.e164, fallbackVerifier);
-          return liveConfirmation;
-        } catch (liveErr: unknown) {
-          clearGlobalRecaptchaVerifier();
-          err = liveErr;
-        }
-      } else {
-        clearGlobalRecaptchaVerifier();
-      }
-
-      const finalCode = (err as { code?: string }).code || "";
-      const finalMsg = err instanceof Error ? err.message : String(err);
-
-      if (finalCode === "auth/invalid-phone-number" || finalMsg.includes("invalid-phone-number")) {
+      if (code === "auth/invalid-phone-number" || msg.includes("invalid-phone-number")) {
         throw new Error(
-          "Invalid phone number format. Please check the country code and mobile number.",
+          "Invalid mobile number format. Please ensure your 10-digit number is correct.",
         );
       }
-      if (finalCode === "auth/too-many-requests" || finalMsg.includes("too-many-requests")) {
+      if (code === "auth/too-many-requests" || msg.includes("too-many-requests")) {
         throw new Error(
-          "Too many requests have been made to this phone number. Please wait a few minutes.",
+          "Too many SMS requests sent to this number. Please wait a few minutes before trying again.",
         );
       }
-      if (finalCode === "auth/quota-exceeded" || finalMsg.includes("quota-exceeded")) {
+      if (code === "auth/quota-exceeded" || msg.includes("quota-exceeded")) {
         throw new Error(
-          "Daily SMS limit reached. You can also sign in instantly using your Mobile Number & Password.",
+          "Daily SMS limit reached. If you recently enabled the Blaze plan, please allow 3-5 minutes for Google Cloud quotas to refresh.",
         );
       }
       if (
-        finalCode === "auth/billing-not-enabled" ||
-        finalMsg.toLowerCase().includes("billing") ||
-        finalMsg.includes("BILLING_NOT_ENABLED")
+        code === "auth/billing-not-enabled" ||
+        msg.toLowerCase().includes("billing") ||
+        msg.includes("BILLING_NOT_ENABLED")
       ) {
         throw new Error(
-          "SMS service is temporarily unavailable. Please sign in using your Mobile Number & Password.",
+          "Firebase Blaze billing is activating. Please allow 2-3 minutes for the newly linked billing account to propagate to SMS gateways.",
         );
       }
-      if (finalCode === "auth/operation-not-allowed" || finalMsg.includes("operation-not-allowed")) {
+      if (code === "auth/operation-not-allowed" || msg.includes("operation-not-allowed")) {
         throw new Error(
-          "Phone authentication is currently unavailable. Please sign in with Password.",
+          "Phone authentication is not enabled. Please ensure Phone provider is enabled in Firebase Console.",
         );
       }
-      if (finalCode === "auth/captcha-check-failed" || finalMsg.includes("captcha-check-failed")) {
+      if (code === "auth/captcha-check-failed" || msg.includes("captcha-check-failed")) {
         throw new Error(
-          "Verification check failed. Please try again or sign in with Password.",
+          "Verification check failed. Please refresh the page and try again.",
         );
       }
-      if (finalCode === "auth/network-request-failed" || finalMsg.includes("network-request-failed")) {
+      if (code === "auth/network-request-failed" || msg.includes("network-request-failed")) {
         throw new Error(
           "Network connection error. Please verify your internet connection and try again.",
         );
       }
 
-      const cleaned = finalMsg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
+      const cleaned = msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
       if (!cleaned || cleaned === "Error" || cleaned === "Error ." || cleaned === ".") {
-        throw new Error(finalMsg.replace("Firebase: ", "").trim() || `Authentication error: ${finalCode}`);
+        throw new Error(msg.replace("Firebase: ", "").trim() || `Authentication error: ${code}`);
       }
       throw new Error(cleaned);
     }

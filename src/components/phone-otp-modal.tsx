@@ -456,6 +456,8 @@ export function PhoneOtpModal({
             </div>
           </div>
         )}
+
+        <div id="firebase-phone-auth-container-modal" />
       </DialogContent>
     </Dialog>
   );
