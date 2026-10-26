@@ -46,6 +46,7 @@ import {
   subscribeNotifications,
   markNotificationRead,
   getOrderForTracking,
+  getUserEmailByPhone,
 } from "@/lib/db-service";
 import type {
   OrderItem,
@@ -125,6 +126,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     isAdmin,
     loginWithGoogle,
     loginWithEmail,
+    loginWithIdentifier,
     registerWithEmail,
     sendPasswordReset,
     logout,
@@ -133,6 +135,9 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
   // Mode: "login" or "signup"
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
+
+  // Login Form Identifier: Accepts 10-digit mobile number or email address
+  const [loginIdentifier, setLoginIdentifier] = useState("");
 
   // Email / Password Form Fields
   const [email, setEmail] = useState("");
@@ -353,15 +358,27 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
   const strength = getPasswordStrength(password);
 
-  // Handle Email Login
+  // Handle Mobile Number or Email Login
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
     setIsExistingAccountError(false);
+
+    const targetIdentifier = (loginIdentifier || email).trim();
+    if (!targetIdentifier) {
+      setErrorMsg("Please enter your 10-digit mobile number or email address.");
+      return;
+    }
+
+    if (!password) {
+      setErrorMsg("Please enter your account password.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await loginWithEmail(email, password);
+      await loginWithIdentifier(targetIdentifier, password);
       setSuccessMsg("Signed in successfully! Redirecting...");
       setTimeout(() => {
         navigate({ to: "/" });
@@ -370,16 +387,16 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
       const msg = err instanceof Error ? err.message : String(err);
       const code = (err as { code?: string }).code || "";
       if (code === "auth/user-not-found" || msg.includes("user-not-found")) {
-        setErrorMsg("No account found with this email. Please verify your email or sign up.");
+        setErrorMsg("No account found with these details. Please verify your mobile number / email or create an account.");
       } else if (
         code === "auth/wrong-password" ||
         code === "auth/invalid-credential" ||
         msg.includes("wrong-password") ||
         msg.includes("invalid-credential")
       ) {
-        setErrorMsg("Incorrect email or password. Please verify your details or reset your password.");
+        setErrorMsg("Incorrect password. Please verify your password or click 'Forgot / Reset Password'.");
       } else if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
-        setErrorMsg("Please enter a valid email address.");
+        setErrorMsg("Please enter a valid 10-digit mobile number or email address.");
       } else if (code === "auth/too-many-requests" || msg.includes("too-many-requests")) {
         setErrorMsg("Too many unsuccessful attempts. Please wait a moment or reset your password.");
       } else {
@@ -394,22 +411,28 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     }
   };
 
-  // Handle Email Signup
+  // Handle Full Details Signup (Name, Mobile Number, Email, Password)
   const handleSignupSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
     setIsExistingAccountError(false);
 
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes("@")) {
-      setErrorMsg("Please enter a valid email address.");
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setErrorMsg("Please enter your full name.");
       return;
     }
 
-    const cleanPhone = phone.trim().replace(/\D/g, "");
+    const cleanPhone = phone.trim().replace(/\D/g, "").slice(-10);
     if (!cleanPhone || cleanPhone.length < 10) {
       setErrorMsg("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setErrorMsg("Please enter a valid email address.");
       return;
     }
 
@@ -425,8 +448,19 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
     setSubmitting(true);
     try {
-      const displayName = company ? `${name} (${company})` : name;
-      await registerWithEmail(cleanEmail, password, displayName, { phone: phone.trim(), company: company.trim() });
+      // Check if this mobile number is already registered
+      const existingEmailForPhone = await getUserEmailByPhone(cleanPhone);
+      if (existingEmailForPhone) {
+        setErrorMsg(
+          `An account is already registered with mobile number +91 ${cleanPhone}. Please log in using your mobile number.`,
+        );
+        setIsExistingAccountError(true);
+        setSubmitting(false);
+        return;
+      }
+
+      const displayName = company ? `${cleanName} (${company.trim()})` : cleanName;
+      await registerWithEmail(cleanEmail, password, displayName, { phone: cleanPhone, company: company.trim() });
       setSuccessMsg("Account created successfully! Redirecting...");
       setTimeout(() => {
         navigate({ to: "/" });
@@ -439,7 +473,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
         msg.includes("email-already-in-use") ||
         msg.includes("already registered")
       ) {
-        setErrorMsg("This account is already registered. Please log in.");
+        setErrorMsg("This email is already registered. Please log in with your mobile number or email.");
         setIsExistingAccountError(true);
       } else if (code === "auth/invalid-email" || msg.includes("invalid-email")) {
         setErrorMsg("Please enter a valid email address.");
@@ -457,21 +491,35 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     }
   };
 
-  // Handle Password Reset Request
+  // Handle Password Reset Request (Supports Mobile Number or Email)
   const handleResetPassword = async (e: FormEvent) => {
     e.preventDefault();
     setResetError("");
     setResetSuccess("");
-    const targetEmail = (resetEmail || email).trim().toLowerCase();
-    if (!targetEmail || !targetEmail.includes("@")) {
-      setResetError("Please enter a valid email address.");
+    const rawInput = (resetEmail || loginIdentifier || email).trim();
+    if (!rawInput) {
+      setResetError("Please enter your registered 10-digit mobile number or email address.");
       return;
     }
+
     setResetSubmitting(true);
     try {
+      let targetEmail = rawInput.toLowerCase();
+      if (!rawInput.includes("@")) {
+        const cleanPhone = rawInput.replace(/\D/g, "").slice(-10);
+        if (cleanPhone.length < 10) {
+          throw new Error("Please enter a valid 10-digit mobile number or email address.");
+        }
+        const resolvedEmail = await getUserEmailByPhone(cleanPhone);
+        if (!resolvedEmail) {
+          throw new Error(`No account found registered with mobile number +91 ${cleanPhone}.`);
+        }
+        targetEmail = resolvedEmail;
+      }
+
       await sendPasswordReset(targetEmail);
       setResetSuccess(
-        `A password reset link has been sent to ${targetEmail}. Please check your inbox (and spam folder) to set a new password.`,
+        `A password reset link has been dispatched to ${targetEmail}. Please check your inbox (and spam folder) to set a new password.`,
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1371,7 +1419,9 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
               {/* DIVIDER */}
               <div className="relative mb-5 text-center text-xs text-muted-foreground">
                 <span className="relative z-10 bg-card px-3 uppercase text-[10px] tracking-wider font-semibold text-muted-foreground">
-                  {mode === "login" ? "Or sign in with email" : "Or create account with email"}
+                  {mode === "login"
+                    ? "Or sign in with mobile number / email"
+                    : "Or create account with full details"}
                 </span>
                 <div className="absolute inset-0 top-1/2 -z-0 border-t border-border" />
               </div>
@@ -1399,7 +1449,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                         <button
                           type="button"
                           onClick={() => {
-                            setResetEmail(email);
+                            setResetEmail(loginIdentifier || email || phone);
                             setShowResetModal(true);
                             setResetError("");
                             setResetSuccess("");
@@ -1426,22 +1476,35 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
               {mode === "login" && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
-                    <label htmlFor="login-email" className="text-xs font-semibold text-foreground">
-                      Email Address
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label htmlFor="login-identifier" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Phone className="size-3.5 text-primary" />
+                        <span>Mobile Number / Email Address</span>
+                      </label>
+                      <span className="text-[10px] text-muted-foreground font-normal">
+                        10-digit Mobile or Email
+                      </span>
+                    </div>
                     <div className="relative mt-1">
                       <input
-                        id="login-email"
-                        name="email"
-                        type="email"
-                        autoComplete="email"
+                        id="login-identifier"
+                        name="loginIdentifier"
+                        type="text"
+                        inputMode="text"
+                        autoComplete="username tel email"
                         required
-                        placeholder="name@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter 10-digit mobile number or email"
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
                         className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                       />
-                      <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
+                      <div className="absolute right-3.5 top-3 flex items-center gap-1 text-muted-foreground pointer-events-none">
+                        {loginIdentifier.includes("@") ? (
+                          <Mail className="size-4 text-primary" />
+                        ) : (
+                          <Phone className="size-4" />
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1449,14 +1512,15 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                     <div className="flex items-center justify-between">
                       <label
                         htmlFor="login-password"
-                        className="text-xs font-semibold text-foreground"
+                        className="text-xs font-semibold text-foreground flex items-center gap-1.5"
                       >
-                        Password
+                        <Lock className="size-3.5 text-primary" />
+                        <span>Password</span>
                       </label>
                       <button
                         type="button"
                         onClick={() => {
-                          setResetEmail(email);
+                          setResetEmail(loginIdentifier || email);
                           setShowResetModal(true);
                           setResetError("");
                           setResetSuccess("");
@@ -1903,15 +1967,15 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                         htmlFor="modal-reset-email"
                         className="text-xs font-semibold text-foreground mb-1 block"
                       >
-                        Email Address *
+                        Registered Mobile Number or Email *
                       </label>
                       <div className="relative">
                         <input
                           id="modal-reset-email"
-                          type="email"
+                          type="text"
                           required
-                          autoComplete="email"
-                          placeholder="name@example.com"
+                          autoComplete="username tel email"
+                          placeholder="Enter 10-digit mobile number or email"
                           value={resetEmail}
                           onChange={(e) => {
                             setResetEmail(e.target.value);
@@ -1919,7 +1983,13 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                           }}
                           className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                         />
-                        <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground" />
+                        <div className="absolute right-3.5 top-3 text-muted-foreground pointer-events-none">
+                          {resetEmail.includes("@") ? (
+                            <Mail className="size-4 text-primary" />
+                          ) : (
+                            <Phone className="size-4" />
+                          )}
+                        </div>
                       </div>
                     </div>
 

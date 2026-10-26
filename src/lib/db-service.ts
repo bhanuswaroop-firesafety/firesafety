@@ -583,6 +583,83 @@ export async function deleteUser(uid: string): Promise<void> {
   await deleteDoc(docRef);
 }
 
+export async function savePhoneIndex(
+  phone: string,
+  data: { uid: string; email: string; name?: string },
+): Promise<void> {
+  const clean = phone.replace(/\D/g, "").slice(-10);
+  if (clean.length === 10) {
+    try {
+      await setDoc(
+        doc(db, "phone_index", clean),
+        {
+          ...data,
+          cleanPhone: clean,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      console.warn("savePhoneIndex notice:", err);
+    }
+  }
+}
+
+export async function getUserEmailByPhone(rawPhone: string): Promise<string | null> {
+  const clean = rawPhone.replace(/\D/g, "").slice(-10);
+  if (clean.length < 10) return null;
+
+  // 1. Direct O(1) index lookup
+  try {
+    const indexSnap = await getDoc(doc(db, "phone_index", clean));
+    if (indexSnap.exists()) {
+      const d = indexSnap.data();
+      if (d?.email) return String(d.email).trim().toLowerCase();
+    }
+  } catch (err) {
+    console.warn("phone_index lookup notice:", err);
+  }
+
+  // 2. Query users collection where phone == clean
+  try {
+    const usersCol = collection(db, "users");
+    const q = query(usersCol, where("phone", "==", clean));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const userDoc = snap.docs[0].data() as UserItem;
+      if (userDoc.email) {
+        const foundEmail = String(userDoc.email).trim().toLowerCase();
+        savePhoneIndex(clean, {
+          uid: snap.docs[0].id,
+          email: foundEmail,
+          name: userDoc.displayName,
+        }).catch(() => {});
+        return foundEmail;
+      }
+    }
+
+    // 3. Fallback scan matching normalized phone for older entries with spaces/+91
+    const allUsersSnap = await getDocs(usersCol);
+    for (const d of allUsersSnap.docs) {
+      const data = d.data() as UserItem;
+      const uPhone = (data.phone || "").replace(/\D/g, "").slice(-10);
+      if (uPhone === clean && data.email) {
+        const foundEmail = String(data.email).trim().toLowerCase();
+        savePhoneIndex(clean, {
+          uid: d.id,
+          email: foundEmail,
+          name: data.displayName,
+        }).catch(() => {});
+        return foundEmail;
+      }
+    }
+  } catch (err) {
+    console.warn("users query by phone notice:", err);
+  }
+
+  return null;
+}
+
 // ========================================================
 // Orders Services (Tasks A, B, C, D)
 // ========================================================

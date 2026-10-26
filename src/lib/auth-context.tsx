@@ -18,7 +18,13 @@ import {
   type ConfirmationResult,
 } from "./firebase";
 import type { UserItem } from "./types";
-import { isEmailAuthorizedAdmin, saveUserRecord, syncUserLeadRecord } from "./db-service";
+import {
+  isEmailAuthorizedAdmin,
+  saveUserRecord,
+  syncUserLeadRecord,
+  savePhoneIndex,
+  getUserEmailByPhone,
+} from "./db-service";
 import { normalizePhoneNumber, formatIndianMobileDisplay } from "./phone-utils";
 
 export interface UserRegistrationMeta {
@@ -36,6 +42,7 @@ interface AuthContextType {
   authConfigError: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
+  loginWithIdentifier: (identifier: string, pass: string) => Promise<void>;
   registerWithEmail: (
     email: string,
     pass: string,
@@ -282,11 +289,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = { ...(snap.data() as UserItem), lastLoginAt: now, updatedAt: now };
           await saveUserRecord(profile);
           setUserProfile(profile);
+
+          if (profile.phone) {
+            const cleanPhone = profile.phone.replace(/\D/g, "").slice(-10);
+            if (cleanPhone.length === 10) {
+              savePhoneIndex(cleanPhone, {
+                uid: cred.user.uid,
+                email: cleanEmail,
+                name: profile.displayName,
+              }).catch(() => {});
+            }
+          }
         }
       } catch (e) {
         console.warn("Firestore update error on login:", e);
       }
     }
+  };
+
+  /**
+   * Universal Login: Supports logging in using a 10-digit mobile number or an email address + password.
+   */
+  const loginWithIdentifier = async (identifier: string, pass: string) => {
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      throw new Error("Please enter your mobile number or email address.");
+    }
+
+    if (trimmed.includes("@")) {
+      await loginWithEmail(trimmed, pass);
+      return;
+    }
+
+    const cleanPhone = trimmed.replace(/\D/g, "").slice(-10);
+    if (cleanPhone.length < 10) {
+      throw new Error("Please enter a valid 10-digit mobile number or email address.");
+    }
+
+    const resolvedEmail = await getUserEmailByPhone(cleanPhone);
+    if (!resolvedEmail) {
+      throw new Error(
+        `No account found registered with mobile number +91 ${cleanPhone}. Please verify your number or create an account.`,
+      );
+    }
+
+    await loginWithEmail(resolvedEmail, pass);
   };
 
   const registerWithEmail = async (
@@ -319,6 +366,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isSuper = SUPER_ADMIN_EMAILS.includes(cleanEmail);
     const isAuthAdmin = isSuper || (await isEmailAuthorizedAdmin(cleanEmail));
 
+    const cleanPhone = metadata?.phone ? metadata.phone.replace(/\D/g, "").slice(-10) : "";
+
     const newProfile: UserItem = {
       id: cred.user.uid,
       email: cleanEmail,
@@ -327,7 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       createdAt: now,
       updatedAt: now,
       lastLoginAt: now,
-      phone: metadata?.phone?.trim() || "",
+      phone: cleanPhone || metadata?.phone?.trim() || "",
       company: metadata?.company?.trim() || "",
       ordersCount: 0,
       totalSpent: 0,
@@ -336,6 +385,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveUserRecord(newProfile);
     setUserProfile(newProfile);
     setUser(cred.user);
+
+    if (cleanPhone && cleanPhone.length === 10) {
+      await savePhoneIndex(cleanPhone, {
+        uid: cred.user.uid,
+        email: cleanEmail,
+        name: newProfile.displayName,
+      });
+    }
 
     // Maintain lead record
     await syncUserLeadRecord({
@@ -632,6 +689,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authConfigError,
         loginWithGoogle,
         loginWithEmail,
+        loginWithIdentifier,
         registerWithEmail,
         sendPasswordReset,
         sendPhoneOtp,
@@ -658,6 +716,7 @@ export function useAuth(): AuthContextType {
       authConfigError: false,
       loginWithGoogle: async () => {},
       loginWithEmail: async () => {},
+      loginWithIdentifier: async () => {},
       registerWithEmail: async () => {},
       sendPasswordReset: async () => {},
       sendPhoneOtp: async () => ({} as ConfirmationResult),
