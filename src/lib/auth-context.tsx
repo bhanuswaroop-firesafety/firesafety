@@ -616,6 +616,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       await saveUserRecord(profile);
+      if (profile.phone) {
+        const cleanPhoneDigits = profile.phone.replace(/\D/g, "").slice(-10);
+        if (cleanPhoneDigits.length === 10) {
+          await savePhoneIndex(cleanPhoneDigits, profile.email, authenticatedUser.uid).catch(() => {});
+        }
+      }
       setUser(authenticatedUser);
       setUserProfile(profile);
 
