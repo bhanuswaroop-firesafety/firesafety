@@ -272,7 +272,10 @@
   contain-intrinsic-size: 1px 700px;
 }
 
-/* Hide Google reCAPTCHA floating corner badge while allowing seamless background verification */
+/* Position Google reCAPTCHA badge off-screen so it does not block the UI while preserving DOM layout metrics */
 .grecaptcha-badge {
-  visibility: hidden !important;
+  position: fixed !important;
+  bottom: -9999px !important;
+  left: -9999px !important;
+  z-index: -1 !important;
 }
