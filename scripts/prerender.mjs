@@ -42,6 +42,8 @@ const routes = [
   '/projects',
   '/cart',
   '/checkout',
+  '/orders',
+  '/tracking',
   '/login',
   '/signup',
   '/admin',
