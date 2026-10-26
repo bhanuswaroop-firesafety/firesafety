@@ -328,7 +328,7 @@ export function PhoneOtpModal({
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-1.5">
-                  <span>Send 6-Digit SMS OTP</span>
+                  <span>Send OTP</span>
                   <ArrowRight className="size-3.5" />
                 </div>
               )}
@@ -342,7 +342,7 @@ export function PhoneOtpModal({
                 <span className="text-lg">📱</span>
                 <div>
                   <p className="text-[10px] uppercase font-bold text-muted-foreground">
-                    Code Dispatched To
+                    OTP Sent To
                   </p>
                   <p className="font-bold text-foreground font-mono text-xs">
                     {phoneValidation.formatted || phoneNumber}

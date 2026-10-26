@@ -433,10 +433,10 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
       setConfirmationResult(confirmation);
       setOtpStep("otp");
       setResendCooldown(45);
-      setSuccessMsg(`6-digit SMS verification code dispatched to ${phoneValidation.formatted}`);
+      setSuccessMsg(`OTP sent to ${phoneValidation.formatted}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg || "Failed to dispatch SMS verification code. Please try again.");
+      setErrorMsg(msg || "Failed to send OTP. Please try again.");
     } finally {
       setIsSendingOtp(false);
     }
@@ -502,10 +502,10 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
       setConfirmationResult(confirmation);
       setOtpStep("otp");
       setResendCooldown(45);
-      setSuccessMsg(`Verification code sent to ${phoneValidation.formatted}`);
+      setSuccessMsg(`OTP sent to ${phoneValidation.formatted}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg || "Failed to dispatch SMS verification code. Please try again.");
+      setErrorMsg(msg || "Failed to send OTP. Please try again.");
     } finally {
       setIsSendingOtp(false);
     }
@@ -533,7 +533,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
         company: company.trim(),
         email: email.trim().toLowerCase(),
       });
-      setSuccessMsg("Account created and verified successfully! Redirecting...");
+      setSuccessMsg("Account verified successfully! Redirecting...");
       setTimeout(() => {
         navigate({ to: "/" });
       }, 400);
@@ -563,10 +563,10 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
       const confirmation = await sendPhoneOtp(phoneValidation.e164);
       setConfirmationResult(confirmation);
       setResendCooldown(45);
-      setSuccessMsg("A new 6-digit verification code has been dispatched via SMS.");
+      setSuccessMsg("A new OTP has been sent to your phone.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg || "Failed to resend verification code. Please wait a moment.");
+      setErrorMsg(msg || "Failed to resend OTP. Please wait a moment.");
     } finally {
       setIsSendingOtp(false);
     }
@@ -733,7 +733,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
       await sendPasswordReset(targetEmail);
       setResetSuccess(
-        `A password reset link has been dispatched to ${targetEmail}. Please check your inbox (and spam folder) to set a new password.`,
+        `Password reset link sent to ${targetEmail}. Please check your email.`,
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -771,35 +771,33 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
       <SiteHeader />
 
-      <main className="relative flex-1 py-12 md:py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center overflow-hidden">
+      <main className="relative flex-1 py-4 sm:py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center overflow-hidden">
         {/* Ambient Decorative Lighting */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute top-10 left-1/2 -translate-x-1/2 size-[600px] rounded-full bg-primary/10 blur-[130px]" />
           <div className="absolute bottom-10 right-10 size-[400px] rounded-full bg-amber-500/10 blur-[120px]" />
         </div>
 
-        <div className={`relative z-10 w-full ${user ? "max-w-5xl" : "max-w-lg"}`}>
-          {/* Top Headline & Branding */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-bold text-primary mb-3">
-              <ShieldCheck className="size-3.5" />
-              <span>Sri Udharchi Enterprises</span>
+        <div className={`relative z-10 w-full ${user ? "max-w-5xl" : "max-w-md"}`}>
+          {/* Top Headline & Branding (hidden during OTP verification to prevent mobile scrolling) */}
+          {(user || otpStep !== "otp") && (
+            <div className="text-center mb-4 sm:mb-6">
+              <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+                {user
+                  ? "My Account"
+                  : mode === "login"
+                    ? "Welcome Back"
+                    : "Create Account"}
+              </h1>
+              <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+                {user
+                  ? "Manage your safety equipment orders, renewals, and quotations."
+                  : mode === "login"
+                    ? "Sign in to access your orders and safety services."
+                    : "Register to manage orders and request quotations."}
+              </p>
             </div>
-            <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl tracking-tight">
-              {user
-                ? "My Account"
-                : mode === "login"
-                  ? "Welcome Back"
-                  : "Create an Account"}
-            </h1>
-            <p className="mt-2 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-              {user
-                ? "Manage your safety equipment orders, renewals, and quotations."
-                : mode === "login"
-                  ? "Sign in to your account to view orders, quotations, and tracking."
-                  : "Sign up to buy safety equipment, track deliveries, and request quotations."}
-            </p>
-          </div>
+          )}
 
           {/* IF USER IS ALREADY LOGGED IN: SHOW COMPREHENSIVE CUSTOMER PORTAL */}
           {user ? (
@@ -1582,119 +1580,25 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
             </div>
           ) : (
             /* AUTH FORM CARD */
-            <div className="rounded-3xl border border-border/80 bg-card/95 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-              {/* Primary Mode Tabs: Sign In / Create Account */}
-              <div className="grid grid-cols-2 rounded-2xl bg-muted/60 p-1 mb-5 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => switchMode("login")}
-                  className={`rounded-xl py-2.5 transition-all cursor-pointer ${
-                    mode === "login"
-                      ? "bg-card text-foreground shadow-sm font-bold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchMode("signup")}
-                  className={`rounded-xl py-2.5 transition-all cursor-pointer ${
-                    mode === "signup"
-                      ? "bg-card text-foreground shadow-sm font-bold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Create Account
-                </button>
-              </div>
-
-              {/* PRIMARY ONE-CLICK AUTH: GOOGLE */}
-              <button
-                type="button"
-                disabled={submitting || isSendingOtp || isVerifyingOtp}
-                onClick={handleGoogleAuth}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background py-2.5 px-4 text-xs font-bold text-foreground transition-all hover:bg-muted hover:border-primary/50 shadow-xs active:scale-[0.99] disabled:opacity-50 cursor-pointer mb-4"
-              >
-                <svg className="size-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                  />
-                </svg>
-                <span>{mode === "login" ? "Continue with Google" : "Sign Up with Google"}</span>
-              </button>
-
-              {/* DIVIDER */}
-              <div className="relative mb-4 text-center text-xs text-muted-foreground">
-                <span className="relative z-10 bg-card px-3 uppercase text-[10px] tracking-wider font-semibold text-muted-foreground">
-                  {mode === "login"
-                    ? "Or sign in with mobile OTP / password"
-                    : "Or register with mobile OTP / password"}
-                </span>
-                <div className="absolute inset-0 top-1/2 -z-0 border-t border-border" />
-              </div>
-
-              {/* AUTH METHOD SELECTOR: MOBILE OTP (PRIMARY) vs PASSWORD */}
-              <div className="grid grid-cols-2 rounded-xl bg-muted/50 p-1 mb-5 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => switchAuthMethod("otp")}
-                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-all cursor-pointer ${
-                    authMethod === "otp"
-                      ? "bg-card text-foreground shadow-xs font-bold border border-border/60 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Smartphone className="size-3.5 text-primary" />
-                  <span>Mobile OTP {mode === "login" ? "Login" : "Sign Up"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchAuthMethod("password")}
-                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2 transition-all cursor-pointer ${
-                    authMethod === "password"
-                      ? "bg-card text-foreground shadow-xs font-bold border border-border/60 text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <KeyRound className="size-3.5 text-muted-foreground" />
-                  <span>Password {mode === "login" ? "Login" : "Sign Up"}</span>
-                </button>
-              </div>
-
+            <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-card/95 p-4 sm:p-6 shadow-xl backdrop-blur-xl">
               {/* Invisible anchor for background phone OTP verification */}
               <div id="firebase-phone-auth-container" />
 
               {/* Status Messages */}
               {errorMsg && (
-                <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive flex items-start gap-2.5 animate-in fade-in">
+                <div className="mb-3 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive flex items-start gap-2 animate-in fade-in">
                   <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                  <div className="flex-1 space-y-2">
-                    <div className="leading-relaxed font-medium">{errorMsg}</div>
+                  <div className="flex-1 space-y-1">
+                    <div className="leading-snug font-medium">{errorMsg}</div>
                     {(isExistingAccountError || errorMsg.includes("already registered")) && (
-                      <div className="pt-2 border-t border-destructive/20 flex flex-wrap items-center gap-2">
+                      <div className="pt-1.5 border-t border-destructive/20 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            switchMode("login");
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold text-[11px] shadow-xs hover:bg-primary/90 transition-colors cursor-pointer"
+                          onClick={() => switchMode("login")}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-bold text-[11px] hover:bg-primary/90 transition-colors cursor-pointer"
                         >
                           <User className="size-3" />
-                          <span>Log In to this Account</span>
+                          <span>Log In</span>
                         </button>
                         <button
                           type="button"
@@ -1704,7 +1608,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                             setResetError("");
                             setResetSuccess("");
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground font-semibold text-[11px] hover:bg-muted transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-card text-foreground font-semibold text-[11px] hover:bg-muted transition-colors cursor-pointer"
                         >
                           <Lock className="size-3 text-muted-foreground" />
                           <span>Reset Password</span>
@@ -1715,21 +1619,211 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                 </div>
               )}
 
-              {successMsg && (
-                <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-2 animate-in fade-in">
-                  <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
-                  <div className="flex-1 leading-relaxed font-medium">{successMsg}</div>
-                </div>
-              )}
+              {/* DEDICATED OTP VERIFICATION VIEW: SUPER CONCISE, NO SCROLLING */}
+              {otpStep === "otp" ? (
+                <div className="space-y-3.5 animate-in fade-in duration-200">
+                  <div className="text-center space-y-1 pb-1">
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                      Enter Verification Code
+                    </h2>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+                      <span>OTP sent to</span>
+                      <strong className="text-foreground font-mono font-bold">
+                        {otpCountryCode} {otpPhone}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtpStep("phone");
+                          setOtpCode("");
+                          setErrorMsg("");
+                          setSuccessMsg("");
+                        }}
+                        className="text-primary hover:underline font-semibold ml-1 inline-flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Edit2 className="size-3" />
+                        <span>Change</span>
+                      </button>
+                    </div>
+                  </div>
 
-              {/* METHOD 1: MOBILE OTP FLOW */}
-              {authMethod === "otp" && (
+                  <div className="flex flex-col items-center justify-center py-1">
+                    <InputOTP
+                      maxLength={6}
+                      value={otpCode}
+                      disabled={isVerifyingOtp}
+                      autoFocus
+                      onChange={(val) => {
+                        setOtpCode(val);
+                        if (val.length === 6) {
+                          if (mode === "login") {
+                            handleVerifyLoginOtp(val);
+                          } else {
+                            handleVerifySignupOtp(val);
+                          }
+                        }
+                      }}
+                    >
+                      <InputOTPGroup className="gap-2 sm:gap-2.5">
+                        <InputOTPSlot index={0} className="size-10 sm:size-11 rounded-xl text-lg font-bold border-2" />
+                        <InputOTPSlot index={1} className="size-10 sm:size-11 rounded-xl text-lg font-bold border-2" />
+                        <InputOTPSlot index={2} className="size-10 sm:size-11 rounded-xl text-lg font-bold border-2" />
+                        <InputOTPSlot index={3} className="size-10 sm:size-11 rounded-xl text-lg font-bold border-2" />
+                        <InputOTPSlot index={4} className="size-10 sm:size-11 rounded-xl text-lg font-bold border-2" />
+                        <InputOTPSlot index={5} className="size-10 sm:size-11 rounded-xl text-lg font-bold border-2" />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/60">
+                    {resendCooldown > 0 ? (
+                      <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="size-3.5" />
+                        <span>Resend in <strong className="font-mono text-foreground font-bold">{resendCooldown}s</strong></span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isSendingOtp || isVerifyingOtp}
+                        onClick={handleResendOtp}
+                        className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        <RotateCcw className={`size-3.5 ${isSendingOtp ? "animate-spin" : ""}`} />
+                        <span>Resend OTP</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpStep("phone");
+                        setOtpCode("");
+                        setErrorMsg("");
+                        setSuccessMsg("");
+                      }}
+                      className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      Change Number
+                    </button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => (mode === "login" ? handleVerifyLoginOtp() : handleVerifySignupOtp())}
+                    disabled={isVerifyingOtp || otpCode.length !== 6}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-md shadow-primary/20 gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isVerifyingOtp ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="size-4 animate-spin" />
+                        <span>Verifying OTP...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle2 className="size-4" />
+                        <span>{mode === "login" ? "Verify & Sign In" : "Verify & Complete Account"}</span>
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                /* MAIN AUTH FORM: COMPACT, BEAUTIFUL, MOBILE-OPTIMIZED */
                 <>
-                  {/* OTP LOGIN */}
-                  {mode === "login" && (
+                  {/* Mode Tabs: Sign In / Create Account */}
+                  <div className="grid grid-cols-2 rounded-xl bg-muted/60 p-1 mb-3 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => switchMode("login")}
+                      className={`rounded-lg py-1.5 sm:py-2 transition-all cursor-pointer ${
+                        mode === "login"
+                          ? "bg-card text-foreground shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchMode("signup")}
+                      className={`rounded-lg py-1.5 sm:py-2 transition-all cursor-pointer ${
+                        mode === "signup"
+                          ? "bg-card text-foreground shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Create Account
+                    </button>
+                  </div>
+
+                  {/* One-Click Google */}
+                  <button
+                    type="button"
+                    disabled={submitting || isSendingOtp || isVerifyingOtp}
+                    onClick={handleGoogleAuth}
+                    className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-background py-2 px-3 text-xs font-bold text-foreground transition-all hover:bg-muted hover:border-primary/50 shadow-2xs active:scale-[0.99] disabled:opacity-50 cursor-pointer mb-2.5"
+                  >
+                    <svg className="size-4 shrink-0" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                      />
+                    </svg>
+                    <span>{mode === "login" ? "Continue with Google" : "Sign Up with Google"}</span>
+                  </button>
+
+                  {/* Divider */}
+                  <div className="relative mb-2.5 text-center text-xs text-muted-foreground">
+                    <span className="relative z-10 bg-card px-2.5 text-[10px] uppercase font-semibold text-muted-foreground">
+                      or
+                    </span>
+                    <div className="absolute inset-0 top-1/2 -z-0 border-t border-border" />
+                  </div>
+
+                  {/* Method Selector: Mobile OTP vs Password */}
+                  <div className="grid grid-cols-2 rounded-lg bg-muted/40 p-0.5 mb-3 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => switchAuthMethod("otp")}
+                      className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 transition-all cursor-pointer ${
+                        authMethod === "otp"
+                          ? "bg-card text-foreground shadow-2xs font-bold text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Smartphone className="size-3.5 text-primary" />
+                      <span>Mobile OTP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchAuthMethod("password")}
+                      className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 transition-all cursor-pointer ${
+                        authMethod === "password"
+                          ? "bg-card text-foreground shadow-2xs font-bold text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <KeyRound className="size-3.5 text-muted-foreground" />
+                      <span>Password</span>
+                    </button>
+                  </div>
+
+                  {/* METHOD 1: MOBILE OTP FORM */}
+                  {authMethod === "otp" && (
                     <>
-                      {otpStep === "phone" ? (
-                        <form onSubmit={handleSendLoginOtp} className="space-y-4">
+                      {mode === "login" ? (
+                        <form onSubmit={handleSendLoginOtp} className="space-y-3">
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label htmlFor="login-otp-phone" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -1737,14 +1831,14 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                 <span>Mobile Number</span>
                               </label>
                               <span className="text-[10px] text-muted-foreground font-normal">
-                                10-digit Mobile
+                                10-digit number
                               </span>
                             </div>
                             <div className="flex gap-2">
                               <select
                                 value={otpCountryCode}
                                 onChange={(e) => setOtpCountryCode(e.target.value)}
-                                className="w-24 rounded-xl border border-input bg-background px-2.5 py-2.5 text-xs font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs cursor-pointer"
+                                className="w-20 rounded-xl border border-input bg-background px-2 py-2 text-xs font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs cursor-pointer"
                               >
                                 {SUPPORTED_COUNTRY_CODES.map((c) => (
                                   <option key={c.code} value={c.code}>
@@ -1760,165 +1854,50 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                   autoComplete="tel"
                                   required
                                   autoFocus
-                                  placeholder="Enter 10-digit mobile number"
+                                  placeholder="e.g. 8466006486"
                                   value={otpPhone}
                                   onChange={(e) => {
                                     const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                                     setOtpPhone(val);
                                   }}
-                                  className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs font-mono font-medium text-foreground placeholder:text-muted-foreground placeholder:font-sans focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs tracking-wider"
+                                  className="w-full rounded-xl border border-input bg-background pl-3 pr-9 py-2 text-xs font-mono font-medium text-foreground placeholder:text-muted-foreground placeholder:font-sans focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs tracking-wider"
                                 />
-                                <Smartphone className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
+                                <Smartphone className="absolute right-3 top-2.5 size-4 text-muted-foreground pointer-events-none" />
                               </div>
                             </div>
-                            <p className="mt-1.5 text-[11px] text-muted-foreground">
-                              We'll send a 6-digit one-time SMS verification code to log in instantly.
-                            </p>
                           </div>
 
                           <Button
                             type="submit"
                             disabled={isSendingOtp || otpPhone.replace(/\D/g, "").length < 10}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer disabled:opacity-50"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 shadow-md shadow-primary/20 gap-2 cursor-pointer disabled:opacity-50"
                           >
                             {isSendingOtp ? (
                               <div className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" />
-                                <span>Sending OTP via SMS...</span>
+                                <RefreshCw className="size-3.5 animate-spin" />
+                                <span>Sending OTP...</span>
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-2">
                                 <Send className="size-3.5" />
-                                <span>Send 6-Digit SMS OTP</span>
-                                <ArrowRight className="size-4" />
+                                <span>Send OTP</span>
+                                <ArrowRight className="size-3.5" />
                               </div>
                             )}
                           </Button>
 
-                          <div className="pt-2 text-center">
+                          <div className="pt-0.5 text-center">
                             <button
                               type="button"
                               onClick={() => switchAuthMethod("password")}
-                              className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                              className="text-[11px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                             >
-                              Prefer to sign in with password? Switch to Password
+                              Sign in with password instead
                             </button>
                           </div>
                         </form>
                       ) : (
-                        <div className="space-y-4">
-                          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Smartphone className="size-4 text-primary shrink-0" />
-                              <div className="truncate">
-                                <span className="text-[11px] text-muted-foreground block">Code dispatched to</span>
-                                <strong className="font-mono text-foreground font-bold">
-                                  {otpCountryCode} {otpPhone}
-                                </strong>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOtpStep("phone");
-                                setOtpCode("");
-                                setErrorMsg("");
-                              }}
-                              className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer shrink-0 ml-2"
-                            >
-                              <Edit2 className="size-3" />
-                              <span>Change</span>
-                            </button>
-                          </div>
-
-                          <div className="flex flex-col items-center justify-center py-2">
-                            <label className="text-xs font-bold text-foreground mb-3 text-center">
-                              Enter 6-Digit Verification Code
-                            </label>
-                            <InputOTP
-                              maxLength={6}
-                              value={otpCode}
-                              disabled={isVerifyingOtp}
-                              onChange={(val) => {
-                                setOtpCode(val);
-                                if (val.length === 6) {
-                                  handleVerifyLoginOtp(val);
-                                }
-                              }}
-                            >
-                              <InputOTPGroup className="gap-2 sm:gap-2.5">
-                                <InputOTPSlot index={0} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={1} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={2} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={3} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={4} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={5} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                              </InputOTPGroup>
-                            </InputOTP>
-                            <p className="mt-2.5 text-[11px] text-muted-foreground text-center">
-                              Enter the 6-digit code received via SMS on your mobile phone.
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
-                            {resendCooldown > 0 ? (
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                                <Clock className="size-3.5 text-muted-foreground" />
-                                <span>Resend in <strong className="font-mono text-foreground font-bold">{resendCooldown}s</strong></span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={isSendingOtp || isVerifyingOtp}
-                                onClick={handleResendOtp}
-                                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                              >
-                                <RotateCcw className={`size-3.5 ${isSendingOtp ? "animate-spin" : ""}`} />
-                                <span>Resend 6-Digit Code</span>
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOtpStep("phone");
-                                setOtpCode("");
-                                setErrorMsg("");
-                              }}
-                              className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
-                            >
-                              Re-enter Phone
-                            </button>
-                          </div>
-
-                          <Button
-                            type="button"
-                            onClick={() => handleVerifyLoginOtp()}
-                            disabled={isVerifyingOtp || otpCode.length !== 6}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer disabled:opacity-50"
-                          >
-                            {isVerifyingOtp ? (
-                              <div className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" />
-                                <span>Verifying Code...</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center gap-2">
-                                <CheckCircle2 className="size-4" />
-                                <span>Verify OTP &amp; Sign In</span>
-                              </div>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* OTP SIGNUP */}
-                  {mode === "signup" && (
-                    <>
-                      {otpStep === "phone" ? (
-                        <form onSubmit={handleSendSignupOtp} className="space-y-3.5">
+                        <form onSubmit={handleSendSignupOtp} className="space-y-2.5">
                           <div>
                             <label htmlFor="signup-otp-name" className="text-xs font-semibold text-foreground">
                               Full Name *
@@ -1929,12 +1908,12 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                 type="text"
                                 autoComplete="name"
                                 required
-                                placeholder="Your Full Name"
+                                placeholder="Your full name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                                className="w-full rounded-xl border border-input bg-background pl-3 pr-8 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                               />
-                              <User className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
+                              <User className="absolute right-3 top-2.5 size-3.5 text-muted-foreground pointer-events-none" />
                             </div>
                           </div>
 
@@ -1944,15 +1923,13 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                 <Phone className="size-3.5 text-primary" />
                                 <span>Mobile Number *</span>
                               </label>
-                              <span className="text-[10px] text-muted-foreground font-normal">
-                                10-digit Indian Mobile
-                              </span>
+                              <span className="text-[10px] text-muted-foreground">10 digits</span>
                             </div>
                             <div className="flex gap-2">
                               <select
                                 value={otpCountryCode}
                                 onChange={(e) => setOtpCountryCode(e.target.value)}
-                                className="w-24 rounded-xl border border-input bg-background px-2.5 py-2.5 text-xs font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs cursor-pointer"
+                                className="w-20 rounded-xl border border-input bg-background px-2 py-2 text-xs font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs cursor-pointer"
                               >
                                 {SUPPORTED_COUNTRY_CODES.map((c) => (
                                   <option key={c.code} value={c.code}>
@@ -1967,73 +1944,50 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                   inputMode="numeric"
                                   autoComplete="tel"
                                   required
-                                  placeholder="10-digit mobile number"
+                                  placeholder="10-digit number"
                                   value={otpPhone}
                                   onChange={(e) => {
                                     const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                                     setOtpPhone(val);
                                     setPhone(val);
                                   }}
-                                  className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs font-mono font-medium text-foreground placeholder:text-muted-foreground placeholder:font-sans focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs tracking-wider"
+                                  className="w-full rounded-xl border border-input bg-background pl-3 pr-8 py-2 text-xs font-mono font-medium text-foreground placeholder:text-muted-foreground placeholder:font-sans focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs tracking-wider"
                                 />
-                                <Smartphone className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
+                                <Smartphone className="absolute right-3 top-2.5 size-3.5 text-muted-foreground pointer-events-none" />
                               </div>
                             </div>
                           </div>
 
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <label htmlFor="signup-otp-email" className="text-xs font-semibold text-foreground">
-                                Email Address (Optional)
-                              </label>
-                              <div className="relative mt-1">
-                                <input
-                                  id="signup-otp-email"
-                                  type="email"
-                                  autoComplete="email"
-                                  placeholder="For GST invoices & reports"
-                                  value={email}
-                                  onChange={(e) => setEmail(e.target.value)}
-                                  className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                                />
-                                <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label htmlFor="signup-otp-company" className="text-xs font-semibold text-foreground">
-                                Company / Business (Optional)
-                              </label>
-                              <div className="relative mt-1">
-                                <input
-                                  id="signup-otp-company"
-                                  type="text"
-                                  autoComplete="organization"
-                                  placeholder="e.g. Acme Industrial"
-                                  value={company}
-                                  onChange={(e) => setCompany(e.target.value)}
-                                  className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                                />
-                                <Building2 className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
-                              </div>
-                            </div>
+                          <div>
+                            <label htmlFor="signup-otp-email" className="text-xs font-semibold text-foreground">
+                              Email (Optional)
+                            </label>
+                            <input
+                              id="signup-otp-email"
+                              type="email"
+                              autoComplete="email"
+                              placeholder="For bills & invoices"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                            />
                           </div>
 
-                          <label htmlFor="signup-otp-terms" className="flex items-start gap-2 pt-1 cursor-pointer">
+                          <label htmlFor="signup-otp-terms" className="flex items-start gap-2 pt-0.5 cursor-pointer">
                             <input
                               id="signup-otp-terms"
                               type="checkbox"
                               required
                               checked={agreedTerms}
                               onChange={(e) => setAgreedTerms(e.target.checked)}
-                              className="size-4 rounded border-input text-primary focus:ring-primary mt-0.5 cursor-pointer"
+                              className="size-3.5 rounded border-input text-primary focus:ring-primary mt-0.5 cursor-pointer"
                             />
-                            <span className="text-[11px] text-muted-foreground leading-relaxed">
+                            <span className="text-[10px] text-muted-foreground leading-tight">
                               I agree to the{" "}
                               <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
-                                Terms of Service
+                                Terms
                               </a>{" "}
-                              and acknowledge the{" "}
+                              &amp;{" "}
                               <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
                                 Privacy Policy
                               </a>.
@@ -2043,318 +1997,146 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                           <Button
                             type="submit"
                             disabled={isSendingOtp || !name.trim() || otpPhone.replace(/\D/g, "").length < 10 || !agreedTerms}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer disabled:opacity-50"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 shadow-md shadow-primary/20 gap-2 cursor-pointer disabled:opacity-50"
                           >
                             {isSendingOtp ? (
                               <div className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" />
-                                <span>Sending Verification Code...</span>
+                                <RefreshCw className="size-3.5 animate-spin" />
+                                <span>Sending OTP...</span>
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-2">
                                 <Send className="size-3.5" />
-                                <span>Send Verification Code via SMS</span>
-                                <ArrowRight className="size-4" />
+                                <span>Send OTP</span>
+                                <ArrowRight className="size-3.5" />
                               </div>
                             )}
                           </Button>
-
-                          <div className="pt-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => switchAuthMethod("password")}
-                              className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                            >
-                              Prefer traditional password? Switch to Password Sign Up
-                            </button>
-                          </div>
                         </form>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Smartphone className="size-4 text-primary shrink-0" />
-                              <div className="truncate">
-                                <span className="text-[11px] text-muted-foreground block">Verifying account for {name}</span>
-                                <strong className="font-mono text-foreground font-bold">
-                                  {otpCountryCode} {otpPhone}
-                                </strong>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOtpStep("phone");
-                                setOtpCode("");
-                                setErrorMsg("");
-                              }}
-                              className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer shrink-0 ml-2"
-                            >
-                              <Edit2 className="size-3" />
-                              <span>Change</span>
-                            </button>
-                          </div>
-
-                          <div className="flex flex-col items-center justify-center py-2">
-                            <label className="text-xs font-bold text-foreground mb-3 text-center">
-                              Enter 6-Digit Verification Code
-                            </label>
-                            <InputOTP
-                              maxLength={6}
-                              value={otpCode}
-                              disabled={isVerifyingOtp}
-                              onChange={(val) => {
-                                setOtpCode(val);
-                                if (val.length === 6) {
-                                  handleVerifySignupOtp(val);
-                                }
-                              }}
-                            >
-                              <InputOTPGroup className="gap-2 sm:gap-2.5">
-                                <InputOTPSlot index={0} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={1} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={2} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={3} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={4} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                                <InputOTPSlot index={5} className="size-11 sm:size-12 rounded-xl text-lg font-bold border-2" />
-                              </InputOTPGroup>
-                            </InputOTP>
-                            <p className="mt-2.5 text-[11px] text-muted-foreground text-center">
-                              Enter the 6-digit code received via SMS to complete your account registration.
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
-                            {resendCooldown > 0 ? (
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                                <Clock className="size-3.5 text-muted-foreground" />
-                                <span>Resend in <strong className="font-mono text-foreground font-bold">{resendCooldown}s</strong></span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={isSendingOtp || isVerifyingOtp}
-                                onClick={handleResendOtp}
-                                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                              >
-                                <RotateCcw className={`size-3.5 ${isSendingOtp ? "animate-spin" : ""}`} />
-                                <span>Resend Code</span>
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOtpStep("phone");
-                                setOtpCode("");
-                                setErrorMsg("");
-                              }}
-                              className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
-                            >
-                              Re-enter Phone
-                            </button>
-                          </div>
-
-                          <Button
-                            type="button"
-                            onClick={() => handleVerifySignupOtp()}
-                            disabled={isVerifyingOtp || otpCode.length !== 6}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer disabled:opacity-50"
-                          >
-                            {isVerifyingOtp ? (
-                              <div className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" />
-                                <span>Verifying &amp; Registering...</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center gap-2">
-                                <CheckCircle2 className="size-4" />
-                                <span>Verify &amp; Complete Registration</span>
-                              </div>
-                            )}
-                          </Button>
-                        </div>
                       )}
                     </>
                   )}
-                </>
-              )}
 
-              {/* METHOD 2: PASSWORD FLOW */}
-              {authMethod === "password" && (
-                <>
-                  {/* PASSWORD LOGIN FORM */}
-                  {mode === "login" && (
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label htmlFor="login-identifier" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                            <Phone className="size-3.5 text-primary" />
-                            <span>Mobile Number / Email Address</span>
-                          </label>
-                          <span className="text-[10px] text-muted-foreground font-normal">
-                            10-digit Mobile or Email
-                          </span>
-                        </div>
-                        <div className="relative mt-1">
-                          <input
-                            id="login-identifier"
-                            name="loginIdentifier"
-                            type="text"
-                            inputMode="text"
-                            autoComplete="username tel email"
-                            required
-                            placeholder="Enter 10-digit mobile number or email"
-                            value={loginIdentifier}
-                            onChange={(e) => setLoginIdentifier(e.target.value)}
-                            className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                          />
-                          <div className="absolute right-3.5 top-3 flex items-center gap-1 text-muted-foreground pointer-events-none">
-                            {loginIdentifier.includes("@") ? (
-                              <Mail className="size-4 text-primary" />
-                            ) : (
-                              <Phone className="size-4" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label
-                            htmlFor="login-password"
-                            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
-                          >
-                            <Lock className="size-3.5 text-primary" />
-                            <span>Password</span>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResetEmail(loginIdentifier || email);
-                              setShowResetModal(true);
-                              setResetError("");
-                              setResetSuccess("");
-                            }}
-                            className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
-                          >
-                            Forgot / Reset Password?
-                          </button>
-                        </div>
-                        <div className="relative mt-1">
-                          <input
-                            id="login-password"
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            autoComplete="current-password"
-                            required
-                            placeholder="••••••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground cursor-pointer"
-                          >
-                            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer"
-                      >
-                        {submitting ? (
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" />
-                            <span>Signing In...</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2">
-                            <span>Sign In with Password</span>
-                            <ArrowRight className="size-4" />
-                          </div>
-                        )}
-                      </Button>
-
-                      <div className="pt-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => switchAuthMethod("otp")}
-                          className="text-[11px] font-semibold text-primary hover:underline transition-colors cursor-pointer"
-                        >
-                          ⚡ Prefer instant login? Switch to Mobile Number OTP
-                        </button>
-                      </div>
-                    </form>
-                  )}
-
-                  {/* PASSWORD SIGNUP FORM */}
-                  {mode === "signup" && (
-                    <form onSubmit={handleSignupSubmit} className="space-y-3.5">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <label
-                            htmlFor="signup-name"
-                            className="text-xs font-semibold text-foreground"
-                          >
-                            Full Name *
-                          </label>
-                          <div className="relative mt-1">
+                  {/* METHOD 2: PASSWORD FLOW */}
+                  {authMethod === "password" && (
+                    <>
+                      {mode === "login" ? (
+                        <form onSubmit={handleLoginSubmit} className="space-y-3">
+                          <div>
+                            <label htmlFor="login-identifier" className="text-xs font-semibold text-foreground flex items-center justify-between mb-1">
+                              <span>Mobile or Email</span>
+                              <span className="text-[10px] text-muted-foreground">10-digit number / email</span>
+                            </label>
                             <input
-                              id="signup-name"
-                              name="name"
+                              id="login-identifier"
+                              name="loginIdentifier"
                               type="text"
-                              autoComplete="name"
+                              autoComplete="username tel email"
                               required
-                              placeholder="Your Full Name"
-                              value={name}
-                              onChange={(e) => setName(e.target.value)}
-                              className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              placeholder="Enter mobile number or email"
+                              value={loginIdentifier}
+                              onChange={(e) => setLoginIdentifier(e.target.value)}
+                              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                             />
-                            <User className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
                           </div>
-                        </div>
 
-                        <div>
-                          <label
-                            htmlFor="signup-phone"
-                            className="text-xs font-semibold text-foreground flex items-center justify-between"
-                          >
-                            <span>Mobile Number *</span>
-                            <span className="text-[10px] text-muted-foreground font-normal">For order updates</span>
-                          </label>
-                          <div className="relative mt-1">
-                            <input
-                              id="signup-phone"
-                              name="phone"
-                              type="tel"
-                              autoComplete="tel"
-                              required
-                              placeholder="98765 43210"
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
-                              className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                            />
-                            <Phone className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label htmlFor="login-password" className="text-xs font-semibold text-foreground">
+                                Password
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResetEmail(loginIdentifier || email);
+                                  setShowResetModal(true);
+                                  setResetError("");
+                                  setResetSuccess("");
+                                }}
+                                className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                              >
+                                Forgot?
+                              </button>
+                            </div>
+                            <div className="relative">
+                              <input
+                                id="login-password"
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                autoComplete="current-password"
+                                required
+                                placeholder="••••••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full rounded-xl border border-input bg-background pl-3 pr-8 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                              >
+                                {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <label
-                            htmlFor="signup-email"
-                            className="text-xs font-semibold text-foreground"
+                          <Button
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 shadow-md shadow-primary/20 gap-2 cursor-pointer"
                           >
-                            Email Address *
-                          </label>
-                          <div className="relative mt-1">
+                            {submitting ? (
+                              <div className="flex items-center gap-2">
+                                <RefreshCw className="size-3.5 animate-spin" />
+                                <span>Signing In...</span>
+                              </div>
+                            ) : (
+                              <span>Sign In with Password</span>
+                            )}
+                          </Button>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleSignupSubmit} className="space-y-2.5">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div>
+                              <label htmlFor="signup-name" className="text-xs font-semibold text-foreground">
+                                Full Name *
+                              </label>
+                              <input
+                                id="signup-name"
+                                name="name"
+                                type="text"
+                                autoComplete="name"
+                                required
+                                placeholder="Your name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="signup-phone" className="text-xs font-semibold text-foreground">
+                                Mobile Number *
+                              </label>
+                              <input
+                                id="signup-phone"
+                                name="phone"
+                                type="tel"
+                                autoComplete="tel"
+                                required
+                                placeholder="10-digit number"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label htmlFor="signup-email" className="text-xs font-semibold text-foreground">
+                              Email Address *
+                            </label>
                             <input
                               id="signup-email"
                               name="email"
@@ -2364,221 +2146,106 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                               placeholder="name@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
-                              className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                             />
-                            <Mail className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
                           </div>
-                        </div>
 
-                        <div>
-                          <label
-                            htmlFor="signup-company"
-                            className="text-xs font-semibold text-foreground"
-                          >
-                            Company Name (Optional)
-                          </label>
-                          <div className="relative mt-1">
+                          <div>
+                            <label htmlFor="signup-password" className="text-xs font-semibold text-foreground">
+                              Password *
+                            </label>
+                            <div className="relative mt-1">
+                              <input
+                                id="signup-password"
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                autoComplete="new-password"
+                                required
+                                placeholder="At least 6 characters"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full rounded-xl border border-input bg-background pl-3 pr-8 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                              >
+                                {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <label htmlFor="signup-terms" className="flex items-start gap-2 pt-0.5 cursor-pointer">
                             <input
-                              id="signup-company"
-                              name="company"
-                              type="text"
-                              autoComplete="organization"
-                              placeholder="e.g. Acme Enterprises"
-                              value={company}
-                              onChange={(e) => setCompany(e.target.value)}
-                              className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+                              id="signup-terms"
+                              name="terms"
+                              type="checkbox"
+                              required
+                              checked={agreedTerms}
+                              onChange={(e) => setAgreedTerms(e.target.checked)}
+                              className="size-3.5 rounded border-input text-primary focus:ring-primary mt-0.5"
                             />
-                            <Building2 className="absolute right-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
-                          </div>
-                        </div>
-                      </div>
+                            <span className="text-[10px] text-muted-foreground leading-tight">
+                              I agree to the{" "}
+                              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
+                                Terms
+                              </a>{" "}
+                              &amp;{" "}
+                              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
+                                Privacy Policy
+                              </a>.
+                            </span>
+                          </label>
 
-                      <div>
-                        <label
-                          htmlFor="signup-password"
-                          className="text-xs font-semibold text-foreground"
-                        >
-                          Choose Password *
-                        </label>
-                        <div className="relative mt-1">
-                          <input
-                            id="signup-password"
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            autoComplete="new-password"
-                            required
-                            placeholder="At least 6 characters"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-xl border border-input bg-background pl-3.5 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground cursor-pointer"
+                          <Button
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 shadow-md shadow-primary/20 gap-2 cursor-pointer"
                           >
-                            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                          </button>
-                        </div>
+                            {submitting ? (
+                              <div className="flex items-center gap-2">
+                                <RefreshCw className="size-3.5 animate-spin" />
+                                <span>Creating Account...</span>
+                              </div>
+                            ) : (
+                              <span>Create Account</span>
+                            )}
+                          </Button>
+                        </form>
+                      )}
+                    </>
+                  )}
 
-                        {/* Password Strength Indicator */}
-                        {password && (
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="text-muted-foreground">Strength:</span>
-                              <span className="font-bold text-foreground">{strength.label}</span>
-                            </div>
-                            <div className="grid grid-cols-4 gap-1.5 h-1.5">
-                              {[1, 2, 3, 4].map((step) => (
-                                <div
-                                  key={step}
-                                  className={`rounded-full transition-colors ${
-                                    strength.score >= step ? strength.color : "bg-muted"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="signup-confirm-password"
-                          className="text-xs font-semibold text-foreground"
-                        >
-                          Confirm Password *
-                        </label>
-                        <input
-                          id="signup-confirm-password"
-                          name="confirm-password"
-                          type="password"
-                          autoComplete="new-password"
-                          required
-                          placeholder="Repeat password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="mt-1 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
-                        />
-                      </div>
-
-                      <label
-                        htmlFor="signup-terms"
-                        className="flex items-start gap-2 pt-1 cursor-pointer"
-                      >
-                        <input
-                          id="signup-terms"
-                          name="terms"
-                          type="checkbox"
-                          required
-                          checked={agreedTerms}
-                          onChange={(e) => setAgreedTerms(e.target.checked)}
-                          className="size-4 rounded border-input text-primary focus:ring-primary mt-0.5"
-                        />
-                        <span className="text-[11px] text-muted-foreground leading-relaxed">
-                          I agree to the{" "}
-                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
-                            Terms of Service
-                          </a>{" "}
-                          and acknowledge the{" "}
-                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium hover:text-primary/80">
-                            Privacy Policy
-                          </a>.
-                        </span>
-                      </label>
-
-                      <Button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 shadow-lg shadow-primary/20 gap-2 mt-2 cursor-pointer"
-                      >
-                        {submitting ? (
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" />
-                            <span>Creating Account...</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2">
-                            <span>Create Account with Password</span>
-                            <ArrowRight className="size-4" />
-                          </div>
-                        )}
-                      </Button>
-
-                      <div className="pt-2 text-center">
+                  {/* Footer Switcher */}
+                  <div className="mt-3.5 pt-2.5 border-t border-border/60 text-center text-xs text-muted-foreground">
+                    {mode === "login" ? (
+                      <span>
+                        Don't have an account?{" "}
                         <button
                           type="button"
-                          onClick={() => switchAuthMethod("otp")}
-                          className="text-[11px] font-semibold text-primary hover:underline transition-colors cursor-pointer"
+                          onClick={() => switchMode("signup")}
+                          className="font-bold text-primary hover:underline cursor-pointer"
                         >
-                          ⚡ Prefer instant registration? Switch to Mobile Number OTP
+                          Create Account
                         </button>
-                      </div>
-                    </form>
-                  )}
+                      </span>
+                    ) : (
+                      <span>
+                        Already have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => switchMode("login")}
+                          className="font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          Sign In
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
-
-              {/* Trust & Compliance Micro-Badges */}
-              <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/60 pt-4 text-[10px] text-muted-foreground text-center">
-                <div className="flex flex-col items-center gap-1">
-                  <ShieldCheck className="size-3.5 text-emerald-500" />
-                  <span className="font-semibold text-foreground/80">NBC 2016 Certified</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Lock className="size-3.5 text-primary" />
-                  <span className="font-semibold text-foreground/80">256-Bit SSL Encrypted</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Zap className="size-3.5 text-amber-500" />
-                  <span className="font-semibold text-foreground/80">Instant Verification</span>
-                </div>
-              </div>
-
-              {/* Footer Switcher */}
-              <div className="mt-6 border-t border-border pt-4 flex flex-col items-center justify-center text-xs text-muted-foreground gap-2">
-                <div>
-                  {mode === "login" ? (
-                    <span>
-                      Don't have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => switchMode("signup")}
-                        className="font-bold text-primary hover:underline cursor-pointer"
-                      >
-                        Create one now
-                      </button>
-                    </span>
-                  ) : (
-                    <span>
-                      Already have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => switchMode("login")}
-                        className="font-bold text-primary hover:underline cursor-pointer"
-                      >
-                        Sign In here
-                      </button>
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResetEmail(email || loginIdentifier || phone || otpPhone);
-                      setShowResetModal(true);
-                      setResetError("");
-                      setResetSuccess("");
-                    }}
-                    className="text-[11px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                  >
-                    Forgot or need to reset your password?{" "}
-                    <span className="font-bold text-primary underline">Reset Password</span>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
