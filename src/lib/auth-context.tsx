@@ -549,8 +549,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
       if (code === "auth/captcha-check-failed" || msg.includes("captcha-check-failed")) {
+        const currentHost = typeof window !== "undefined" ? window.location.hostname : "current host";
         throw new Error(
-          "Security verification check failed. Please refresh the page and try again.",
+          `Security verification check failed on "${currentHost}". If deployed on Vercel, please add "${currentHost}" (and vercel.app) to Firebase Console > Authentication > Settings > Authorized domains.`,
         );
       }
       if (code === "auth/network-request-failed" || msg.includes("network-request-failed")) {
