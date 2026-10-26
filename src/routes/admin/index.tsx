@@ -2775,7 +2775,7 @@ function AdminPage() {
                                       setNotifyingReminder(r);
                                       setNotifTitleInput(`Fire Safety Maintenance Reminder: ${r.productName || "Equipment"}`);
                                       setNotifMessageInput(
-                                        `Dear ${r.customerName || "Customer"}, your scheduled maintenance/refill for ${r.productName || "Equipment"} is due on ${r.dueDate}. Please contact us or book a technician visit to ensure safety compliance.`
+                                        `Dear ${r.customerName || "Customer"}, your scheduled maintenance/refill for ${r.productName || "Equipment"} is due on ${r.renewalDate || r.dueDate || "the scheduled date"}. Please contact us or book a technician visit to ensure safety compliance.`
                                       );
                                     }}
                                     className="gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-500/10 border-blue-500/30"
@@ -6659,7 +6659,7 @@ function AdminPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Scheduled Due Date:</span>
-                    <span className="font-bold text-primary font-mono">{notifyingReminder.dueDate}</span>
+                    <span className="font-bold text-primary font-mono">{notifyingReminder.renewalDate || notifyingReminder.dueDate || "N/A"}</span>
                   </div>
                 </div>
 
@@ -6672,7 +6672,7 @@ function AdminPage() {
                       {
                         label: "Refill Reminder",
                         title: `Safety Notice: Refill Due for ${notifyingReminder.productName}`,
-                        msg: `Dear ${notifyingReminder.customerName}, your fire extinguisher refill interval is approaching on ${notifyingReminder.dueDate}. Regular pressure testing and chemical replenishment ensures full operational readiness. Contact us to schedule inspection.`,
+                        msg: `Dear ${notifyingReminder.customerName}, your fire extinguisher refill interval is approaching on ${notifyingReminder.renewalDate || notifyingReminder.dueDate || "the scheduled date"}. Regular pressure testing and chemical replenishment ensures full operational readiness. Contact us to schedule inspection.`,
                       },
                       {
                         label: "AMC Service Inspection",
@@ -6682,7 +6682,7 @@ function AdminPage() {
                       {
                         label: "Compliance Overdue",
                         title: `Urgent Fire Safety Alert: Maintenance Overdue`,
-                        msg: `Dear ${notifyingReminder.customerName}, the safety maintenance certification for ${notifyingReminder.productName} passed its scheduled date of ${notifyingReminder.dueDate}. Please renew immediately to avoid safety non-compliance penalties.`,
+                        msg: `Dear ${notifyingReminder.customerName}, the safety maintenance certification for ${notifyingReminder.productName} passed its scheduled date of ${notifyingReminder.renewalDate || notifyingReminder.dueDate || "the scheduled date"}. Please renew immediately to avoid safety non-compliance penalties.`,
                       },
                     ].map((tpl, i) => (
                       <button

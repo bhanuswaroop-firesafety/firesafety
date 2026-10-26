@@ -26,6 +26,7 @@ export default defineConfig({
               if (id.includes("@radix-ui")) return "vendor-radix";
               if (id.includes("recharts")) return "vendor-charts";
             }
+            return undefined;
           },
         },
       },

@@ -33,6 +33,7 @@ import {
   AlertCircle,
   Clock,
   Zap,
+  User,
 } from "lucide-react";
 
 import { seoHead } from "@/lib/seo";

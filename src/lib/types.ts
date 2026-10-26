@@ -199,6 +199,7 @@ export interface ReminderItem {
   renewalMonths: 3 | 6 | 9 | 12;
   installDate: string; // YYYY-MM-DD in Asia/Kolkata
   renewalDate: string; // YYYY-MM-DD in Asia/Kolkata (installDate + renewalMonths)
+  dueDate?: string | undefined; // alias for renewalDate
   alertDate: string; // YYYY-MM-DD in Asia/Kolkata (renewalDate - 7 days)
   status: "pending" | "sent" | "completed" | "snoozed";
   cycle?: number | undefined;

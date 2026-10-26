@@ -585,7 +585,7 @@ export async function deleteUser(uid: string): Promise<void> {
 
 export async function savePhoneIndex(
   phone: string,
-  data: { uid: string; email: string; name?: string },
+  data: { uid: string; email: string; name?: string | undefined },
 ): Promise<void> {
   const clean = phone.replace(/\D/g, "").slice(-10);
   if (clean.length === 10) {
@@ -614,7 +614,7 @@ export async function getUserEmailByPhone(rawPhone: string): Promise<string | nu
     const indexSnap = await getDoc(doc(db, "phone_index", clean));
     if (indexSnap.exists()) {
       const d = indexSnap.data();
-      if (d?.email) return String(d.email).trim().toLowerCase();
+      if (d && d["email"]) return String(d["email"]).trim().toLowerCase();
     }
   } catch (err) {
     console.warn("phone_index lookup notice:", err);
@@ -626,15 +626,18 @@ export async function getUserEmailByPhone(rawPhone: string): Promise<string | nu
     const q = query(usersCol, where("phone", "==", clean));
     const snap = await getDocs(q);
     if (!snap.empty) {
-      const userDoc = snap.docs[0].data() as UserItem;
-      if (userDoc.email) {
-        const foundEmail = String(userDoc.email).trim().toLowerCase();
-        savePhoneIndex(clean, {
-          uid: snap.docs[0].id,
-          email: foundEmail,
-          name: userDoc.displayName,
-        }).catch(() => {});
-        return foundEmail;
+      const firstDoc = snap.docs[0];
+      if (firstDoc) {
+        const userDoc = firstDoc.data() as UserItem;
+        if (userDoc.email) {
+          const foundEmail = String(userDoc.email).trim().toLowerCase();
+          savePhoneIndex(clean, {
+            uid: firstDoc.id,
+            email: foundEmail,
+            name: userDoc.displayName,
+          }).catch(() => {});
+          return foundEmail;
+        }
       }
     }
 
@@ -837,15 +840,15 @@ export async function getOrders(): Promise<OrderItem[]> {
 }
 
 export interface UpdateOrderStatusOptions {
-  note?: string;
-  updatedBy?: string;
-  deliveredAt?: string;
-  installDate?: string;
-  courierName?: string;
-  trackingNumber?: string;
-  trackingUrl?: string;
-  shippedAt?: string;
-  dispatchNote?: string;
+  note?: string | undefined;
+  updatedBy?: string | undefined;
+  deliveredAt?: string | undefined;
+  installDate?: string | undefined;
+  courierName?: string | undefined;
+  trackingNumber?: string | undefined;
+  trackingUrl?: string | undefined;
+  shippedAt?: string | undefined;
+  dispatchNote?: string | undefined;
 }
 
 export async function updateOrderStatus(

@@ -109,34 +109,42 @@ export function TiltedGridHero({
 
     updateSize();
 
+    let roCleanup: (() => void) | undefined;
     if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(([entry]) => {
+      const ro = new ResizeObserver((entries) => {
+        const entry = entries[0];
         if (!entry) return;
         const w = entry.contentRect.width || el.offsetWidth || window.innerWidth;
         const h = entry.contentRect.height || el.offsetHeight || 560;
         setDimensions({ width: Math.max(w, 320), height: Math.max(h, 400) });
       });
       ro.observe(el);
-      return () => ro.disconnect();
+      roCleanup = () => ro.disconnect();
     } else {
       window.addEventListener("resize", updateSize);
-      return () => window.removeEventListener("resize", updateSize);
+      roCleanup = () => window.removeEventListener("resize", updateSize);
     }
+
     // Viewport visibility observer to avoid GPU churn when offscreen
     let io: IntersectionObserver | null = null;
     if (typeof IntersectionObserver !== "undefined") {
-      io = new IntersectionObserver(
-        ([entry]) => {
-          setIsInView(entry.isIntersecting);
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry) {
+            setIsInView(entry.isIntersecting);
+          }
         },
         { rootMargin: "200px" },
       );
-      io.observe(el);
+      observer.observe(el);
+      io = observer;
     } else {
       setIsInView(true);
     }
 
     return () => {
+      if (roCleanup) roCleanup();
       if (io) io.disconnect();
     };
   }, []);
