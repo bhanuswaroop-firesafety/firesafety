@@ -481,31 +481,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifier = new RecaptchaVerifier(auth, targetContainerId, {
         size: "invisible",
         callback: () => {
-          // Invisible verification successful
+          console.log("[Phone Auth] Invisible verification successful.");
         },
         "expired-callback": () => {
+          console.warn("[Phone Auth] Verification token expired.");
+          clearGlobalRecaptchaVerifier();
+        },
+        "error-callback": (error: any) => {
+          console.error("[Phone Auth] reCAPTCHA verification error:", error);
           clearGlobalRecaptchaVerifier();
         },
       });
       (window as any).recaptchaVerifier = verifier;
+      await verifier.render();
     } catch (verifierErr: unknown) {
       clearGlobalRecaptchaVerifier();
       const msg = verifierErr instanceof Error ? verifierErr.message : String(verifierErr);
+      console.error("[Phone Auth] Verifier initialization failed:", verifierErr);
       throw new Error(`Failed to initialize verification security: ${msg}`);
     }
 
     try {
+      console.log(`[Phone Auth] Requesting SMS OTP for ${normalized.e164}...`);
       const confirmation = await signInWithPhoneNumber(auth, normalized.e164, verifier);
+      console.log(`[Phone Auth] SMS OTP dispatched successfully to ${normalized.e164}.`);
       return confirmation;
     } catch (err: unknown) {
       clearGlobalRecaptchaVerifier();
+      console.error("[Phone Auth] signInWithPhoneNumber error:", err);
 
       const code = (err as { code?: string }).code || "";
       const msg = err instanceof Error ? err.message : String(err);
 
       if (code === "auth/invalid-phone-number" || msg.includes("invalid-phone-number")) {
         throw new Error(
-          "Invalid mobile number format. Please ensure your 10-digit number is correct.",
+          "Invalid mobile number format. Please ensure your 10-digit number is correct (e.g. 8466006486).",
         );
       }
       if (code === "auth/too-many-requests" || msg.includes("too-many-requests")) {
@@ -515,7 +525,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (code === "auth/quota-exceeded" || msg.includes("quota-exceeded")) {
         throw new Error(
-          "Daily SMS limit reached. If you recently enabled the Blaze plan, please allow 3-5 minutes for Google Cloud quotas to refresh.",
+          "Daily SMS limit reached. (Google Cloud Blaze quotas may take 10-15 minutes to sync, or check Firebase Console > Authentication > Phone > SMS region policy for India +91).",
         );
       }
       if (
@@ -524,17 +534,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         msg.includes("BILLING_NOT_ENABLED")
       ) {
         throw new Error(
-          "Firebase Blaze billing is activating. Please allow 2-3 minutes for the newly linked billing account to propagate to SMS gateways.",
+          "Firebase Blaze billing is activating. Please allow 2-5 minutes for the newly linked billing account to propagate to SMS gateways.",
         );
       }
       if (code === "auth/operation-not-allowed" || msg.includes("operation-not-allowed")) {
         throw new Error(
-          "Phone authentication is not enabled. Please ensure Phone provider is enabled in Firebase Console.",
+          "Phone authentication is not enabled. Please ensure Phone provider is enabled in Firebase Console under Authentication > Sign-in method.",
+        );
+      }
+      if (code === "auth/unauthorized-domain" || msg.includes("unauthorized-domain")) {
+        const currentHost = typeof window !== "undefined" ? window.location.hostname : "current host";
+        throw new Error(
+          `Domain "${currentHost}" is not authorized in Firebase. Please add "${currentHost}" under Firebase Console > Authentication > Settings > Authorized domains.`,
         );
       }
       if (code === "auth/captcha-check-failed" || msg.includes("captcha-check-failed")) {
         throw new Error(
-          "Verification check failed. Please refresh the page and try again.",
+          "Security verification check failed. Please refresh the page and try again.",
         );
       }
       if (code === "auth/network-request-failed" || msg.includes("network-request-failed")) {
@@ -543,11 +559,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      const cleaned = msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim();
-      if (!cleaned || cleaned === "Error" || cleaned === "Error ." || cleaned === ".") {
-        throw new Error(msg.replace("Firebase: ", "").trim() || `Authentication error: ${code}`);
-      }
-      throw new Error(cleaned);
+      const cleaned = msg.replace("Firebase: ", "").trim();
+      throw new Error(cleaned ? `${cleaned} (${code || "auth/error"})` : `Authentication error (${code})`);
     }
   };
 
