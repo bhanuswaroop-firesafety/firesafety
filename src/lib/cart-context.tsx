@@ -15,6 +15,7 @@ export interface CartItem {
   quantity: number;
   specs?: string[] | string | undefined;
   sku?: string | undefined;
+  renewalMonths?: 3 | 6 | 9 | 12 | undefined;
 }
 
 interface CouponInfo {
@@ -225,6 +226,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             quantity,
             specs: item.specs,
             sku: item.sku,
+            renewalMonths: (item as any).renewalMonths || undefined,
           },
         ];
       }

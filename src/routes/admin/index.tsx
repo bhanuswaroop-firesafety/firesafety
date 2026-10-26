@@ -22,6 +22,7 @@ import {
   subscribeReminders,
   markReminderCompleted,
   processDueRemindersFallback,
+  sendManualMaintenanceNotification,
   subscribeShippingSettings,
   updateShippingSettings,
   DEFAULT_SHIPPING_SETTINGS,
@@ -61,6 +62,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  Bell,
   Boxes,
   Building2,
   Check,
@@ -73,6 +75,7 @@ import {
   Database,
   Download,
   ExternalLink,
+  Send,
   Eye,
   EyeOff,
   FileSpreadsheet,
@@ -167,6 +170,20 @@ function AdminPage() {
   const [installDateInput, setInstallDateInput] = useState<string>("");
   const [deliveryNoteInput, setDeliveryNoteInput] = useState<string>("");
   const [isDeliveringOrder, setIsDeliveringOrder] = useState<boolean>(false);
+
+  // Shipping & Dispatch Modal with Courier & Tracking info
+  const [shippingOrder, setShippingOrder] = useState<OrderItem | null>(null);
+  const [courierInput, setCourierInput] = useState<string>("Blue Dart Express");
+  const [trackingNumInput, setTrackingNumInput] = useState<string>("");
+  const [trackingUrlInput, setTrackingUrlInput] = useState<string>("");
+  const [dispatchNoteInput, setDispatchNoteInput] = useState<string>("");
+  const [isSubmittingShipping, setIsSubmittingShipping] = useState<boolean>(false);
+
+  // Manual Maintenance / Refill Notification Modal
+  const [notifyingReminder, setNotifyingReminder] = useState<ReminderItem | null>(null);
+  const [notifTitleInput, setNotifTitleInput] = useState<string>("");
+  const [notifMessageInput, setNotifMessageInput] = useState<string>("");
+  const [isSendingNotif, setIsSendingNotif] = useState<boolean>(false);
 
   // Order Status History Modal
   const [viewHistoryOrder, setViewHistoryOrder] = useState<OrderItem | null>(null);
@@ -1027,6 +1044,60 @@ function AdminPage() {
       );
     } finally {
       setIsCompletingReminder(false);
+    }
+  };
+
+  // Confirm Shipping with Courier & Tracking info
+  const handleConfirmShippingOrder = async () => {
+    if (!shippingOrder?.id) return;
+    setIsSubmittingShipping(true);
+    try {
+      const courier = courierInput.trim() || "Blue Dart Express";
+      const trackingNo = trackingNumInput.trim();
+      const trackingUrl = trackingUrlInput.trim();
+      const note = dispatchNoteInput.trim() || `Dispatched via ${courier}${trackingNo ? ` (AWB: ${trackingNo})` : ""}`;
+      await updateOrderStatus(shippingOrder.id, "shipped", {
+        courierName: courier,
+        trackingNumber: trackingNo || undefined,
+        trackingUrl: trackingUrl || undefined,
+        dispatchNote: note,
+        note,
+        updatedBy: userProfile?.displayName || user?.email || "Admin",
+      });
+      showSuccessMessage(
+        `Order #${shippingOrder.orderNumber || shippingOrder.id} marked as SHIPPED with courier tracking! Real-time notification dispatched to customer.`,
+      );
+      setShippingOrder(null);
+    } catch (err: unknown) {
+      showSuccessMessage(
+        "Failed to update shipping status: " + (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setIsSubmittingShipping(false);
+    }
+  };
+
+  // Send Manual Maintenance Notification to Customer
+  const handleSendMaintenanceNotification = async () => {
+    if (!notifyingReminder?.id) return;
+    setIsSendingNotif(true);
+    try {
+      await sendManualMaintenanceNotification(
+        notifyingReminder.id,
+        notifTitleInput,
+        notifMessageInput,
+        userProfile?.displayName || user?.email || "Admin",
+      );
+      showSuccessMessage(
+        `Maintenance notification successfully dispatched to ${notifyingReminder.customerName || "Customer"}!`,
+      );
+      setNotifyingReminder(null);
+    } catch (err: unknown) {
+      showSuccessMessage(
+        "Failed to send maintenance alert: " + (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setIsSendingNotif(false);
     }
   };
 
@@ -2109,6 +2180,14 @@ function AdminPage() {
                                 onChange={async (e) => {
                                   if (!ord.id) return;
                                   const nextStatus = e.target.value as OrderItem["status"];
+                                  if (nextStatus === "shipped") {
+                                    setShippingOrder(ord);
+                                    setCourierInput(ord.courierName || "Blue Dart Express");
+                                    setTrackingNumInput(ord.trackingNumber || "");
+                                    setTrackingUrlInput(ord.trackingUrl || "");
+                                    setDispatchNoteInput(ord.dispatchNote || "Package dispatched from central distribution hub");
+                                    return;
+                                  }
                                   if (nextStatus === "delivered") {
                                     setDeliveringOrder(ord);
                                     setInstallDateInput(getKolkataDateString());
@@ -2138,10 +2217,37 @@ function AdminPage() {
                                 <option value="delivered">Delivered</option>
                                 <option value="cancelled">Cancelled</option>
                               </select>
+
+                              {ord.courierName && (
+                                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                                  <Truck className="size-3 shrink-0" />
+                                  <span className="truncate max-w-[120px]">{ord.courierName}</span>
+                                </div>
+                              )}
+                              {ord.trackingNumber && (
+                                <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[130px]">
+                                  AWB: {ord.trackingNumber}
+                                </div>
+                              )}
                             </td>
 
                             <td className="px-5 py-4 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShippingOrder(ord);
+                                    setCourierInput(ord.courierName || "Blue Dart Express");
+                                    setTrackingNumInput(ord.trackingNumber || "");
+                                    setTrackingUrlInput(ord.trackingUrl || "");
+                                    setDispatchNoteInput(ord.dispatchNote || "Package dispatched from central distribution hub");
+                                  }}
+                                  className="rounded-md p-1.5 text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-400"
+                                  title="Manage Shipping & Courier Tracking"
+                                  aria-label={`Manage shipping for order ${ord.orderNumber}`}
+                                >
+                                  <Truck className="size-4" />
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => setSelectedOrder(ord)}
@@ -2661,26 +2767,44 @@ function AdminPage() {
                               </td>
 
                               <td className="px-4 py-3 text-right whitespace-nowrap">
-                                {r.status !== "completed" ? (
+                                <div className="flex items-center justify-end gap-1.5">
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => {
-                                      setCompletingReminder(r);
-                                      setCompletionDateInput(getKolkataDateString());
-                                      setScheduleNextCycleInput(true);
+                                      setNotifyingReminder(r);
+                                      setNotifTitleInput(`Fire Safety Maintenance Reminder: ${r.productName || "Equipment"}`);
+                                      setNotifMessageInput(
+                                        `Dear ${r.customerName || "Customer"}, your scheduled maintenance/refill for ${r.productName || "Equipment"} is due on ${r.dueDate}. Please contact us or book a technician visit to ensure safety compliance.`
+                                      );
                                     }}
-                                    className="gap-1.5 text-xs font-semibold hover:border-emerald-500 hover:text-emerald-600"
+                                    className="gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-500/10 border-blue-500/30"
+                                    title="Send Manual Maintenance Notification to Customer"
                                   >
-                                    <Check className="size-3.5 text-emerald-500" />
-                                    <span>Mark Completed</span>
+                                    <Bell className="size-3.5 text-blue-500" />
+                                    <span>Notify</span>
                                   </Button>
-                                ) : (
-                                  <span className="text-[11px] text-muted-foreground font-semibold inline-flex items-center gap-1">
-                                    <CheckCircle2 className="size-3.5 text-emerald-500" />
-                                    <span>Cycle #{r.cycle || 1} Done</span>
-                                  </span>
-                                )}
+                                  {r.status !== "completed" ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setCompletingReminder(r);
+                                        setCompletionDateInput(getKolkataDateString());
+                                        setScheduleNextCycleInput(true);
+                                      }}
+                                      className="gap-1.5 text-xs font-semibold hover:border-emerald-500 hover:text-emerald-600"
+                                    >
+                                      <Check className="size-3.5 text-emerald-500" />
+                                      <span>Mark Done</span>
+                                    </Button>
+                                  ) : (
+                                    <span className="text-[11px] text-muted-foreground font-semibold inline-flex items-center gap-1">
+                                      <CheckCircle2 className="size-3.5 text-emerald-500" />
+                                      <span>Cycle #{r.cycle || 1} Done</span>
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -6338,6 +6462,289 @@ function AdminPage() {
                   onClick={() => setViewHistoryOrder(null)}
                 >
                   Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SHIPPING & TRACKING UPDATE MODAL */}
+        {shippingOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-xl bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400">
+                    <Truck className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-foreground">
+                      Dispatch Order &amp; Live Tracking
+                    </h3>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      #{shippingOrder.orderNumber || shippingOrder.id} • {shippingOrder.customerName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShippingOrder(null)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-700 dark:text-blue-300">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <Truck className="size-3.5" />
+                    Customer Real-Time Tracking Sync
+                  </p>
+                  <p className="mt-0.5 text-[11px] opacity-90">
+                    When you save shipping details, this order is marked as <strong>SHIPPED</strong>, and the tracking number &amp; live link immediately reflect in the customer's portal and tracking timeline with an automated in-app notification.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Courier Partner / Carrier
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    {["Blue Dart Express", "Delhivery", "DTDC Express", "VRL Logistics", "Sri Udharchi Direct Fleet"].map((cName) => (
+                      <button
+                        key={cName}
+                        type="button"
+                        onClick={() => {
+                          setCourierInput(cName);
+                          if (cName === "Blue Dart Express" && trackingNumInput) {
+                            setTrackingUrlInput(`https://www.bluedart.com/tracking?trackNumber=${encodeURIComponent(trackingNumInput)}`);
+                          } else if (cName === "Delhivery" && trackingNumInput) {
+                            setTrackingUrlInput(`https://www.delhivery.com/track/package/${encodeURIComponent(trackingNumInput)}`);
+                          } else if (cName === "DTDC Express" && trackingNumInput) {
+                            setTrackingUrlInput(`https://www.dtdc.in/tracking/tracking_results.asp?strCnno=${encodeURIComponent(trackingNumInput)}`);
+                          }
+                        }}
+                        className={`rounded-lg px-2.5 py-1.5 text-xs font-medium text-left border transition-all ${
+                          courierInput === cName
+                            ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
+                            : "border-border bg-background text-muted-foreground hover:border-border/80 hover:text-foreground"
+                        }`}
+                      >
+                        {cName}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={courierInput}
+                    onChange={(e) => setCourierInput(e.target.value)}
+                    placeholder="Or type custom courier name..."
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Tracking Number / Airway Bill (AWB) <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={trackingNumInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTrackingNumInput(val);
+                      if (courierInput === "Blue Dart Express" && val) {
+                        setTrackingUrlInput(`https://www.bluedart.com/tracking?trackNumber=${encodeURIComponent(val)}`);
+                      } else if (courierInput === "Delhivery" && val) {
+                        setTrackingUrlInput(`https://www.delhivery.com/track/package/${encodeURIComponent(val)}`);
+                      } else if (courierInput === "DTDC Express" && val) {
+                        setTrackingUrlInput(`https://www.dtdc.in/tracking/tracking_results.asp?strCnno=${encodeURIComponent(val)}`);
+                      }
+                    }}
+                    placeholder="e.g. BD789456123 or DL992837482"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Direct Courier Tracking Web Link (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={trackingUrlInput}
+                    onChange={(e) => setTrackingUrlInput(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Dispatch Note / Routing Memo
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={dispatchNoteInput}
+                    onChange={(e) => setDispatchNoteInput(e.target.value)}
+                    placeholder="e.g. Dispatched via Express Air Cargo, safely packed with industrial fire-retardant crating."
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShippingOrder(null)}
+                  disabled={isSubmittingShipping}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleConfirmShippingOrder}
+                  disabled={isSubmittingShipping || !trackingNumInput.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                >
+                  {isSubmittingShipping && <RefreshCw className="size-3.5 animate-spin" />}
+                  <Send className="size-3.5" />
+                  <span>Confirm Dispatch &amp; Notify User</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MANUAL MAINTENANCE & REFILL NOTIFICATION MODAL */}
+        {notifyingReminder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-xl bg-primary/10 p-2 text-primary">
+                    <Bell className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-foreground">
+                      Send Maintenance &amp; Refill Alert
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Target: <span className="font-semibold text-foreground">{notifyingReminder.customerName}</span> ({notifyingReminder.customerEmail || notifyingReminder.customerPhone})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNotifyingReminder(null)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Equipment:</span>
+                    <span className="font-bold text-foreground">{notifyingReminder.productName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cycle Period:</span>
+                    <span className="font-medium text-foreground">Every {notifyingReminder.renewalMonths} Months (Cycle #{notifyingReminder.cycle || 1})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Scheduled Due Date:</span>
+                    <span className="font-bold text-primary font-mono">{notifyingReminder.dueDate}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Quick Templates
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      {
+                        label: "Refill Reminder",
+                        title: `Safety Notice: Refill Due for ${notifyingReminder.productName}`,
+                        msg: `Dear ${notifyingReminder.customerName}, your fire extinguisher refill interval is approaching on ${notifyingReminder.dueDate}. Regular pressure testing and chemical replenishment ensures full operational readiness. Contact us to schedule inspection.`,
+                      },
+                      {
+                        label: "AMC Service Inspection",
+                        title: `Scheduled AMC Maintenance: ${notifyingReminder.productName}`,
+                        msg: `Dear ${notifyingReminder.customerName}, our certified technician will be visiting your location for the scheduled ${notifyingReminder.renewalMonths}-month AMC audit and maintenance check. Please verify your address.`,
+                      },
+                      {
+                        label: "Compliance Overdue",
+                        title: `Urgent Fire Safety Alert: Maintenance Overdue`,
+                        msg: `Dear ${notifyingReminder.customerName}, the safety maintenance certification for ${notifyingReminder.productName} passed its scheduled date of ${notifyingReminder.dueDate}. Please renew immediately to avoid safety non-compliance penalties.`,
+                      },
+                    ].map((tpl, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setNotifTitleInput(tpl.title);
+                          setNotifMessageInput(tpl.msg);
+                        }}
+                        className="rounded-md border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-all"
+                      >
+                        {tpl.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Notification Subject / Title
+                  </label>
+                  <input
+                    type="text"
+                    value={notifTitleInput}
+                    onChange={(e) => setNotifTitleInput(e.target.value)}
+                    placeholder="Enter notification title..."
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">
+                    Message Body
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={notifMessageInput}
+                    onChange={(e) => setNotifMessageInput(e.target.value)}
+                    placeholder="Enter detailed maintenance advisory..."
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNotifyingReminder(null)}
+                  disabled={isSendingNotif}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSendMaintenanceNotification}
+                  disabled={isSendingNotif || !notifTitleInput.trim() || !notifMessageInput.trim()}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                >
+                  {isSendingNotif && <RefreshCw className="size-3.5 animate-spin" />}
+                  <Send className="size-3.5" />
+                  <span>Send Notification</span>
                 </Button>
               </div>
             </div>

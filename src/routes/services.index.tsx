@@ -160,6 +160,8 @@ function ServicesIndexPage() {
                     <img
                       src={srv.image}
                       alt={srv.title}
+                      loading="lazy"
+                      decoding="async"
                       referrerPolicy="no-referrer"
                       className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
                     />

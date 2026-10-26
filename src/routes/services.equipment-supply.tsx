@@ -89,6 +89,8 @@ export function EquipmentSupplyServicePage() {
               <img
                 src={supplyImg}
                 alt="Modern safety equipment showroom stocked with fire extinguishers and PPE gear"
+                loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />

@@ -80,6 +80,8 @@ export function ConsultationServicePage() {
               <img
                 src={consultationImg}
                 alt="Fire safety consultant reviewing architectural blueprints"
+                loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />

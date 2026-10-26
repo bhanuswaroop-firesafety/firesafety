@@ -7,12 +7,16 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, lazy, Suspense, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { AuthProvider } from "../lib/auth-context";
 import { CartProvider } from "../lib/cart-context";
-import { CartDrawer } from "../components/cart-drawer";
 import { Toaster } from "sonner";
+
+// Lazy load cart drawer so it is excluded from critical initial page bundle
+const CartDrawer = lazy(() =>
+  import("../components/cart-drawer").then((m) => ({ default: m.CartDrawer })),
+);
 
 import appCss from "../styles.css?url";
 import { logAppError } from "../lib/error-logger";
@@ -126,6 +130,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
     links: [
+      { rel: "dns-prefetch", href: "https://fonts.googleapis.com" },
+      { rel: "dns-prefetch", href: "https://fonts.gstatic.com" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -197,7 +203,9 @@ function RootComponent() {
           <CartProvider>
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
-            <CartDrawer />
+            <Suspense fallback={null}>
+              <CartDrawer />
+            </Suspense>
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>

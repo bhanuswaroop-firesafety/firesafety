@@ -153,6 +153,8 @@ export function CartDrawer() {
                       <img
                         src={item.image}
                         alt={item.name}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         className="size-20 shrink-0 rounded-lg object-cover border border-border bg-muted hover:opacity-90 transition-opacity"
                       />

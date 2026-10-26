@@ -265,3 +265,9 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Performance optimization: Defer off-screen section rendering for fast initial paint */
+.section-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 700px;
+}

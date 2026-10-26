@@ -72,6 +72,8 @@ export function InstallationServicePage() {
               <img
                 src={installationImg}
                 alt="Engineers installing industrial fire sprinkler piping and hydrant network"
+                loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />

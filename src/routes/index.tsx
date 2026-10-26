@@ -44,7 +44,7 @@ import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 import { CategorySwiper } from "@/components/category-swiper";
 import { HeroBannerVideo } from "@/components/hero-banner-video";
 import { useCart } from "@/lib/cart-context";
-import { subscribeProducts } from "@/lib/db-service";
+import { subscribeProducts, getCachedProducts } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
 import hero from "@/assets/udharchi-hero.jpg";
 import heroMobile from "@/assets/udharchi-hero-mobile.jpg";
@@ -262,8 +262,8 @@ const CLIENT_TESTIMONIALS = [
 function Index() {
   const [inquiryService, setInquiryService] = useState<string | undefined>(undefined);
   const { addToCart, setIsCartOpen, totalItems } = useCart();
-  const [liveProducts, setLiveProducts] = useState<ProductItem[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [liveProducts, setLiveProducts] = useState<ProductItem[]>(() => getCachedProducts());
+  const [productsLoading, setProductsLoading] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeProducts((data) => {
@@ -288,7 +288,7 @@ function Index() {
         {/* Background Hero Banner Video with Graceful Image Fallback while buffering */}
         <HeroBannerVideo
           posterImage={hero}
-          mobilePosterImage={heroMobile}
+          mobilePosterImage={hero}
           videoSrc="https://bhanuswaroop.sirv.com/WhatsApp%20Video%202026-10-19%20at%2011.39.24%20AM%20(2).mp4"
         />
 
@@ -608,7 +608,7 @@ function Index() {
       </section>
 
       {/* Comprehensive Safety Solutions */}
-      <section id="services" className="scroll-mt-24 py-16 md:py-24">
+      <section id="services" className="section-deferred scroll-mt-24 py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <SectionHeading
             eyebrow="Safety Engineering"
@@ -727,7 +727,7 @@ function Index() {
       </section>
 
       {/* Industries We Serve */}
-      <section id="industries" className="scroll-mt-24 py-16 md:py-20">
+      <section id="industries" className="section-deferred scroll-mt-24 py-16 md:py-20">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <SectionHeading
             eyebrow="Industries We Serve"
@@ -750,6 +750,7 @@ function Index() {
                     src={image}
                     alt={name}
                     loading="lazy"
+                    decoding="async"
                     width={720}
                     height={520}
                     className="aspect-[1.1] w-full rounded-lg object-cover transition-transform duration-500 ease-out group-hover:scale-108"
@@ -774,7 +775,7 @@ function Index() {
       {/* Projects Spotlight with 3D Curved Cylindrical Streaming Grid (LIGHT MODE) */}
       <section
         id="projects"
-        className="scroll-mt-24 relative overflow-hidden bg-slate-50 border-y border-slate-200/90 text-foreground"
+        className="section-deferred scroll-mt-24 relative overflow-hidden bg-slate-50 border-y border-slate-200/90 text-foreground"
       >
         <TiltedGridHero
           images={PROJECT_CYLINDER_IMAGES}
@@ -832,7 +833,7 @@ function Index() {
       </section>
 
       {/* Get in Touch & Request a Quote Section */}
-      <section id="contact" className="scroll-mt-24 bg-soft py-14 md:py-20">
+      <section id="contact" className="section-deferred scroll-mt-24 bg-soft py-14 md:py-20">
         <div className="mx-auto grid max-w-7xl gap-8 sm:gap-10 px-4 sm:px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
           <div>
             <SectionHeading

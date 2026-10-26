@@ -210,6 +210,8 @@ function CartPage() {
                         <img
                           src={item.image}
                           alt={item.name}
+                          loading="lazy"
+                          decoding="async"
                           className="size-12 sm:size-16 rounded-lg object-cover border border-border bg-muted shrink-0"
                         />
                         <div className="min-w-0">
@@ -284,6 +286,8 @@ function CartPage() {
                             <img
                               src={item.image}
                               alt={item.name}
+                              loading="lazy"
+                              decoding="async"
                               referrerPolicy="no-referrer"
                               className="size-20 shrink-0 rounded-xl object-cover border border-border bg-muted hover:opacity-90 transition-opacity"
                             />

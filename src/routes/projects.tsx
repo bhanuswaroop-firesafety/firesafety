@@ -186,6 +186,8 @@ function ProjectsPage() {
                   <img
                     src={proj.image}
                     alt={proj.title}
+                    loading="lazy"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />

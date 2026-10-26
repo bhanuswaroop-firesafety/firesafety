@@ -81,6 +81,8 @@ export function InspectionServicePage() {
               <img
                 src={inspectionImg}
                 alt="Fire safety inspector testing high pressure valves and gauges"
+                loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />

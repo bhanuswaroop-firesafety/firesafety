@@ -73,6 +73,9 @@ export interface OrderStatusHistoryItem {
   timestamp: string; // ISO string in Asia/Kolkata
   note?: string;
   updatedBy?: string;
+  courierName?: string | undefined;
+  trackingNumber?: string | undefined;
+  trackingUrl?: string | undefined;
 }
 
 export interface OrderItem {
@@ -114,6 +117,13 @@ export interface OrderItem {
 
   // Task C: Status audit history
   statusHistory?: OrderStatusHistoryItem[] | undefined;
+
+  // Tracking and courier dispatch info
+  courierName?: string | undefined;
+  trackingNumber?: string | undefined;
+  trackingUrl?: string | undefined;
+  shippedAt?: string | undefined;
+  dispatchNote?: string | undefined;
 
   // Task D: Delivered timestamp and customer feedback flag
   deliveredAt?: string | undefined;
@@ -204,7 +214,7 @@ export interface NotificationItem {
   userId: string; // customer UID or "admin"
   title: string;
   message: string;
-  type: "renewal" | "order" | "feedback" | "system";
+  type: "renewal" | "order" | "feedback" | "system" | "maintenance" | "tracking";
   orderId?: string | undefined;
   reminderId?: string | undefined;
   read: boolean;

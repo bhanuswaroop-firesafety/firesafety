@@ -20,7 +20,7 @@ import {
   Filter,
   Info,
 } from "lucide-react";
-import { subscribeProducts, CATEGORIES } from "@/lib/db-service";
+import { subscribeProducts, getCachedProducts, CATEGORIES } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
@@ -67,8 +67,11 @@ export function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "name">("featured");
-  const [productsList, setProductsList] = useState<ProductItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [productsList, setProductsList] = useState<ProductItem[]>(() => {
+    const cached = getCachedProducts();
+    return cached.length > 0 ? cached : DEFAULT_PRODUCTS;
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false);
   const [authPromptProduct, setAuthPromptProduct] = useState<{
     name: string;
@@ -561,6 +564,7 @@ export function ProductsPage() {
                           src={resolveProductDisplayImage(prod)}
                           alt={prod.name}
                           loading="lazy"
+                          decoding="async"
                           className="size-full object-contain transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => {
                             const target = e.currentTarget;

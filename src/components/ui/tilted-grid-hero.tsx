@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  * Each tile is sliced into SLICES vertical strips along the cylinder's arc.
  * ─────────────────────────────────────────────────────────────── */
 
-const SLICES = 16;
+const SLICES = 8;
 const CAMERA = 1.6;
 
 function arc(bend: number) {
@@ -92,6 +92,7 @@ export function TiltedGridHero({
 
   const [dimensions, setDimensions] = React.useState({ width: 1200, height: 560 });
   const [mounted, setMounted] = React.useState(false);
+  const [isInView, setIsInView] = React.useState(false);
   const [shown, setShown] = React.useState<Record<number, number>>({});
 
   React.useEffect(() => {
@@ -121,18 +122,24 @@ export function TiltedGridHero({
       window.addEventListener("resize", updateSize);
       return () => window.removeEventListener("resize", updateSize);
     }
-  }, []);
-
-  // Preload images into browser memory
-  React.useEffect(() => {
-    if (typeof window === "undefined" || !images) return;
-    for (const item of images) {
-      if (item?.src) {
-        const img = new Image();
-        img.src = item.src;
-      }
+    // Viewport visibility observer to avoid GPU churn when offscreen
+    let io: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          setIsInView(entry.isIntersecting);
+        },
+        { rootMargin: "200px" },
+      );
+      io.observe(el);
+    } else {
+      setIsInView(true);
     }
-  }, [images]);
+
+    return () => {
+      if (io) io.disconnect();
+    };
+  }, []);
 
   const { columns, sweep, unit, limit, tileH, radius } = measure(
     dimensions.width,
@@ -206,6 +213,7 @@ export function TiltedGridHero({
                 height: `${+tileH.toFixed(2)}px`,
                 transformStyle: "preserve-3d",
                 animation: `${orbit} ${duration}s linear ${-t * speed}s infinite`,
+                animationPlayState: isInView ? "running" : "paused",
               }}
               onAnimationIteration={(e) => {
                 const lap = Math.round(e.elapsedTime / duration);
@@ -235,6 +243,8 @@ export function TiltedGridHero({
                       src={img.src}
                       alt={k === 0 ? (img.alt ?? "Project Infrastructure") : ""}
                       draggable={false}
+                      loading="lazy"
+                      decoding="async"
                       className="absolute top-0 max-w-none object-cover pointer-events-none select-none"
                       style={{
                         left: `${+(-k * sliceW).toFixed(2)}px`,

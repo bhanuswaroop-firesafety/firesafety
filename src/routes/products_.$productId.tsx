@@ -38,6 +38,7 @@ import {
   findProductById,
   subscribeProductById,
   subscribeProducts,
+  getCachedProducts,
   submitInquiry,
 } from "@/lib/db-service";
 import {
@@ -129,7 +130,7 @@ function ProductViewPage() {
   const initialProduct = useMemo(() => findProductById(productId, []), [productId]);
   const [product, setProduct] = useState<ProductItem | null>(initialProduct);
   const [isLoading, setIsLoading] = useState<boolean>(!initialProduct);
-  const [allProducts, setAllProducts] = useState<ProductItem[]>([]);
+  const [allProducts, setAllProducts] = useState<ProductItem[]>(() => getCachedProducts());
   const [quantity, setQuantity] = useState(1);
   const [addedToast, setAddedToast] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);

@@ -175,6 +175,8 @@ function IndustriesPage() {
                   <img
                     src={ind.image}
                     alt={ind.name}
+                    loading="lazy"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />

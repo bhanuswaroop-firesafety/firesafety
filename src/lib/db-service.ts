@@ -164,31 +164,41 @@ export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
 // ========================================================
 
 // In-memory runtime cache of active products across page views to eliminate flicker & lag
-let cachedProducts: ProductItem[] = [];
+let cachedProducts: ProductItem[] = [...DEFAULT_PRODUCTS];
 
 export function getCachedProducts(): ProductItem[] {
-  return cachedProducts;
+  return cachedProducts.length > 0 ? cachedProducts : DEFAULT_PRODUCTS;
 }
 
 export function subscribeProducts(callback: (products: ProductItem[]) => void): () => void {
+  // Synchronously deliver cached products immediately on initial subscribe for 0ms page loads
+  if (cachedProducts.length > 0) {
+    try {
+      callback(cachedProducts);
+    } catch (e) {
+      console.warn("Error invoking synchronous products callback:", e);
+    }
+  }
+
   const colRef = collection(db, "products");
   return onSnapshot(
     colRef,
     (snapshot) => {
       if (snapshot.empty) {
-        callback([]);
+        cachedProducts = DEFAULT_PRODUCTS;
+        callback(DEFAULT_PRODUCTS);
       } else {
         const customItems = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         })) as ProductItem[];
-        cachedProducts = customItems;
-        callback(customItems);
+        cachedProducts = customItems.length > 0 ? customItems : DEFAULT_PRODUCTS;
+        callback(cachedProducts);
       }
     },
     (err) => {
       console.warn("Firestore products fetch notice:", err.message);
-      callback(cachedProducts.length > 0 ? cachedProducts : []);
+      callback(cachedProducts.length > 0 ? cachedProducts : DEFAULT_PRODUCTS);
     },
   );
 }
@@ -265,6 +275,17 @@ export function subscribeProductById(
 ): () => void {
   const decoded = decodeURIComponent(idOrSlug).trim();
   const mappedId = FEATURED_ID_MAP[decoded.toLowerCase()] || decoded;
+
+  // Immediately invoke callback with cached or default catalog item for 0ms page transitions
+  const immediate = findProductById(idOrSlug, cachedProducts);
+  if (immediate) {
+    try {
+      callback(immediate);
+    } catch (e) {
+      console.warn("Immediate product callback notice:", e);
+    }
+  }
+
   const docRef = doc(db, "products", mappedId);
   return onSnapshot(
     docRef,
@@ -658,6 +679,37 @@ export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
     console.warn("Customer record / lead linkage notice:", err);
   }
 
+  // 3. Automatically schedule maintenance/renewal reminders for any ordered items with renewalMonths
+  if (cleanOrder.items && cleanOrder.items.length > 0) {
+    for (const item of cleanOrder.items) {
+      if (item.renewalMonths) {
+        createRenewalReminder(
+          cleanOrder,
+          {
+            productId: item.productId,
+            name: item.name,
+            renewalMonths: item.renewalMonths,
+          },
+          cleanOrder.installDate || getKolkataDateString(),
+          1,
+        ).then((rem) => {
+          if (rem && cleanOrder.customerId) {
+            createNotification({
+              userId: cleanOrder.customerId,
+              title: "Maintenance Schedule Activated 🛡️",
+              message: `Automatic maintenance schedule for ${item.name} (Order #${orderNumber}) has been added to your timeline. Scheduled refill/service date: ${rem.renewalDate}.`,
+              type: "renewal",
+              orderId: orderNumber,
+              reminderId: rem.id,
+              read: false,
+              createdAt: now,
+            }).catch((e) => console.warn("Auto notification notice:", e));
+          }
+        }).catch((e) => console.warn("Auto-create reminder notice on order placement:", e));
+      }
+    }
+  }
+
   return orderNumber;
 }
 
@@ -707,22 +759,24 @@ export async function getOrders(): Promise<OrderItem[]> {
   })) as OrderItem[];
 }
 
+export interface UpdateOrderStatusOptions {
+  note?: string;
+  updatedBy?: string;
+  deliveredAt?: string;
+  installDate?: string;
+  courierName?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  shippedAt?: string;
+  dispatchNote?: string;
+}
+
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus | string,
-  optionsOrNote?:
-    | string
-    | {
-        note?: string;
-        updatedBy?: string;
-        deliveredAt?: string;
-        installDate?: string;
-      },
+  optionsOrNote?: string | UpdateOrderStatusOptions,
   updatedBy: string = "Admin",
-  extraDetails?: {
-    deliveredAt?: string;
-    installDate?: string;
-  },
+  extraDetails?: UpdateOrderStatusOptions,
 ): Promise<void> {
   const normStatus: OrderStatus =
     status === "pending"
@@ -747,6 +801,22 @@ export async function updateOrderStatus(
     typeof optionsOrNote === "object" && optionsOrNote?.deliveredAt
       ? optionsOrNote.deliveredAt
       : extraDetails?.deliveredAt;
+  const courierName =
+    typeof optionsOrNote === "object" && optionsOrNote?.courierName
+      ? optionsOrNote.courierName
+      : extraDetails?.courierName;
+  const trackingNumber =
+    typeof optionsOrNote === "object" && optionsOrNote?.trackingNumber
+      ? optionsOrNote.trackingNumber
+      : extraDetails?.trackingNumber;
+  const trackingUrl =
+    typeof optionsOrNote === "object" && optionsOrNote?.trackingUrl
+      ? optionsOrNote.trackingUrl
+      : extraDetails?.trackingUrl;
+  const dispatchNote =
+    typeof optionsOrNote === "object" && optionsOrNote?.dispatchNote
+      ? optionsOrNote.dispatchNote
+      : extraDetails?.dispatchNote;
 
   const orderRef = doc(db, "orders", orderId);
   const snap = await getDoc(orderRef);
@@ -757,12 +827,23 @@ export async function updateOrderStatus(
   const existingOrder = snap.data() as OrderItem;
   const nowIso = getKolkataISOString();
 
+  const finalCourier = courierName !== undefined ? courierName : existingOrder.courierName;
+  const finalTrackingNum = trackingNumber !== undefined ? trackingNumber : existingOrder.trackingNumber;
+  const finalTrackingUrl = trackingUrl !== undefined ? trackingUrl : existingOrder.trackingUrl;
+
   const history = existingOrder.statusHistory ? [...existingOrder.statusHistory] : [];
   history.push({
     status: normStatus,
     timestamp: nowIso,
-    note: note || `Status updated to ${normStatus}`,
+    note:
+      note ||
+      (normStatus === "shipped" && finalCourier
+        ? `Shipped via ${finalCourier}${finalTrackingNum ? ` (AWB: ${finalTrackingNum})` : ""}`
+        : `Status updated to ${normStatus}`),
     updatedBy: author,
+    courierName: finalCourier,
+    trackingNumber: finalTrackingNum,
+    trackingUrl: finalTrackingUrl,
   });
 
   const updates: Partial<OrderItem> = {
@@ -771,13 +852,50 @@ export async function updateOrderStatus(
     updatedAt: nowIso,
   };
 
+  if (courierName !== undefined) updates.courierName = courierName;
+  if (trackingNumber !== undefined) updates.trackingNumber = trackingNumber;
+  if (trackingUrl !== undefined) updates.trackingUrl = trackingUrl;
+  if (dispatchNote !== undefined) updates.dispatchNote = dispatchNote;
+
+  if (normStatus === "shipped") {
+    updates.shippedAt = nowIso;
+
+    // Send real-time in-app notification to user
+    const customerTarget = existingOrder.customerId;
+    if (customerTarget) {
+      createNotification({
+        userId: customerTarget,
+        title: "Order Shipped! 🚚",
+        message: `Your safety equipment order #${existingOrder.orderNumber || orderId} has been shipped${finalCourier ? ` via ${finalCourier}` : ""}.${finalTrackingNum ? ` Tracking ID: ${finalTrackingNum}.` : ""} Open live tracking in your sidebar to track delivery progress.`,
+        type: "order",
+        orderId: existingOrder.orderNumber || orderId,
+        read: false,
+        createdAt: nowIso,
+      }).catch((e) => console.warn("Auto shipping notification notice:", e));
+    }
+  }
+
   if (normStatus === "delivered") {
     const finalDeliveredAt = deliveredAt || nowIso;
     const finalInstallDate = installDate || getKolkataDateString();
     updates.deliveredAt = finalDeliveredAt;
     updates.installDate = finalInstallDate;
 
-    // Task E: Automatically schedule renewal reminders for equipment
+    // Send real-time delivery notification to user
+    const customerTarget = existingOrder.customerId;
+    if (customerTarget) {
+      createNotification({
+        userId: customerTarget,
+        title: "Order Delivered & Certified ✓",
+        message: `Your equipment order #${existingOrder.orderNumber || orderId} has been successfully delivered and certified on site.`,
+        type: "order",
+        orderId: existingOrder.orderNumber || orderId,
+        read: false,
+        createdAt: nowIso,
+      }).catch((e) => console.warn("Auto delivery notification notice:", e));
+    }
+
+    // Automatically schedule renewal reminders for equipment
     if (existingOrder.items && existingOrder.items.length > 0) {
       for (const item of existingOrder.items) {
         if (item.renewalMonths) {
@@ -838,6 +956,46 @@ export async function cancelOrder(
 export async function deleteOrder(orderId: string): Promise<void> {
   const docRef = doc(db, "orders", orderId);
   await deleteDoc(docRef);
+}
+
+export async function getOrderForTracking(searchQuery: string): Promise<OrderItem | null> {
+  const clean = searchQuery.trim();
+  if (!clean) return null;
+
+  // 1. Try direct ID lookup
+  try {
+    const directDoc = await getDoc(doc(db, "orders", clean));
+    if (directDoc.exists()) {
+      return { id: directDoc.id, ...directDoc.data() } as OrderItem;
+    }
+  } catch {
+    // continue
+  }
+
+  // 2. Fetch all orders to match by orderNumber, trackingNumber, or phone
+  try {
+    const all = await getOrders();
+    const queryLower = clean.toLowerCase();
+    const cleanPhoneDigits = clean.replace(/\D/g, "");
+
+    const found = all.find((ord) => {
+      if (ord.orderNumber && ord.orderNumber.toLowerCase() === queryLower) return true;
+      if (ord.id && ord.id.toLowerCase() === queryLower) return true;
+      if (ord.trackingNumber && ord.trackingNumber.toLowerCase() === queryLower) return true;
+      if (cleanPhoneDigits.length >= 10) {
+        const orderPhoneDigits = (ord.customerPhone || "").replace(/\D/g, "");
+        if (orderPhoneDigits.length >= 10 && (orderPhoneDigits.endsWith(cleanPhoneDigits) || cleanPhoneDigits.endsWith(orderPhoneDigits))) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    return found || null;
+  } catch (err) {
+    console.error("Error searching order for tracking:", err);
+    return null;
+  }
 }
 
 // ========================================================
@@ -1888,4 +2046,77 @@ export function subscribeNotifications(
 export async function markNotificationRead(id: string): Promise<void> {
   const docRef = doc(db, "notifications", id);
   await updateDoc(docRef, { read: true });
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  try {
+    const colRef = collection(db, "notifications");
+    const snap = await getDocs(colRef);
+    for (const d of snap.docs) {
+      const data = d.data() as NotificationItem;
+      if ((data.userId === userId || data.userId === "all") && !data.read) {
+        await updateDoc(d.ref, { read: true });
+      }
+    }
+  } catch (err) {
+    console.warn("markAllNotificationsRead notice:", err);
+  }
+}
+
+export async function sendManualMaintenanceNotification(
+  reminderId: string,
+  customTitle?: string,
+  customMessage?: string,
+  adminName: string = "Admin",
+): Promise<void> {
+  const docRef = doc(db, "reminders", reminderId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) {
+    throw new Error(`Maintenance reminder ${reminderId} not found.`);
+  }
+
+  const rem = snap.data() as ReminderItem;
+  const nowIso = getKolkataISOString();
+
+  const title =
+    customTitle?.trim() || `Maintenance Alert: ${rem.productName} Refill/AMC Due`;
+  const message =
+    customMessage?.trim() ||
+    `Periodic inspection and maintenance for ${rem.productName} (Order #${rem.orderId}) is scheduled for ${rem.renewalDate}. Please contact Sri Udharchi Enterprises (+91 8639858221) to confirm inspection.`;
+
+  await createNotification({
+    userId: rem.userId,
+    title,
+    message,
+    type: "renewal",
+    orderId: rem.orderId,
+    reminderId,
+    read: false,
+    createdAt: nowIso,
+  });
+
+  await updateDoc(docRef, {
+    status: "sent",
+    lastAlertSentAt: nowIso,
+    updatedAt: nowIso,
+  });
+}
+
+export async function sendManualUserNotification(
+  userId: string,
+  title: string,
+  message: string,
+  options?: { orderId?: string; reminderId?: string; type?: NotificationItem["type"] },
+): Promise<void> {
+  const nowIso = getKolkataISOString();
+  await createNotification({
+    userId,
+    title,
+    message,
+    type: options?.type || "system",
+    orderId: options?.orderId,
+    reminderId: options?.reminderId,
+    read: false,
+    createdAt: nowIso,
+  });
 }

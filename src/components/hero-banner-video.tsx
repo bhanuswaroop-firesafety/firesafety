@@ -44,16 +44,29 @@ export function HeroBannerVideo({
       setIsVideoLoaded(true);
     }
 
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          setIsVideoLoaded(true);
-        })
-        .catch(() => {
-          // Autoplay policy restriction fallback
-        });
+    let timer: any = null;
+    const startPlayback = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsVideoLoaded(true);
+          })
+          .catch(() => {
+            // Autoplay policy restriction fallback
+          });
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(startPlayback, { timeout: 2000 });
+    } else {
+      timer = setTimeout(startPlayback, 1200);
     }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [videoSrc]);
 
   return (
@@ -68,6 +81,7 @@ export function HeroBannerVideo({
           alt="Safety engineering video banner"
           className="h-full w-full object-cover object-[68%_center] sm:object-center"
           loading="eager"
+          decoding="async"
           fetchPriority="high"
         />
       </picture>
@@ -80,7 +94,7 @@ export function HeroBannerVideo({
           loop
           muted
           playsInline
-          preload="auto"
+          preload="none"
           poster={posterImage}
           onLoadedData={handleVideoReady}
           onCanPlay={handleVideoReady}

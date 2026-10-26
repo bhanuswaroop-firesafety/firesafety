@@ -21,6 +21,7 @@ import { Route as InspectionRouteImport } from './routes/inspection'
 import { Route as InstallationRouteImport } from './routes/installation'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -29,6 +30,7 @@ import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminLeadsRouteImport } from './routes/admin/leads'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
@@ -101,6 +103,11 @@ const MaintenanceRoute = MaintenanceRouteImport.update({
   path: '/maintenance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PaymentRoute = PaymentRouteImport.update({
   id: '/payment',
   path: '/payment',
@@ -139,6 +146,11 @@ const SignupRoute = SignupRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrackingRoute = TrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -210,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/installation': typeof InstallationRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
@@ -218,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/shipping-policy': typeof ShippingPolicyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/tracking': typeof TrackingRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/product/$productId': typeof ProductProductIdRoute
@@ -243,6 +257,7 @@ export interface FileRoutesByTo {
   '/installation': typeof InstallationRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
@@ -251,6 +266,7 @@ export interface FileRoutesByTo {
   '/shipping-policy': typeof ShippingPolicyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/tracking': typeof TrackingRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/product/$productId': typeof ProductProductIdRoute
@@ -277,6 +293,7 @@ export interface FileRoutesById {
   '/installation': typeof InstallationRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
@@ -285,6 +302,7 @@ export interface FileRoutesById {
   '/shipping-policy': typeof ShippingPolicyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/tracking': typeof TrackingRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/product_/$productId': typeof ProductProductIdRoute
@@ -312,6 +330,7 @@ export interface FileRouteTypes {
     | '/installation'
     | '/login'
     | '/maintenance'
+    | '/orders'
     | '/payment'
     | '/privacy'
     | '/products'
@@ -320,6 +339,7 @@ export interface FileRouteTypes {
     | '/shipping-policy'
     | '/signup'
     | '/terms'
+    | '/tracking'
     | '/admin/leads'
     | '/admin/login'
     | '/product/$productId'
@@ -345,6 +365,7 @@ export interface FileRouteTypes {
     | '/installation'
     | '/login'
     | '/maintenance'
+    | '/orders'
     | '/payment'
     | '/privacy'
     | '/products'
@@ -353,6 +374,7 @@ export interface FileRouteTypes {
     | '/shipping-policy'
     | '/signup'
     | '/terms'
+    | '/tracking'
     | '/admin/leads'
     | '/admin/login'
     | '/product/$productId'
@@ -378,6 +400,7 @@ export interface FileRouteTypes {
     | '/installation'
     | '/login'
     | '/maintenance'
+    | '/orders'
     | '/payment'
     | '/privacy'
     | '/products'
@@ -386,6 +409,7 @@ export interface FileRouteTypes {
     | '/shipping-policy'
     | '/signup'
     | '/terms'
+    | '/tracking'
     | '/admin/leads'
     | '/admin/login'
     | '/product_/$productId'
@@ -412,6 +436,7 @@ export interface RootRouteChildren {
   InstallationRoute: typeof InstallationRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
+  OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
   PrivacyRoute: typeof PrivacyRoute
   ProductsRoute: typeof ProductsRoute
@@ -420,6 +445,7 @@ export interface RootRouteChildren {
   ShippingPolicyRoute: typeof ShippingPolicyRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
+  TrackingRoute: typeof TrackingRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   ProductProductIdRoute: typeof ProductProductIdRoute
@@ -519,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/payment': {
       id: '/payment'
       path: '/payment'
@@ -573,6 +606,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tracking': {
+      id: '/tracking'
+      path: '/tracking'
+      fullPath: '/tracking'
+      preLoaderRoute: typeof TrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -668,6 +708,7 @@ const rootRouteChildren: RootRouteChildren = {
   InstallationRoute: InstallationRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
+  OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
   PrivacyRoute: PrivacyRoute,
   ProductsRoute: ProductsRoute,
@@ -676,6 +717,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShippingPolicyRoute: ShippingPolicyRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
+  TrackingRoute: TrackingRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminLoginRoute: AdminLoginRoute,
   ProductProductIdRoute: ProductProductIdRoute,

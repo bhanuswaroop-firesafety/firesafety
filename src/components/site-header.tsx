@@ -18,6 +18,9 @@ import {
   MessageCircle,
   Instagram,
   Search,
+  Package,
+  RotateCcw,
+  Bell,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "@/lib/auth-context";
@@ -51,6 +54,7 @@ const navLinks = [
   { name: "Projects", href: "/projects" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
+  { name: "Track Order", href: "/tracking", badge: "Live" },
 ];
 
 const QUICK_CATEGORIES = [
@@ -284,6 +288,28 @@ export function SiteHeader() {
                     </span>
                   </div>
 
+                  <a href="/orders">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs font-semibold gap-1 text-foreground hover:text-primary"
+                      title="My Orders"
+                    >
+                      <Package className="size-3.5 text-primary" /> Orders
+                    </Button>
+                  </a>
+
+                  <a href="/tracking">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs font-semibold gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-500/10"
+                      title="Live Order Tracking"
+                    >
+                      <Truck className="size-3.5 text-blue-500 animate-pulse" /> Track
+                    </Button>
+                  </a>
+
                   {isAdmin && (
                     <a href="/admin">
                       <Button
@@ -308,6 +334,15 @@ export function SiteHeader() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
+                  <a href="/tracking">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 gap-1 px-2.5"
+                    >
+                      <Truck className="size-3.5 text-blue-500" /> Track Order
+                    </Button>
+                  </a>
                   <a href="/login">
                     <Button
                       variant="ghost"
@@ -595,8 +630,64 @@ export function SiteHeader() {
                         </Button>
                       </div>
 
+                      {/* Orders & Tracking Sidebar Navigation */}
+                      <div className="border-t border-border/60 pt-2.5 space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                          My Account &amp; Deliveries
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <a
+                            href="/orders"
+                            onClick={() => setOpen(false)}
+                            className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-primary/50 hover:text-primary transition-all shadow-xs"
+                          >
+                            <Package className="size-4 text-primary shrink-0" />
+                            <div className="truncate">
+                              <span className="block truncate">Orders</span>
+                              <span className="text-[10px] font-normal text-muted-foreground">History &amp; Bills</span>
+                            </div>
+                          </a>
+
+                          <a
+                            href="/tracking"
+                            onClick={() => setOpen(false)}
+                            className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:border-blue-500 transition-all shadow-xs"
+                          >
+                            <Truck className="size-4 text-blue-500 shrink-0 animate-pulse" />
+                            <div className="truncate">
+                              <span className="block truncate">Tracking</span>
+                              <span className="text-[10px] font-normal text-muted-foreground">Live Dispatch</span>
+                            </div>
+                          </a>
+
+                          <a
+                            href="/login?tab=renewals"
+                            onClick={() => setOpen(false)}
+                            className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-primary/50 hover:text-primary transition-all shadow-xs"
+                          >
+                            <RotateCcw className="size-4 text-amber-500 shrink-0" />
+                            <div className="truncate">
+                              <span className="block truncate">Maintenance</span>
+                              <span className="text-[10px] font-normal text-muted-foreground">Refill Timeline</span>
+                            </div>
+                          </a>
+
+                          <a
+                            href="/login?tab=notifications"
+                            onClick={() => setOpen(false)}
+                            className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-primary/50 hover:text-primary transition-all shadow-xs"
+                          >
+                            <Bell className="size-4 text-emerald-500 shrink-0" />
+                            <div className="truncate">
+                              <span className="block truncate">Notices</span>
+                              <span className="text-[10px] font-normal text-muted-foreground">Alerts &amp; Updates</span>
+                            </div>
+                          </a>
+                        </div>
+                      </div>
+
                       {isAdmin && (
-                        <a href="/admin" onClick={() => setOpen(false)} className="block">
+                        <a href="/admin" onClick={() => setOpen(false)} className="block pt-1">
                           <Button className="w-full justify-center text-xs">
                             <Lock className="size-3.5" /> Open Admin Portal
                           </Button>
@@ -621,6 +712,19 @@ export function SiteHeader() {
                           </Button>
                         </a>
                       </div>
+
+                      {/* Guest Quick Track Order */}
+                      <a
+                        href="/tracking"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Truck className="size-4 text-blue-500 animate-pulse" />
+                          <span>Track Your Order &amp; Courier</span>
+                        </div>
+                        <ArrowRight className="size-3.5" />
+                      </a>
                     </div>
                   )}
 

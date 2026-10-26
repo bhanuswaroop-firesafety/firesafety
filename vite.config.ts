@@ -10,8 +10,38 @@ export default defineConfig({
   vite: {
     server: {
       host: "0.0.0.0",
-      port: 5173,
+      port: 5005,
       allowedHosts: true,
+    },
+    build: {
+      cssCodeSplit: true,
+      chunkSizeWarningLimit: 1200,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("firebase")) return "vendor-firebase";
+              if (id.includes("lucide-react")) return "vendor-lucide";
+              if (id.includes("motion") || id.includes("framer-motion")) return "vendor-motion";
+              if (id.includes("@radix-ui")) return "vendor-radix";
+              if (id.includes("recharts")) return "vendor-charts";
+            }
+          },
+        },
+      },
+    },
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "@tanstack/react-router",
+        "@tanstack/react-query",
+        "lucide-react",
+        "motion/react",
+        "sonner",
+        "clsx",
+        "tailwind-merge",
+      ],
     },
   },
   tanstackStart: {

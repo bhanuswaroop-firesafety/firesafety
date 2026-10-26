@@ -80,6 +80,8 @@ function AboutPage() {
                 <img
                   src={trustImg}
                   alt="Sri Udharchi certified fire safety team"
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="aspect-[4/3] w-full object-cover"
                 />
@@ -151,6 +153,8 @@ function AboutPage() {
                 <img
                   src={hydrantImg}
                   alt="Industrial fire hydrant piping"
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="aspect-[4/3] w-full object-cover"
                 />
@@ -159,6 +163,8 @@ function AboutPage() {
                 <img
                   src={manufacturingImg}
                   alt="Heavy manufacturing plant safety audit"
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="aspect-[4/3] w-full object-cover"
                 />

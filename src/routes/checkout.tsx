@@ -367,6 +367,8 @@ function CheckoutPage() {
             name: i.name,
             quantity: i.quantity,
             price: i.price,
+            productId: i.id,
+            renewalMonths: i.renewalMonths,
           })),
           subtotal,
           discount: discountAmount,
@@ -1070,6 +1072,8 @@ function CheckoutPage() {
                         <img
                           src={item.image}
                           alt={item.name}
+                          loading="lazy"
+                          decoding="async"
                           className="size-12 shrink-0 rounded-lg object-cover border border-border bg-muted"
                         />
                         <div className="min-w-0 flex-1">

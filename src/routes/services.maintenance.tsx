@@ -72,6 +72,8 @@ export function MaintenanceServicePage() {
               <img
                 src={maintenanceImg}
                 alt="Technician servicing industrial diesel fire pumps and valves"
+                loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 className="aspect-[16/10] w-full object-cover"
               />

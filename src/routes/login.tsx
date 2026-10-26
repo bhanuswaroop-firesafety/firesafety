@@ -29,6 +29,11 @@ import {
   Bell,
   X,
   Package,
+  Copy,
+  ExternalLink,
+  Search,
+  Check,
+  Send,
 } from "lucide-react";
 import {
   formatIndianMobileDisplay,
@@ -40,6 +45,7 @@ import {
   subscribeReminders,
   subscribeNotifications,
   markNotificationRead,
+  getOrderForTracking,
 } from "@/lib/db-service";
 import type {
   OrderItem,
@@ -64,9 +70,55 @@ export const Route = createFileRoute("/login")({
 
 export interface LoginPageProps {
   initialMode?: "login" | "signup";
+  initialTab?: "orders" | "tracking" | "renewals" | "notifications" | "profile";
 }
 
-export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
+const TRACKING_STEPS = [
+  {
+    step: 1,
+    title: "Order Placed",
+    desc: "Order received & verified",
+    icon: Package,
+  },
+  {
+    step: 2,
+    title: "Confirmed & Certified",
+    desc: "Equipment inspected & packed",
+    icon: ShieldCheck,
+  },
+  {
+    step: 3,
+    title: "Dispatched / Shipped",
+    desc: "Handed over to courier partner",
+    icon: Truck,
+  },
+  {
+    step: 4,
+    title: "In Transit / Hub",
+    desc: "Arrived at regional delivery hub",
+    icon: Zap,
+  },
+  {
+    step: 5,
+    title: "Delivered & Certified",
+    desc: "Delivered & certified on site",
+    icon: CheckCircle2,
+  },
+];
+
+function getTrackingStepIndex(status?: string): number {
+  if (!status) return 1;
+  const s = status.toLowerCase();
+  if (s === "placed" || s === "pending") return 1;
+  if (s === "confirmed") return 2;
+  if (s === "shipped" || s === "dispatched") return 3;
+  if (s === "out_for_delivery" || s === "in_transit") return 4;
+  if (s === "delivered") return 5;
+  if (s === "cancelled") return -1;
+  return 1;
+}
+
+export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps = {}) {
   const {
     user,
     userProfile,
@@ -105,10 +157,20 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
   const [isExistingAccountError, setIsExistingAccountError] = useState(false);
 
   // Customer Account Portal State (Tasks A, C, D, E)
-  const [accountTab, setAccountTab] = useState<"orders" | "renewals" | "notifications" | "profile">("orders");
+  const [accountTab, setAccountTab] = useState<"orders" | "tracking" | "renewals" | "notifications" | "profile">(
+    initialTab || "orders",
+  );
   const [userOrders, setUserOrders] = useState<OrderItem[]>([]);
   const [userReminders, setUserReminders] = useState<ReminderItem[]>([]);
   const [userNotifications, setUserNotifications] = useState<NotificationItem[]>([]);
+
+  // Live Order Tracking States
+  const [selectedTrackingOrderId, setSelectedTrackingOrderId] = useState<string | null>(null);
+  const [trackingSearchInput, setTrackingSearchInput] = useState<string>("");
+  const [guestTrackingOrder, setGuestTrackingOrder] = useState<OrderItem | null>(null);
+  const [isSearchingTracking, setIsSearchingTracking] = useState<boolean>(false);
+  const [trackingSearchError, setTrackingSearchError] = useState<string>("");
+  const [copiedAwb, setCopiedAwb] = useState<boolean>(false);
 
   // Task D: Feedback Modal State
   const [feedbackOrder, setFeedbackOrder] = useState<OrderItem | null>(null);
@@ -197,7 +259,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     });
   }, [userOrders]);
 
-  // Check query parameter ?tab=signup or ?tab=login or initialMode
+  // Check query parameter ?tab=... or ?orderId=... or ?q=...
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -207,8 +269,65 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
       } else if (tab === "login") {
         setMode("login");
       }
+      if (tab === "tracking" || tab === "orders" || tab === "renewals" || tab === "notifications" || tab === "profile") {
+        setAccountTab(tab);
+      } else if (initialTab) {
+        setAccountTab(initialTab);
+      }
+      const orderIdParam = params.get("orderId");
+      if (orderIdParam) {
+        setSelectedTrackingOrderId(orderIdParam);
+        setTrackingSearchInput(orderIdParam);
+      }
+      const qParam = params.get("q") || params.get("trackingNumber");
+      if (qParam) {
+        setTrackingSearchInput(qParam);
+      }
     }
-  }, [initialMode]);
+  }, [initialMode, initialTab]);
+
+  const activeTrackingOrder = useMemo(() => {
+    if (guestTrackingOrder) return guestTrackingOrder;
+    if (selectedTrackingOrderId) {
+      const found = userOrders.find(
+        (o) => o.id === selectedTrackingOrderId || o.orderNumber === selectedTrackingOrderId,
+      );
+      if (found) return found;
+    }
+    return userOrders[0] || null;
+  }, [guestTrackingOrder, selectedTrackingOrderId, userOrders]);
+
+  const handleGuestTrackingSearch = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    const queryStr = trackingSearchInput.trim();
+    if (!queryStr) {
+      setTrackingSearchError("Please enter your Order Number (e.g. SUE-ORD-...) or 10-digit mobile number.");
+      return;
+    }
+    setIsSearchingTracking(true);
+    setTrackingSearchError("");
+    try {
+      const order = await getOrderForTracking(queryStr);
+      if (order) {
+        setGuestTrackingOrder(order);
+        setSelectedTrackingOrderId(order.id || order.orderNumber || null);
+      } else {
+        setTrackingSearchError(`No order found matching "${queryStr}". Please check your Order ID or phone number.`);
+      }
+    } catch (err: any) {
+      setTrackingSearchError(err?.message || "Failed to search for order. Please try again.");
+    } finally {
+      setIsSearchingTracking(false);
+    }
+  };
+
+  const handleCopyAwb = (awb: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(awb);
+      setCopiedAwb(true);
+      setTimeout(() => setCopiedAwb(false), 2000);
+    }
+  };
 
   // When in signup mode and the user is authenticated, redirect to homepage immediately
   useEffect(() => {
@@ -550,6 +669,22 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
 
                   <button
                     type="button"
+                    onClick={() => setAccountTab("tracking")}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all shrink-0 ${
+                      accountTab === "tracking"
+                        ? "bg-blue-600 text-white shadow-sm font-bold"
+                        : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Truck className="size-3.5" />
+                    <span>Live Tracking</span>
+                    {userOrders.some((o) => o.status === "shipped") && (
+                      <span className="size-2 rounded-full bg-blue-400 animate-pulse" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setAccountTab("renewals")}
                     className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all shrink-0 ${
                       accountTab === "renewals"
@@ -716,29 +851,38 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                             </div>
                           </div>
 
-                          {/* Task C: Shipped Banner with Support Contact */}
+                          {/* Shipped Banner with Courier & Track Button */}
                           {isShipped && (
-                            <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 text-xs text-blue-900 dark:text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div className="flex items-center gap-2">
-                                <Truck className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                                <span>
-                                  <strong>Order already shipped.</strong> Please contact support for any address updates or delivery inquiries.
-                                </span>
+                            <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-blue-900 dark:text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="size-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                  <Truck className="size-4 animate-pulse" />
+                                </div>
+                                <div>
+                                  <div className="font-bold flex items-center gap-1.5 flex-wrap">
+                                    <span>Dispatched via {order.courierName || "Express Courier"}</span>
+                                    {order.trackingNumber && (
+                                      <span className="font-mono text-blue-700 dark:text-blue-300 bg-blue-500/15 px-1.5 py-0.5 rounded text-[11px]">
+                                        AWB: {order.trackingNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
+                                    {order.dispatchNote || "In transit with real-time carrier tracking enabled."}
+                                  </p>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-3 font-semibold shrink-0">
-                                <a
-                                  href="tel:+918639858221"
-                                  className="hover:underline flex items-center gap-1 text-primary"
-                                >
-                                  <Phone className="size-3" /> +91 8639858221
-                                </a>
-                                <a
-                                  href="mailto:support@udharchi.in"
-                                  className="hover:underline flex items-center gap-1 text-primary"
-                                >
-                                  <Mail className="size-3" /> support@udharchi.in
-                                </a>
-                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedTrackingOrderId(order.id || order.orderNumber || null);
+                                  setAccountTab("tracking");
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shrink-0 shadow-xs"
+                              >
+                                <Truck className="size-3.5" />
+                                <span>Track Live Shipment</span>
+                              </Button>
                             </div>
                           )}
 
@@ -781,37 +925,75 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                           )}
 
                           {/* Actions & Audit History Button */}
-                          <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                            <button
-                              type="button"
-                              onClick={() => setHistoryOrder(order)}
-                              className="text-muted-foreground hover:text-foreground text-[11px] flex items-center gap-1 font-medium"
-                            >
-                              <Clock className="size-3" />
-                              <span>View Status History ({order.statusHistory?.length || 1})</span>
-                            </button>
+                          <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setHistoryOrder(order)}
+                                className="text-muted-foreground hover:text-foreground text-[11px] flex items-center gap-1 font-medium"
+                              >
+                                <Clock className="size-3" />
+                                <span>Status History ({order.statusHistory?.length || 1})</span>
+                              </button>
+                            </div>
 
-                            {/* Task C: Cancel Order button ONLY when placed or confirmed */}
-                            {canCancel && (
+                            <div className="flex items-center gap-2">
                               <Button
-                                variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setCancellingOrder(order);
-                                  setCancelReason("Need to adjust quantity or order specifications");
-                                  setCancelError("");
+                                  setSelectedTrackingOrderId(order.id || order.orderNumber || null);
+                                  setAccountTab("tracking");
                                 }}
-                                className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10 h-8"
+                                className="text-xs bg-blue-600 hover:bg-blue-700 text-white h-8 gap-1.5 font-semibold shadow-xs"
                               >
-                                Cancel Order
+                                <Truck className="size-3.5" />
+                                <span>Track Order</span>
                               </Button>
-                            )}
+
+                              {/* Task C: Cancel Order button ONLY when placed or confirmed */}
+                              {canCancel && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setCancellingOrder(order);
+                                    setCancelReason("Need to adjust quantity or order specifications");
+                                    setCancelError("");
+                                  }}
+                                  className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10 h-8"
+                                >
+                                  Cancel Order
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
                     })
                   )}
                 </div>
+              )}
+
+              {/* TAB CONTENT: LIVE ORDER TRACKING & COURIER */}
+              {accountTab === "tracking" && (
+                <OrderTrackingSection
+                  order={activeTrackingOrder}
+                  userOrders={userOrders}
+                  selectedOrderId={selectedTrackingOrderId}
+                  onSelectOrder={(id) => {
+                    setSelectedTrackingOrderId(id);
+                    setGuestTrackingOrder(null);
+                  }}
+                  searchInput={trackingSearchInput}
+                  onSearchInputChange={setTrackingSearchInput}
+                  onSearchSubmit={handleGuestTrackingSearch}
+                  isSearching={isSearchingTracking}
+                  searchError={trackingSearchError}
+                  copiedAwb={copiedAwb}
+                  onCopyAwb={handleCopyAwb}
+                  onOpenRenewals={() => setAccountTab("renewals")}
+                  isGuest={false}
+                />
               )}
 
               {/* TAB CONTENT: UPCOMING RENEWALS & REFILLS (Task E) */}
@@ -1055,6 +1237,69 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
                   </div>
                 </div>
               )}
+            </div>
+          ) : accountTab === "tracking" ? (
+            /* GUEST TRACKING VIEW */
+            <div className="space-y-6">
+              <div className="flex items-center justify-between bg-card border border-border/80 rounded-2xl p-4 shadow-sm backdrop-blur">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                    <Truck className="size-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-foreground block">
+                      Live Delivery &amp; Courier Tracking
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Real-time carrier tracking for industrial fire safety equipment
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setAccountTab("orders");
+                      setMode("login");
+                    }}
+                    className="text-xs h-8 font-semibold cursor-pointer"
+                  >
+                    <User className="size-3.5 mr-1" />
+                    <span>Sign In</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setAccountTab("orders");
+                      setMode("signup");
+                    }}
+                    className="text-xs h-8 font-bold shadow-xs cursor-pointer"
+                  >
+                    <span>Create Account</span>
+                  </Button>
+                </div>
+              </div>
+
+              <OrderTrackingSection
+                order={activeTrackingOrder}
+                searchInput={trackingSearchInput}
+                onSearchInputChange={setTrackingSearchInput}
+                onSearchSubmit={handleGuestTrackingSearch}
+                isSearching={isSearchingTracking}
+                searchError={trackingSearchError}
+                copiedAwb={copiedAwb}
+                onCopyAwb={handleCopyAwb}
+                onOpenRenewals={() => {
+                  setAccountTab("orders");
+                  setMode("login");
+                }}
+                isGuest={true}
+                onSwitchToAuth={() => {
+                  setAccountTab("orders");
+                  setMode("login");
+                }}
+              />
             </div>
           ) : (
             /* AUTH FORM CARD */
@@ -2023,3 +2268,472 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps = {}) {
     </div>
   );
 }
+
+interface OrderTrackingSectionProps {
+  order: OrderItem | null;
+  userOrders?: OrderItem[];
+  selectedOrderId?: string | null;
+  onSelectOrder?: (orderId: string) => void;
+  searchInput: string;
+  onSearchInputChange: (val: string) => void;
+  onSearchSubmit: (e: FormEvent) => void;
+  isSearching: boolean;
+  searchError: string;
+  copiedAwb: boolean;
+  onCopyAwb: (awb: string) => void;
+  onOpenRenewals?: () => void;
+  isGuest?: boolean;
+  onSwitchToAuth?: () => void;
+}
+
+function OrderTrackingSection({
+  order,
+  userOrders,
+  selectedOrderId,
+  onSelectOrder,
+  searchInput,
+  onSearchInputChange,
+  onSearchSubmit,
+  isSearching,
+  searchError,
+  copiedAwb,
+  onCopyAwb,
+  onOpenRenewals,
+  isGuest,
+  onSwitchToAuth,
+}: OrderTrackingSectionProps) {
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* 1. If user has multiple registered orders */}
+      {userOrders && userOrders.length > 0 && onSelectOrder && (
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Package className="size-3.5 text-primary" />
+              Select Order to Track:
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              {userOrders.length} order{userOrders.length === 1 ? "" : "s"} found
+            </span>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {userOrders.map((ord) => {
+              const isSelected =
+                (ord.id || ord.orderNumber) === (selectedOrderId || order?.id || order?.orderNumber);
+              const isShipped = ord.status === "shipped";
+              const isDelivered = ord.status === "delivered";
+
+              return (
+                <button
+                  key={ord.id || ord.orderNumber}
+                  type="button"
+                  onClick={() => onSelectOrder(ord.id || ord.orderNumber || "")}
+                  className={`rounded-xl px-3.5 py-2.5 text-left border transition-all shrink-0 cursor-pointer ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold shadow-xs"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-mono text-xs font-black text-foreground">
+                    <span>#{ord.orderNumber || ord.id}</span>
+                    {isShipped && <span className="size-2 rounded-full bg-blue-500 animate-pulse" />}
+                    {isDelivered && <CheckCircle2 className="size-3 text-emerald-500" />}
+                  </div>
+                  <div className="text-[10px] mt-0.5 capitalize flex items-center gap-1 opacity-80">
+                    <span>{ord.status}</span>
+                    {ord.courierName && <span>• {ord.courierName}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Search Bar for tracking any order */}
+      <form
+        onSubmit={onSearchSubmit}
+        className="flex flex-col sm:flex-row gap-2 rounded-2xl border border-border bg-card p-3 shadow-sm"
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => onSearchInputChange(e.target.value)}
+            placeholder="Search by Order ID (e.g. SUE-ORD-88219), phone, or courier AWB..."
+            className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={isSearching || !searchInput.trim()}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 h-9 shrink-0 shadow-xs cursor-pointer"
+        >
+          {isSearching && <RefreshCw className="size-3.5 animate-spin" />}
+          <Truck className="size-3.5" />
+          <span>Track Shipment</span>
+        </Button>
+      </form>
+
+      {searchError && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{searchError}</span>
+        </div>
+      )}
+
+      {/* 3. Empty State if no order found/selected */}
+      {!order ? (
+        <div className="rounded-2xl border border-border bg-card p-10 text-center space-y-3">
+          <div className="size-14 rounded-2xl bg-blue-500/10 text-blue-600 mx-auto flex items-center justify-center">
+            <Truck className="size-7 animate-pulse" />
+          </div>
+          <h3 className="font-bold text-foreground text-base">Track Any Delivery in Real Time</h3>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+            Enter your Order ID (from your confirmation SMS or invoice) or courier Airway Bill (AWB) above to view live dispatch status, partner courier tracking, and safety compliance timeline.
+          </p>
+          {isGuest && onSwitchToAuth && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSwitchToAuth}
+                className="text-xs font-semibold gap-1.5"
+              >
+                <User className="size-3.5" />
+                <span>Sign in to view all your registered orders</span>
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* 4. Active Order Tracking Display */
+        <div className="space-y-6">
+          {/* Top Header Card */}
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-base font-black text-foreground">
+                    #{order.orderNumber || order.id}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 ${
+                      order.status === "shipped"
+                        ? "bg-blue-500/15 text-blue-600 border border-blue-500/30"
+                        : order.status === "delivered"
+                          ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30"
+                          : order.status === "cancelled"
+                            ? "bg-destructive/15 text-destructive border border-destructive/30"
+                            : "bg-amber-500/15 text-amber-600 border border-amber-500/30"
+                    }`}
+                  >
+                    {order.status === "shipped" && (
+                      <span className="size-2 rounded-full bg-blue-500 animate-pulse" />
+                    )}
+                    <span>{order.status}</span>
+                  </span>
+
+                  {order.shippingType === "priority" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                      <Zap className="size-3 fill-current" /> Priority Dispatch
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ordered on {formatKolkataDisplay(order.createdAt)} • Customer:{" "}
+                  <strong className="text-foreground">{order.customerName}</strong>
+                </p>
+              </div>
+
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Expected Delivery Window
+                </span>
+                <span className="font-bold text-foreground text-xs sm:text-sm">
+                  {order.expectedDeliveryFrom && order.expectedDeliveryTo
+                    ? `${formatKolkataDisplay(order.expectedDeliveryFrom)} to ${formatKolkataDisplay(order.expectedDeliveryTo)}`
+                    : order.estimatedDelivery || "5 to 7 business days"}
+                </span>
+              </div>
+            </div>
+
+            {/* 5-Step Visual Stepper */}
+            <div className="py-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {TRACKING_STEPS.map((st) => {
+                  const currentIdx = getTrackingStepIndex(order.status);
+                  const isComplete = currentIdx >= st.step;
+                  const isCurrent = currentIdx === st.step;
+                  const IconComponent = st.icon;
+
+                  return (
+                    <div
+                      key={st.step}
+                      className={`rounded-xl p-3 border transition-all ${
+                        isCurrent
+                          ? "border-blue-500 bg-blue-500/10 shadow-sm ring-1 ring-blue-500/30"
+                          : isComplete
+                            ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
+                            : "border-border/60 bg-muted/20 text-muted-foreground opacity-60"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={`size-7 rounded-lg flex items-center justify-center ${
+                            isCurrent
+                              ? "bg-blue-500 text-white animate-pulse"
+                              : isComplete
+                                ? "bg-emerald-500 text-white"
+                                : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {isComplete && !isCurrent ? (
+                            <Check className="size-4 stroke-[3]" />
+                          ) : (
+                            <IconComponent className="size-3.5" />
+                          )}
+                        </div>
+                        <span className="text-[10px] font-mono font-bold">
+                          0{st.step}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-foreground leading-tight">
+                        {st.title}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                        {st.desc}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Live Courier & Dispatch Details Card */}
+          {(order.courierName || order.trackingNumber || order.dispatchNote) && (
+            <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card p-5 sm:p-6 shadow-md space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="size-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+                    <Truck className="size-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                      Courier Partner &amp; Live Tracking
+                    </span>
+                    <h4 className="font-display text-base font-bold text-foreground">
+                      {order.courierName || "Express Surface Logistics"}
+                    </h4>
+                  </div>
+                </div>
+
+                {order.shippedAt && (
+                  <div className="text-left sm:text-right text-xs">
+                    <span className="text-muted-foreground block text-[10px] uppercase font-bold">
+                      Dispatched On
+                    </span>
+                    <span className="font-mono font-semibold text-foreground">
+                      {formatKolkataDisplay(order.shippedAt)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* AWB Card */}
+                {order.trackingNumber && (
+                  <div className="rounded-xl border border-border bg-background p-3.5 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                      Airway Bill / Tracking Number (AWB)
+                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm sm:text-base font-black text-foreground tracking-wider select-all">
+                        {order.trackingNumber}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onCopyAwb(order.trackingNumber!)}
+                        className="h-8 px-2.5 text-xs font-semibold gap-1 shrink-0 cursor-pointer"
+                        title="Copy AWB Number"
+                      >
+                        {copiedAwb ? (
+                          <>
+                            <Check className="size-3.5 text-emerald-500" />
+                            <span className="text-emerald-600 font-bold">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="size-3.5" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tracking Link Card */}
+                <div className="rounded-xl border border-border bg-background p-3.5 flex flex-col justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                      Official Carrier Portal
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Access carrier-level GPS checkpoints &amp; transit scan logs.
+                    </p>
+                  </div>
+                  <a
+                    href={
+                      order.trackingUrl ||
+                      (order.courierName?.includes("Blue Dart")
+                        ? `https://www.bluedart.com/tracking?trackNumber=${encodeURIComponent(order.trackingNumber || "")}`
+                        : order.courierName?.includes("Delhivery")
+                          ? `https://www.delhivery.com/track/package/${encodeURIComponent(order.trackingNumber || "")}`
+                          : order.courierName?.includes("DTDC")
+                            ? `https://www.dtdc.in/tracking/tracking_results.asp?strCnno=${encodeURIComponent(order.trackingNumber || "")}`
+                            : "https://www.google.com/search?q=" + encodeURIComponent(`${order.courierName || "courier"} tracking ${order.trackingNumber || ""}`))
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block"
+                  >
+                    <Button
+                      size="sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 h-8 shadow-xs cursor-pointer"
+                    >
+                      <span>Track on Carrier Website</span>
+                      <ExternalLink className="size-3.5" />
+                    </Button>
+                  </a>
+                </div>
+              </div>
+
+              {/* Dispatch Note */}
+              {order.dispatchNote && (
+                <div className="rounded-xl bg-muted/40 border border-border/80 p-3 text-xs space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Routing &amp; Packaging Notes
+                  </span>
+                  <p className="text-foreground leading-relaxed">
+                    {order.dispatchNote}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Maintenance / Refill Timeline Link Card */}
+          {order.items?.some((it) => it.renewalMonths) && (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="size-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <RotateCcw className="size-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-foreground">
+                    Automatic Safety Maintenance Schedule Activated 🛡️
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    This order includes safety equipment with periodic service/refill cycles. Automatic reminders will be sent to your account before each cycle.
+                  </p>
+                </div>
+              </div>
+              {onOpenRenewals && (
+                <Button
+                  size="sm"
+                  onClick={onOpenRenewals}
+                  className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>View Refill Timeline</span>
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Audit Trail & Milestone History */}
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-md space-y-4">
+            <h4 className="font-display text-sm font-bold text-foreground flex items-center gap-2">
+              <Clock className="size-4 text-primary" />
+              <span>Status History &amp; Milestone Timeline</span>
+            </h4>
+
+            {(!order.statusHistory || order.statusHistory.length === 0) ? (
+              <div className="text-xs text-muted-foreground py-2">
+                No milestone entries recorded yet.
+              </div>
+            ) : (
+              <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                {order.statusHistory.map((item, idx) => (
+                  <div key={idx} className="relative text-xs space-y-1">
+                    <div className="absolute -left-6 top-1 size-2 rounded-full bg-primary ring-4 ring-background" />
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-mono font-bold uppercase text-[10px] ${
+                          item.status === "placed"
+                            ? "bg-amber-500/10 text-amber-600"
+                            : item.status === "confirmed"
+                              ? "bg-purple-500/10 text-purple-600"
+                              : item.status === "shipped" || item.status === "dispatched"
+                                ? "bg-blue-500/10 text-blue-600"
+                                : item.status === "delivered"
+                                  ? "bg-emerald-500/10 text-emerald-600"
+                                  : "bg-destructive/10 text-destructive"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {formatKolkataDisplay(item.timestamp)}
+                      </span>
+                    </div>
+                    {item.note && (
+                      <div className="text-foreground leading-relaxed text-[11px] font-medium">
+                        {item.note}
+                      </div>
+                    )}
+                    {item.courierName && (
+                      <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">
+                        Carrier: {item.courierName} {item.trackingNumber ? `• AWB: ${item.trackingNumber}` : ""}
+                      </div>
+                    )}
+                    {item.updatedBy && (
+                      <div className="text-[10px] text-muted-foreground">
+                        Updated by: <span className="font-medium text-foreground">{item.updatedBy}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Need Help? Hotline card */}
+          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Phone className="size-4 text-emerald-500 shrink-0" />
+              <span>
+                Have an urgent delivery question? Contact our 24/7 Logistics Desk at{" "}
+                <strong className="text-foreground">+91 8639858221</strong>
+              </span>
+            </div>
+            <a
+              href="https://wa.me/918639858221?text=Hello%20Sri%20Udharchi%20Enterprises,%20I%20am%20inquiring%20about%20my%20delivery."
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button size="sm" variant="outline" className="text-xs font-semibold gap-1.5 h-8">
+                <span>WhatsApp Logistics</span>
+              </Button>
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
