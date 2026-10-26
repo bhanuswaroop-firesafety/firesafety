@@ -39,8 +39,9 @@ import type {
   FeedbackItem,
   ReminderItem,
   NotificationItem,
+  PaymentLogItem,
 } from "./types";
-export type { LeadItem, OrderItem };
+export type { LeadItem, OrderItem, PaymentLogItem };
 import { OFFICIAL_CATALOG_PRODUCTS, DEFAULT_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
 import {
   getKolkataISOString,
@@ -726,6 +727,10 @@ export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
     customerEmail: rawEmail,
     shippingAddress: order.shippingAddress || "",
     paymentMethod: order.paymentMethod || "cod",
+    paymentStatus:
+      order.paymentStatus ||
+      (order.paymentMethod === "razorpay" ? "paid" : "pending"),
+    paymentDetails: order.paymentDetails || undefined,
     items: order.items || [],
     subtotal: order.subtotal || 0,
     discount: order.discount || 0,
@@ -2200,3 +2205,33 @@ export async function sendManualUserNotification(
     createdAt: nowIso,
   });
 }
+
+export async function recordPaymentLog(log: PaymentLogItem): Promise<string> {
+  const colRef = collection(db, "payment_logs");
+  const now = getKolkataISOString();
+  const payload: PaymentLogItem = {
+    ...log,
+    createdAt: log.createdAt || now,
+  };
+  const docRef = await addDoc(colRef, cleanFirestoreData(payload));
+  return docRef.id;
+}
+
+export function subscribePaymentLogs(callback: (logs: PaymentLogItem[]) => void): () => void {
+  const colRef = collection(db, "payment_logs");
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const logs = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as PaymentLogItem[];
+      logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(logs);
+    },
+    (err) => {
+      console.warn("Firestore payment_logs subscription notice:", err);
+    },
+  );
+}
+

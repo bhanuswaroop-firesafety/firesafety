@@ -34,7 +34,9 @@ import {
   Clock,
   Zap,
   User,
+  RotateCcw,
 } from "lucide-react";
+import { launchRazorpayCheckout, RAZORPAY_KEY_ID } from "@/lib/razorpay";
 
 import { seoHead } from "@/lib/seo";
 
@@ -43,14 +45,14 @@ export const Route = createFileRoute("/checkout")({
     seoHead({
       title: "Secure Checkout | Sri Udharchi Enterprises",
       description:
-        "Complete your industrial safety equipment order. Safe & verified order booking with Cash on Delivery across India.",
+        "Complete your industrial safety equipment order. Safe & verified order booking with Razorpay Online Gateway or Cash on Delivery across India.",
       path: "/checkout",
       noIndex: true,
     }),
   component: CheckoutPage,
 });
 
-type PaymentMethod = "upi" | "card" | "netbanking" | "po" | "cod";
+type PaymentMethod = "razorpay" | "upi" | "card" | "netbanking" | "po" | "cod" | string;
 
 interface OrderConfirmationData {
   orderId: string;
@@ -62,6 +64,8 @@ interface OrderConfirmationData {
   companyName?: string | undefined;
   gstin?: string | undefined;
   paymentMethod: PaymentMethod;
+  paymentId?: string | undefined;
+  razorpayOrderId?: string | undefined;
   items: Array<{
     name: string;
     quantity: number;
@@ -199,8 +203,13 @@ function CheckoutPage() {
     }
   }, [userProfile, user]);
 
-  // Payment states (Only COD active for now)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
+  // Payment states: Razorpay (default online) & COD
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("razorpay");
+  const [paymentError, setPaymentError] = useState<{
+    code: string;
+    message: string;
+    details?: string | undefined;
+  } | null>(null);
   const [upiId, setUpiId] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
@@ -246,7 +255,7 @@ function CheckoutPage() {
   const finalPayable =
     Math.max(0, subtotal - discountAmount) + gstAmount + selectedShippingFee;
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError("");
 
@@ -284,75 +293,80 @@ function CheckoutPage() {
       return;
     }
 
-    if (paymentMethod === "card") {
-      if (!cardNumber || cardNumber.replace(/\s/g, "").length < 16) {
-        setValidationError("Please enter a valid 16-digit card number.");
-        return;
-      }
-      if (!cardExpiry || !cardExpiry.includes("/")) {
-        setValidationError("Please enter card expiry date (MM/YY).");
-        return;
-      }
-      if (!cardCvv || cardCvv.length < 3) {
-        setValidationError("Please enter a valid CVV.");
-        return;
-      }
-    }
+    const orderId = generateOrderNumber();
+    const windowInfo = calculateDeliveryWindow(deliverySpeed, shippingSettings);
+    const fullShippingAddress = `${address.trim()}, ${city}, ${state} - ${pincode}`;
+    const customerUid =
+      user?.uid ||
+      userProfile?.id ||
+      `cust-${email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, "").slice(0, 10)}`;
 
-    if (paymentMethod === "upi" && !upiId.trim()) {
-      setUpiId("sriudharchi@payment");
-    }
-
-    // Start authentic interactive order processing flow
-    setIsProcessing(true);
-    setProcessingStep("Verifying order details & reserving inventory...");
-
-    setTimeout(() => {
-      setProcessingStep("Registering Cash on Delivery shipment...");
-    }, 900);
-
-    setTimeout(() => {
-      setProcessingStep("Finalizing your order confirmation...");
-    }, 1800);
-
-    setTimeout(async () => {
-      setIsProcessing(false);
-      const orderId = generateOrderNumber();
-      const windowInfo = calculateDeliveryWindow(deliverySpeed, shippingSettings);
-
-      const confirmation: OrderConfirmationData = {
-        orderId,
-        orderDate: formatKolkataDisplay(new Date(), true),
-        customerName: fullName.trim(),
-        customerPhone: phone.trim(),
-        customerEmail: email.trim().toLowerCase(),
-        shippingAddress: `${address.trim()}, ${city}, ${state} - ${pincode}`,
-        companyName: isB2B ? companyName.trim() : undefined,
-        gstin: isB2B ? gstin.trim() : undefined,
-        paymentMethod,
-        items: cartItems.map((i) => ({
-          name: i.name,
-          quantity: i.quantity,
-          price: i.price,
-        })),
-        subtotal,
-        discount: discountAmount,
-        gst: gstAmount,
-        shipping: selectedShippingFee,
-        total: finalPayable,
-        estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
-        shippingType: deliverySpeed,
-        expectedDeliveryFrom: windowInfo.fromISO,
-        expectedDeliveryTo: windowInfo.toISO,
-      };
-
-      // Persist real customer order into Cloud Firestore
-      const customerUid =
-        user?.uid ||
-        userProfile?.id ||
-        `cust-${email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, "").slice(0, 10)}`;
+    // === OPTION 1: RAZORPAY ONLINE GATEWAY ===
+    if (paymentMethod === "razorpay") {
+      setIsProcessing(true);
+      setProcessingStep("Connecting to Razorpay Secure Payment Gateway...");
 
       try {
+        const res = await launchRazorpayCheckout({
+          orderNumber: orderId,
+          amount: finalPayable,
+          customerName: fullName.trim(),
+          customerEmail: email.trim().toLowerCase(),
+          customerPhone: cleanPhoneDigits,
+          companyName: isB2B ? companyName.trim() : undefined,
+          gstin: isB2B ? gstin.trim() : undefined,
+          address: fullShippingAddress,
+        });
+
+        if (res.status === "failed") {
+          setIsProcessing(false);
+          setPaymentError({
+            code: res.error.code || "PAYMENT_FAILED",
+            message: res.error.description || "The transaction could not be completed by your bank.",
+            details: res.error.reason ? `Gateway reason: ${res.error.reason}` : undefined,
+          });
+          return;
+        }
+
+        if (res.status === "dismissed") {
+          setIsProcessing(false);
+          setValidationError(
+            "Razorpay checkout was closed without completing payment. You can retry with Razorpay or select Cash on Delivery.",
+          );
+          return;
+        }
+
+        // res.status === "success"
+        setProcessingStep("Payment authorized! Finalizing safety equipment order...");
+
+        const confirmation: OrderConfirmationData = {
+          orderId,
+          orderDate: formatKolkataDisplay(new Date(), true),
+          customerName: fullName.trim(),
+          customerPhone: phone.trim(),
+          customerEmail: email.trim().toLowerCase(),
+          shippingAddress: fullShippingAddress,
+          companyName: isB2B ? companyName.trim() : undefined,
+          gstin: isB2B ? gstin.trim() : undefined,
+          paymentMethod: "razorpay",
+          paymentId: res.data.razorpay_payment_id,
+          razorpayOrderId: res.data.razorpay_order_id,
+          items: cartItems.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+          })),
+          subtotal,
+          discount: discountAmount,
+          gst: gstAmount,
+          shipping: selectedShippingFee,
+          total: finalPayable,
+          estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+          shippingType: deliverySpeed,
+          expectedDeliveryFrom: windowInfo.fromISO,
+          expectedDeliveryTo: windowInfo.toISO,
+        };
+
         await submitOrder({
           orderId,
           orderNumber: orderId,
@@ -360,10 +374,19 @@ function CheckoutPage() {
           customerName: fullName.trim(),
           customerPhone: phone.trim(),
           customerEmail: email.trim().toLowerCase(),
-          shippingAddress: `${address.trim()}, ${city}, ${state} - ${pincode}`,
+          shippingAddress: fullShippingAddress,
           companyName: isB2B && companyName ? companyName.trim() : "",
           gstin: isB2B && gstin ? gstin.trim() : "",
-          paymentMethod,
+          paymentMethod: "razorpay",
+          paymentStatus: "paid",
+          paymentDetails: {
+            gateway: "razorpay",
+            paymentId: res.data.razorpay_payment_id,
+            razorpayOrderId: res.data.razorpay_order_id,
+            signature: res.data.razorpay_signature,
+            paidAt: new Date().toISOString(),
+            amountPaise: Math.round(finalPayable * 100),
+          },
           items: cartItems.map((i) => ({
             name: i.name,
             quantity: i.quantity,
@@ -384,17 +407,105 @@ function CheckoutPage() {
           estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
         });
 
-        // Delete server draft after successful placement
         if (user) {
           await deleteCheckoutDraft(user.uid).catch(() => {});
         }
         clearCart();
+        setIsProcessing(false);
+        setConfirmedOrder(confirmation);
+      } catch (err: unknown) {
+        setIsProcessing(false);
+        const msg = err instanceof Error ? err.message : String(err);
+        setPaymentError({
+          code: "GATEWAY_ERROR",
+          message: msg,
+        });
+      }
+      return;
+    }
+
+    // === OPTION 2: CASH ON DELIVERY (COD) ===
+    setIsProcessing(true);
+    setProcessingStep("Verifying order details & reserving inventory...");
+
+    setTimeout(() => {
+      setProcessingStep("Registering Cash on Delivery shipment...");
+    }, 900);
+
+    setTimeout(() => {
+      setProcessingStep("Finalizing your order confirmation...");
+    }, 1800);
+
+    setTimeout(async () => {
+      const confirmation: OrderConfirmationData = {
+        orderId,
+        orderDate: formatKolkataDisplay(new Date(), true),
+        customerName: fullName.trim(),
+        customerPhone: phone.trim(),
+        customerEmail: email.trim().toLowerCase(),
+        shippingAddress: fullShippingAddress,
+        companyName: isB2B ? companyName.trim() : undefined,
+        gstin: isB2B ? gstin.trim() : undefined,
+        paymentMethod: "cod",
+        items: cartItems.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        subtotal,
+        discount: discountAmount,
+        gst: gstAmount,
+        shipping: selectedShippingFee,
+        total: finalPayable,
+        estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+        shippingType: deliverySpeed,
+        expectedDeliveryFrom: windowInfo.fromISO,
+        expectedDeliveryTo: windowInfo.toISO,
+      };
+
+      try {
+        await submitOrder({
+          orderId,
+          orderNumber: orderId,
+          customerId: customerUid,
+          customerName: fullName.trim(),
+          customerPhone: phone.trim(),
+          customerEmail: email.trim().toLowerCase(),
+          shippingAddress: fullShippingAddress,
+          companyName: isB2B && companyName ? companyName.trim() : "",
+          gstin: isB2B && gstin ? gstin.trim() : "",
+          paymentMethod: "cod",
+          paymentStatus: "pending",
+          items: cartItems.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+            productId: i.id,
+            renewalMonths: i.renewalMonths,
+          })),
+          subtotal,
+          discount: discountAmount,
+          gst: gstAmount,
+          shipping: selectedShippingFee,
+          total: finalPayable,
+          status: "placed",
+          shippingType: deliverySpeed,
+          expectedDeliveryFrom: windowInfo.fromISO,
+          expectedDeliveryTo: windowInfo.toISO,
+          shippingCharge: selectedShippingFee,
+          estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+        });
+
+        if (user) {
+          await deleteCheckoutDraft(user.uid).catch(() => {});
+        }
+        clearCart();
+        setIsProcessing(false);
         setConfirmedOrder(confirmation);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setValidationError(`Order submission failed: ${msg}. Please check your connection and retry.`);
         setIsProcessing(false);
-        return;
       }
     }, 1800);
   };
@@ -494,13 +605,25 @@ function CheckoutPage() {
                     <p className="text-foreground mt-0.5 leading-relaxed">
                       {confirmedOrder.shippingAddress}
                     </p>
-                    <div className="mt-2 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
-                      Payment Mode:{" "}
-                      <span className="font-bold text-primary">
-                        {confirmedOrder.paymentMethod === "cod"
-                          ? "Cash on Delivery (COD)"
-                          : confirmedOrder.paymentMethod.toUpperCase()}
-                      </span>
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1 text-xs font-semibold text-foreground flex-wrap">
+                      <span>Payment Status:</span>
+                      {confirmedOrder.paymentMethod === "razorpay" ? (
+                        <span className="font-bold text-emerald-600 flex items-center gap-1.5 flex-wrap">
+                          <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          <span>PAID ONLINE (Razorpay Gateway)</span>
+                          {confirmedOrder.paymentId && (
+                            <span className="font-mono text-[11px] bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded text-emerald-700 dark:text-emerald-300">
+                              TXN: {confirmedOrder.paymentId}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="font-bold text-primary">
+                          {confirmedOrder.paymentMethod === "cod"
+                            ? "Cash on Delivery (Pay at Site)"
+                            : String(confirmedOrder.paymentMethod).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1005,55 +1128,137 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Step 3: Payment Options (Only COD active) */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5">
+                {/* Step 3: Payment Options (Razorpay Online & Cash on Delivery) */}
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2.5 pb-2 border-b border-border">
                     <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
                       3
                     </span>
                     <h2 className="font-display text-base font-bold text-foreground">
-                      Payment Method
+                      Select Payment Method
                     </h2>
                   </div>
 
-                  {/* Single Active Method: Cash on Delivery */}
-                  <div className="rounded-2xl border-2 border-primary bg-primary/5 p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                          <Truck className="size-6" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm sm:text-base font-bold text-foreground">
-                              Cash / Pay on Delivery (COD)
-                            </h3>
-                            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 border border-emerald-500/20">
-                              Active
-                            </span>
+                  <div className="space-y-3">
+                    {/* Option 1: Razorpay Secure Online Payment */}
+                    <div
+                      onClick={() => {
+                        setPaymentMethod("razorpay");
+                        setPaymentError(null);
+                      }}
+                      className={`rounded-2xl border-2 p-5 cursor-pointer transition-all ${
+                        paymentMethod === "razorpay"
+                          ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                          : "border-border bg-card hover:border-primary/40 hover:bg-muted/10"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3.5">
+                          <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-sm shrink-0">
+                            <Lock className="size-5" />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Pay upon physical delivery and inspection of your equipment
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm sm:text-base font-bold text-foreground">
+                                Razorpay Secure Online Gateway
+                              </h3>
+                              <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 border border-emerald-500/30">
+                                Recommended
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                              Instant Booking & Priority Dispatch Confirmation via 256-bit Encrypted Gateway
+                            </p>
+                            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap text-[11px] text-muted-foreground font-medium">
+                              <span className="rounded bg-muted px-2 py-0.5 font-semibold text-foreground border border-border/60">
+                                UPI (GPay / PhonePe / Paytm / BHIM)
+                              </span>
+                              <span className="rounded bg-muted px-2 py-0.5 font-semibold text-foreground border border-border/60">
+                                Credit / Debit Cards
+                              </span>
+                              <span className="rounded bg-muted px-2 py-0.5 font-semibold text-foreground border border-border/60">
+                                NetBanking (50+ Banks)
+                              </span>
+                              <span className="rounded bg-muted px-2 py-0.5 font-semibold text-foreground border border-border/60">
+                                Wallets
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          className={`flex size-6 shrink-0 items-center justify-center rounded-full border transition-all ${
+                            paymentMethod === "razorpay"
+                              ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                              : "border-border bg-background"
+                          }`}
+                        >
+                          {paymentMethod === "razorpay" && <CheckCircle2 className="size-4" />}
+                        </div>
+                      </div>
+
+                      {paymentMethod === "razorpay" && (
+                        <div className="mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground space-y-1.5 bg-background/60 rounded-xl p-3">
+                          <div className="flex items-center gap-2 font-medium text-foreground">
+                            <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+                            <span>Bank-Grade 256-Bit SSL • PCI-DSS Level 1 Certified • Test Mode Active</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed">
+                            Upon clicking &quot;Pay via Razorpay&quot;, the official Razorpay Checkout popup will launch. Your safety order is immediately certified and registered upon successful payment.
                           </p>
                         </div>
-                      </div>
-                      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs">
-                        <CheckCircle2 className="size-4" />
-                      </div>
+                      )}
                     </div>
 
-                    <div className="rounded-xl border border-border/80 bg-background/90 p-4 text-xs space-y-2 text-muted-foreground">
-                      <div className="flex items-center gap-2 text-foreground font-semibold">
-                        <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-                        <span>Zero Advance Risk • Inspect Equipment Before Acceptance</span>
+                    {/* Option 2: Cash on Delivery (COD) */}
+                    <div
+                      onClick={() => {
+                        setPaymentMethod("cod");
+                        setPaymentError(null);
+                      }}
+                      className={`rounded-2xl border-2 p-5 cursor-pointer transition-all ${
+                        paymentMethod === "cod"
+                          ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                          : "border-border bg-card hover:border-primary/40 hover:bg-muted/10"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3.5">
+                          <div className="flex size-11 items-center justify-center rounded-xl bg-slate-800 text-white shadow-sm shrink-0">
+                            <Truck className="size-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm sm:text-base font-bold text-foreground">
+                                Cash / Pay on Delivery (COD)
+                              </h3>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Inspect your equipment physically upon delivery and pay via cash or UPI to the delivery executive
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          className={`flex size-6 shrink-0 items-center justify-center rounded-full border transition-all ${
+                            paymentMethod === "cod"
+                              ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                              : "border-border bg-background"
+                          }`}
+                        >
+                          {paymentMethod === "cod" && <CheckCircle2 className="size-4" />}
+                        </div>
                       </div>
-                      <p className="leading-relaxed">
-                        Online payment gateways are currently turned off. You can pay conveniently via cash or through your UPI app (Google Pay, PhonePe, Paytm, BHIM) directly to the delivery logistics executive at your doorstep or facility site.
-                      </p>
-                      <div className="flex items-center gap-1.5 pt-1 text-[11px] text-primary font-medium">
-                        <Phone className="size-3.5 shrink-0" />
-                        <span>Our dispatch desk will verify your order on your registered mobile number prior to cargo shipment.</span>
-                      </div>
+
+                      {paymentMethod === "cod" && (
+                        <div className="mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground space-y-1 bg-background/60 rounded-xl p-3">
+                          <div className="flex items-center gap-2 font-medium text-foreground">
+                            <Phone className="size-3.5 text-primary shrink-0" />
+                            <span>Phone Verification Required</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed">
+                            Our dispatch desk will verify your order on your registered mobile number prior to cargo shipment.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1143,23 +1348,81 @@ function CheckoutPage() {
                     </div>
                   </div>
 
+                  {/* Payment Failure Noted Banner */}
+                  {paymentError && (
+                    <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3.5 text-xs text-red-900 dark:text-red-200 space-y-2">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="size-4 text-red-600 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-bold text-red-700 dark:text-red-300">
+                            Payment Not Completed
+                          </h4>
+                          <p className="mt-0.5 leading-relaxed text-[11px] text-red-800 dark:text-red-200">
+                            {paymentError.message}
+                          </p>
+                          {paymentError.details && (
+                            <p className="mt-1 font-mono text-[10px] text-red-600 dark:text-red-400">
+                              {paymentError.details}
+                            </p>
+                          )}
+                          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={handlePlaceOrder}
+                              className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-700 transition-all flex items-center gap-1 shadow-xs"
+                            >
+                              <RotateCcw className="size-3" /> Retry Payment
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPaymentMethod("cod");
+                                setPaymentError(null);
+                              }}
+                              className="rounded-lg border border-red-500/40 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-red-700 dark:text-red-300 hover:bg-red-500/15 transition-all"
+                            >
+                              Switch to Cash on Delivery (COD)
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentError(null)}
+                          className="text-red-500 hover:text-red-700 text-sm font-bold leading-none"
+                          title="Dismiss"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Submit Button */}
                   <div className="mt-6">
                     <Button
                       type="submit"
                       size="lg"
                       disabled={isProcessing}
-                      className="w-full justify-center text-sm font-bold shadow-md hover:shadow-lg"
+                      className={`w-full justify-center text-sm font-bold shadow-md hover:shadow-lg transition-all ${
+                        paymentMethod === "razorpay"
+                          ? "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white"
+                          : ""
+                      }`}
                     >
                       {isProcessing ? (
                         <span className="flex items-center gap-2">
                           <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          Processing Order...
+                          <span>{processingStep || "Processing..."}</span>
+                        </span>
+                      ) : paymentMethod === "razorpay" ? (
+                        <span className="flex items-center gap-2">
+                          <Lock className="size-4" />
+                          <span>Pay ₹{finalPayable.toLocaleString("en-IN")} via Razorpay</span>
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          <CheckCircle2 className="size-4" />
-                          Confirm Order (Cash on Delivery) • ₹{finalPayable.toLocaleString("en-IN")}
+                          <Truck className="size-4" />
+                          <span>Confirm Order (Cash on Delivery) • ₹{finalPayable.toLocaleString("en-IN")}</span>
                         </span>
                       )}
                     </Button>

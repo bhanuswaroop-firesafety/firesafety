@@ -840,10 +840,27 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                 >
                                   {order.status}
                                 </span>
+
+                                {/* Payment Status Badge */}
+                                {order.paymentMethod === "razorpay" || order.paymentStatus === "paid" ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                    <CheckCircle2 className="size-3" />
+                                    <span>Paid Online (Razorpay)</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border border-border">
+                                    {order.paymentMethod === "cod" ? "Cash on Delivery" : order.paymentMethod?.toUpperCase() || "COD"}
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-[11px] text-muted-foreground mt-1">
-                                Placed on {formatKolkataDisplay(order.createdAt)}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground mt-1">
+                                <span>Placed on {formatKolkataDisplay(order.createdAt)}</span>
+                                {(order.paymentDetails?.paymentId || order.paymentId) && (
+                                  <span className="font-mono text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                    TXN: {order.paymentDetails?.paymentId || order.paymentId}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             <div className="text-right">

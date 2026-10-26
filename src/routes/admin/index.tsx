@@ -36,6 +36,7 @@ import {
   updateBusinessSettings,
   DEFAULT_BUSINESS_SETTINGS,
   syncRegisteredAuthAccounts,
+  subscribePaymentLogs,
 } from "@/lib/db-service";
 import type {
   ProductItem,
@@ -52,6 +53,7 @@ import type {
   ContactSettings,
   BusinessProfileSettings,
   RegionalDepot,
+  PaymentLogItem,
 } from "@/lib/types";
 import { formatKolkataDisplay, getKolkataDateString, getDaysDiff } from "@/lib/date-utils";
 import { ProductManager } from "@/components/admin/product-manager";
@@ -148,6 +150,12 @@ function AdminPage() {
   const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
   const [usersList, setUsersList] = useState<UserItem[]>([]);
   const [leadsList, setLeadsList] = useState<LeadItem[]>([]);
+
+  // Razorpay Gateway Live Audit & Logs
+  const [paymentLogs, setPaymentLogs] = useState<PaymentLogItem[]>([]);
+  const [showPaymentLogsModal, setShowPaymentLogsModal] = useState<boolean>(false);
+  const [paymentLogFilter, setPaymentLogFilter] = useState<"all" | "success" | "failed" | "dismissed">("all");
+  const [paymentLogSearch, setPaymentLogSearch] = useState<string>("");
 
   // Task D: Customer Feedback State
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
@@ -315,6 +323,7 @@ function AdminPage() {
     const unsubSocial = subscribeSocialSettings((data) => setSocialSettings(data));
     const unsubContact = subscribeContactSettings((data) => setContactSettings(data));
     const unsubBusiness = subscribeBusinessSettings((data) => setBusinessSettings(data));
+    const unsubPaymentLogs = subscribePaymentLogs((data) => setPaymentLogs(data));
 
     // Non-Blaze Dashboard Fallback on Load (Task E)
     processDueRemindersFallback().catch(() => {});
@@ -333,6 +342,7 @@ function AdminPage() {
       unsubSocial();
       unsubContact();
       unsubBusiness();
+      unsubPaymentLogs();
     };
   }, [user, isAdmin]);
 
@@ -340,7 +350,8 @@ function AdminPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (inspectingUserOrders) setInspectingUserOrders(null);
+        if (showPaymentLogsModal) setShowPaymentLogsModal(false);
+        else if (inspectingUserOrders) setInspectingUserOrders(null);
         else if (orderToDelete) setOrderToDelete(null);
         else if (selectedOrder) setSelectedOrder(null);
         else if (inquiryToDelete) setInquiryToDelete(null);
@@ -353,6 +364,7 @@ function AdminPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    showPaymentLogsModal,
     inspectingUserOrders,
     orderToDelete,
     selectedOrder,
@@ -509,6 +521,8 @@ function AdminPage() {
       "Company",
       "GSTIN",
       "Payment Mode",
+      "Payment Status",
+      "Transaction ID",
       "Subtotal",
       "GST",
       "Shipping",
@@ -526,6 +540,8 @@ function AdminPage() {
       `"${(o.companyName || "").replace(/"/g, '""')}"`,
       `"${o.gstin || ""}"`,
       `"${o.paymentMethod || ""}"`,
+      `"${o.paymentStatus || (o.paymentMethod === "razorpay" ? "paid" : "pending")}"`,
+      `"${o.paymentDetails?.paymentId || o.paymentId || ""}"`,
       `"${o.subtotal || 0}"`,
       `"${o.gst || 0}"`,
       `"${o.shipping || 0}"`,
@@ -1963,6 +1979,16 @@ function AdminPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => setShowPaymentLogsModal(true)}
+                    className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                    title="View live Razorpay gateway transactions and audit logs"
+                  >
+                    <CreditCard className="size-3.5" />
+                    <span>Payment Gateway Logs ({paymentLogs.length})</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleExportOrdersCSV}
                     className="gap-1.5 text-xs"
                     title="Export all orders as CSV spreadsheet"
@@ -2159,9 +2185,32 @@ function AdminPage() {
                               <div className="max-w-xs text-muted-foreground line-clamp-2">
                                 {ord.shippingAddress}
                               </div>
-                              <div className="mt-1 text-[11px] uppercase font-semibold text-foreground">
-                                Payment:{" "}
-                                <span className="text-primary font-bold">{ord.paymentMethod}</span>
+                              <div className="mt-1 flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Mode:</span>
+                                  {ord.paymentMethod === "razorpay" || ord.paymentStatus === "paid" ? (
+                                    <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                      <CheckCircle2 className="size-2.5" />
+                                      PAID (Razorpay)
+                                    </span>
+                                  ) : ord.paymentMethod === "cod" ? (
+                                    <span className="inline-flex items-center rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                      Cash on Delivery
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground border border-border">
+                                      {ord.paymentMethod}
+                                    </span>
+                                  )}
+                                </div>
+                                {(ord.paymentDetails?.paymentId || ord.paymentId) && (
+                                  <div
+                                    className="font-mono text-[10px] text-primary truncate max-w-[180px] bg-primary/10 px-1 py-0.5 rounded"
+                                    title={ord.paymentDetails?.paymentId || ord.paymentId}
+                                  >
+                                    TXN: {ord.paymentDetails?.paymentId || ord.paymentId}
+                                  </div>
+                                )}
                               </div>
                             </td>
 
@@ -2360,11 +2409,54 @@ function AdminPage() {
                           <p className="mt-1 leading-relaxed text-foreground">
                             {selectedOrder.shippingAddress}
                           </p>
-                          <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
-                            Payment Mode:{" "}
-                            <span className="uppercase font-bold text-primary">
-                              {selectedOrder.paymentMethod}
-                            </span>
+                          <div className="mt-2.5 rounded-lg border border-border/80 bg-muted/40 p-2.5 space-y-1.5 text-[11px]">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground font-medium">Payment Mode:</span>
+                              <span className="font-bold uppercase text-foreground">
+                                {selectedOrder.paymentMethod === "razorpay"
+                                  ? "Razorpay Online Gateway"
+                                  : selectedOrder.paymentMethod === "cod"
+                                    ? "Cash on Delivery"
+                                    : selectedOrder.paymentMethod}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground font-medium">Payment Status:</span>
+                              {selectedOrder.paymentMethod === "razorpay" || selectedOrder.paymentStatus === "paid" ? (
+                                <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-2 py-0.5 font-bold uppercase text-[10px] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                  <CheckCircle2 className="size-3" />
+                                  PAID
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded bg-amber-500/15 px-2 py-0.5 font-bold uppercase text-[10px] text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  {selectedOrder.paymentStatus || "PENDING"}
+                                </span>
+                              )}
+                            </div>
+                            {(selectedOrder.paymentDetails?.paymentId || selectedOrder.paymentId) && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium">Transaction ID:</span>
+                                <span className="font-mono font-bold text-primary select-all">
+                                  {selectedOrder.paymentDetails?.paymentId || selectedOrder.paymentId}
+                                </span>
+                              </div>
+                            )}
+                            {selectedOrder.paymentDetails?.razorpayOrderId && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium">Gateway Order ID:</span>
+                                <span className="font-mono text-muted-foreground select-all">
+                                  {selectedOrder.paymentDetails.razorpayOrderId}
+                                </span>
+                              </div>
+                            )}
+                            {selectedOrder.paymentDetails?.paidAt && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground font-medium">Paid At:</span>
+                                <span className="text-foreground">
+                                  {formatKolkataDisplay(selectedOrder.paymentDetails.paidAt)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -6745,6 +6837,282 @@ function AdminPage() {
                   {isSendingNotif && <RefreshCw className="size-3.5 animate-spin" />}
                   <Send className="size-3.5" />
                   <span>Send Notification</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* RAZORPAY GATEWAY AUDIT & PAYMENT LOGS MODAL */}
+        {/* ======================================================== */}
+        {showPaymentLogsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-5xl rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
+                    <CreditCard className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                      <span>Razorpay Payment Gateway Audit &amp; Logs</span>
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono font-semibold border border-emerald-500/30">
+                        LIVE SYNC
+                      </span>
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Real-time audit log of all customer transactions, successful payments, failures with diagnostics, and modal dismissals.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentLogsModal(false)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                  aria-label="Close modal"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              {/* Metrics Summary Row */}
+              {(() => {
+                const totalAttempts = paymentLogs.length;
+                const successes = paymentLogs.filter((l) => l.status === "success");
+                const failures = paymentLogs.filter((l) => l.status === "failed");
+                const dismissals = paymentLogs.filter((l) => l.status === "dismissed");
+                const totalCollected = successes.reduce((sum, l) => sum + (l.amount || 0), 0);
+
+                const filteredLogs = paymentLogs.filter((l) => {
+                  if (paymentLogFilter !== "all" && l.status !== paymentLogFilter) return false;
+                  if (!paymentLogSearch.trim()) return true;
+                  const q = paymentLogSearch.toLowerCase();
+                  return (
+                    l.customerName?.toLowerCase().includes(q) ||
+                    l.customerEmail?.toLowerCase().includes(q) ||
+                    l.customerPhone?.toLowerCase().includes(q) ||
+                    l.paymentId?.toLowerCase().includes(q) ||
+                    l.orderId?.toLowerCase().includes(q) ||
+                    l.razorpayOrderId?.toLowerCase().includes(q) ||
+                    l.errorCode?.toLowerCase().includes(q) ||
+                    l.failureReason?.toLowerCase().includes(q)
+                  );
+                });
+
+                return (
+                  <div className="mt-4 flex flex-col flex-1 overflow-hidden space-y-4">
+                    {/* Top Stats Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-xl border border-border bg-background p-3">
+                        <div className="text-[11px] font-semibold text-muted-foreground uppercase">Total Invoiced Volume</div>
+                        <div className="text-lg font-black text-foreground mt-0.5">
+                          ₹{totalCollected.toLocaleString("en-IN")}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{successes.length} successful txns</div>
+                      </div>
+
+                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+                        <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">
+                          <CheckCircle2 className="size-3" />
+                          <span>Successful</span>
+                        </div>
+                        <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          {successes.length}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {totalAttempts > 0 ? `${Math.round((successes.length / totalAttempts) * 100)}% conversion` : "0%"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+                        <div className="text-[11px] font-semibold text-red-600 dark:text-red-400 uppercase flex items-center gap-1">
+                          <AlertTriangle className="size-3" />
+                          <span>Failed Attempts</span>
+                        </div>
+                        <div className="text-lg font-black text-red-600 dark:text-red-400 mt-0.5">
+                          {failures.length}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Detailed error logs available</div>
+                      </div>
+
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                        <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1">
+                          <Clock className="size-3" />
+                          <span>Dismissed / Cancelled</span>
+                        </div>
+                        <div className="text-lg font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                          {dismissals.length}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Popup closed by user</div>
+                      </div>
+                    </div>
+
+                    {/* Filter and Search Bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/30 p-2.5 rounded-xl border border-border">
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+                        {(
+                          [
+                            { id: "all", label: "All", count: totalAttempts },
+                            { id: "success", label: "Success", count: successes.length },
+                            { id: "failed", label: "Failed", count: failures.length },
+                            { id: "dismissed", label: "Dismissed", count: dismissals.length },
+                          ] as const
+                        ).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setPaymentLogFilter(tab.id)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all whitespace-nowrap ${
+                              paymentLogFilter === tab.id
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            }`}
+                          >
+                            {tab.label} ({tab.count})
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-2.5 top-2 size-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          value={paymentLogSearch}
+                          onChange={(e) => setPaymentLogSearch(e.target.value)}
+                          placeholder="Search txn, customer, error..."
+                          className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        {paymentLogSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentLogSearch("")}
+                            className="absolute right-2 top-1.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Table View */}
+                    <div className="flex-1 overflow-y-auto rounded-xl border border-border max-h-[380px]">
+                      {filteredLogs.length === 0 ? (
+                        <div className="p-8 text-center text-muted-foreground text-xs">
+                          No payment transactions recorded for this filter.
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-muted/60 border-b border-border text-muted-foreground font-semibold sticky top-0">
+                            <tr>
+                              <th className="p-3">Time &amp; Date</th>
+                              <th className="p-3">Customer</th>
+                              <th className="p-3">Amount</th>
+                              <th className="p-3">Status</th>
+                              <th className="p-3">Gateway Details &amp; Diagnostics</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {filteredLogs.map((log, idx) => (
+                              <tr key={log.id || idx} className="hover:bg-muted/20">
+                                <td className="p-3 whitespace-nowrap">
+                                  <div className="font-medium text-foreground">
+                                    {formatKolkataDisplay(log.createdAt)}
+                                  </div>
+                                  {log.orderId && (
+                                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                      Order: #{log.orderId}
+                                    </div>
+                                  )}
+                                </td>
+
+                                <td className="p-3">
+                                  <div className="font-semibold text-foreground">
+                                    {log.customerName || "Customer"}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground font-mono">
+                                    {log.customerPhone || log.customerEmail || "N/A"}
+                                  </div>
+                                </td>
+
+                                <td className="p-3 font-mono font-bold text-foreground whitespace-nowrap">
+                                  ₹{(log.amount || 0).toLocaleString("en-IN")}
+                                </td>
+
+                                <td className="p-3 whitespace-nowrap">
+                                  {log.status === "success" ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                      <CheckCircle2 className="size-3" />
+                                      Success
+                                    </span>
+                                  ) : log.status === "failed" ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-red-600 dark:text-red-400 border border-red-500/30">
+                                      <AlertTriangle className="size-3" />
+                                      Failed
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                      <Clock className="size-3" />
+                                      Dismissed
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="p-3 text-[11px]">
+                                  {log.status === "success" && (
+                                    <div className="space-y-0.5 font-mono text-[10px]">
+                                      <div className="text-primary font-bold">
+                                        TXN: {log.paymentId || "N/A"}
+                                      </div>
+                                      {log.razorpayOrderId && (
+                                        <div className="text-muted-foreground">
+                                          RZP ORD: {log.razorpayOrderId}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {log.status === "failed" && (
+                                    <div className="space-y-0.5">
+                                      <div className="font-semibold text-red-600 dark:text-red-400">
+                                        {log.failureReason || log.errorDescription || "Payment Failed"}
+                                      </div>
+                                      <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        {log.errorCode && <span>Code: {log.errorCode}</span>}
+                                        {log.errorStep && <span>Step: {log.errorStep}</span>}
+                                        {log.errorSource && <span>Source: {log.errorSource}</span>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {log.status === "dismissed" && (
+                                    <div className="text-muted-foreground text-[11px]">
+                                      Customer closed the checkout window before completing payment.
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Modal Footer */}
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  Audited via Firestore payment_logs • Razorpay Safe Gateway
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowPaymentLogsModal(false)}
+                >
+                  Close Audit View
                 </Button>
               </div>
             </div>

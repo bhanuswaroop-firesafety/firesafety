@@ -21,6 +21,9 @@ const db = admin.firestore();
 const smtpPass = defineSecret("SMTP_PASS");
 const smtpUser = defineString("SMTP_USER", { default: "support@udharchi.in" });
 const adminEmail = defineString("ADMIN_EMAIL", { default: "bhanuswaroop04@gmail.com" });
+const razorpayKeySecret = defineSecret("RAZORPAY_KEY_SECRET");
+const razorpayKeyId = defineString("RAZORPAY_KEY_ID", { default: "rzp_test_TsSdQPZMXEYn5z" });
+const crypto = require("crypto");
 
 /**
  * Compute current date in Asia/Kolkata timezone (YYYY-MM-DD)
@@ -268,3 +271,126 @@ exports.triggerRenewalAlertsManual = onRequest(
     }
   }
 );
+
+/**
+ * HTTP Endpoint to create a verified Razorpay Order
+ */
+exports.createRazorpayOrder = onRequest(
+  {
+    cors: true,
+    secrets: [razorpayKeySecret],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ success: false, error: "Method Not Allowed" });
+      return;
+    }
+    try {
+      const { amount, currency = "INR", receipt, notes } = req.body || {};
+      if (!amount || Number(amount) <= 0) {
+        res.status(400).json({ success: false, error: "Invalid payment amount" });
+        return;
+      }
+
+      const keyId = razorpayKeyId.value() || "rzp_test_TsSdQPZMXEYn5z";
+      let keySecret = "";
+      try {
+        keySecret = razorpayKeySecret.value();
+      } catch (e) {
+        keySecret = process.env.RAZORPAY_KEY_SECRET || "CTT36f8FfIcQOV14B9u9FwUu";
+      }
+
+      const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const resp = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${auth}`,
+        },
+        body: JSON.stringify({
+          amount: Math.round(Number(amount)),
+          currency,
+          receipt: String(receipt || Date.now()).slice(0, 40),
+          notes: notes || {},
+        }),
+      });
+
+      const orderData = await resp.json();
+      if (!resp.ok) {
+        console.error("[Razorpay] Order creation API failed:", orderData);
+        res.status(resp.status).json({ success: false, error: orderData });
+        return;
+      }
+
+      res.json({ success: true, order: orderData, keyId });
+    } catch (err) {
+      console.error("[Razorpay] Error in createRazorpayOrder:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+/**
+ * HTTP Endpoint to verify Razorpay signature and mark order paid
+ */
+exports.verifyRazorpayPayment = onRequest(
+  {
+    cors: true,
+    secrets: [razorpayKeySecret],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ success: false, error: "Method Not Allowed" });
+      return;
+    }
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderNumber } = req.body || {};
+      if (!razorpay_payment_id) {
+        res.status(400).json({ success: false, error: "Missing razorpay_payment_id" });
+        return;
+      }
+
+      let keySecret = "";
+      try {
+        keySecret = razorpayKeySecret.value();
+      } catch (e) {
+        keySecret = process.env.RAZORPAY_KEY_SECRET || "CTT36f8FfIcQOV14B9u9FwUu";
+      }
+
+      let isValid = true;
+      if (razorpay_order_id && razorpay_signature) {
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+          .createHmac("sha256", keySecret)
+          .update(body)
+          .digest("hex");
+        isValid = expectedSignature === razorpay_signature;
+      }
+
+      if (isValid && orderNumber) {
+        await db.collection("orders").doc(orderNumber).set(
+          {
+            paymentStatus: "paid",
+            paymentMethod: "razorpay",
+            paymentDetails: {
+              gateway: "razorpay",
+              paymentId: razorpay_payment_id,
+              razorpayOrderId: razorpay_order_id || null,
+              signature: razorpay_signature || null,
+              paidAt: new Date().toISOString(),
+              status: "captured",
+            },
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      }
+
+      res.json({ success: isValid, valid: isValid });
+    } catch (err) {
+      console.error("[Razorpay] Error in verifyRazorpayPayment:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+

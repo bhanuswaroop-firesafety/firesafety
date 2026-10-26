@@ -89,7 +89,7 @@ export interface OrderItem {
   shippingAddress: string;
   companyName?: string | undefined;
   gstin?: string | undefined;
-  paymentMethod: "upi" | "card" | "netbanking" | "po" | "cod";
+  paymentMethod: "razorpay" | "upi" | "card" | "netbanking" | "po" | "cod" | string;
   items: Array<{
     name: string;
     quantity: number;
@@ -108,6 +108,20 @@ export interface OrderItem {
   createdAt: string;
   updatedAt?: string | undefined;
   estimatedDelivery?: string | undefined;
+
+  // Razorpay payment details & audit tracking
+  paymentId?: string | undefined;
+  paymentStatus?: "pending" | "paid" | "failed" | undefined;
+  paymentDetails?: {
+    gateway: "razorpay" | "cod" | string;
+    paymentId?: string | undefined;
+    razorpayOrderId?: string | undefined;
+    signature?: string | undefined;
+    paidAt?: string | undefined;
+    failureReason?: string | undefined;
+    errorCode?: string | undefined;
+    amountPaise?: number | undefined;
+  } | undefined;
 
   // Task A: Shipping and dispatch timing
   shippingType?: "standard" | "priority" | undefined;
@@ -131,6 +145,29 @@ export interface OrderItem {
 
   // Task E: Commissioning / installation date for renewal cycle
   installDate?: string | undefined;
+}
+
+export interface PaymentLogItem {
+  id?: string | undefined;
+  orderId: string;
+  orderNumber: string;
+  amount: number;
+  currency: string;
+  gateway: "razorpay";
+  status: "initiated" | "success" | "failed" | "dismissed";
+  paymentId?: string | undefined;
+  razorpayOrderId?: string | undefined;
+  signature?: string | undefined;
+  errorCode?: string | undefined;
+  errorDescription?: string | undefined;
+  errorReason?: string | undefined;
+  failureReason?: string | undefined;
+  errorSource?: string | undefined;
+  errorStep?: string | undefined;
+  customerName?: string | undefined;
+  customerEmail?: string | undefined;
+  customerPhone?: string | undefined;
+  createdAt: string;
 }
 
 export interface AuthorizedAdminItem {

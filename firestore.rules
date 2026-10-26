@@ -201,5 +201,14 @@ service cloud.firestore {
       );
       allow create, delete: if isAdmin();
     }
+
+    // ========================================================
+    // Payment Logs: Razorpay gateway success/fail audit logs
+    // ========================================================
+    match /payment_logs/{logId} {
+      allow create: if true; // Allows clients to log checkout attempts, successes, and failures
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
+
