@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { RefreshCcw, CheckCircle2, AlertTriangle, Clock, HelpCircle, Mail, Phone } from "lucide-react";
+import { RefreshCcw, CheckCircle2, AlertTriangle, Clock, HelpCircle, Mail, Phone, MapPin } from "lucide-react";
 import { seoHead, schemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/refund-policy")({
@@ -138,9 +138,17 @@ export function RefundPolicyPage() {
                 To initiate a cancellation, replacement, or refund, contact our dedicated customer support team with your order reference number:
               </p>
               <div className="mt-3 space-y-1.5 text-xs text-foreground">
+                <p><strong>Entity Name:</strong> Sri Udharchi Enterprises (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>)</p>
+                <p className="flex items-start gap-2">
+                  <MapPin className="size-3.5 text-primary mt-0.5 shrink-0" />
+                  <span><strong>Registered Address:</strong> 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <MapPin className="size-3.5 text-primary mt-0.5 shrink-0" />
+                  <span><strong>Physical Return Facility &amp; Central Depot:</strong> Sri Udharchi Enterprises, H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, Andhra Pradesh - 515241</span>
+                </p>
                 <p className="flex items-center gap-2"><Mail className="size-3.5 text-primary" /> <strong>Email:</strong> <a href="mailto:support@udharchi.in" className="hover:text-primary underline">support@udharchi.in</a></p>
                 <p className="flex items-center gap-2"><Phone className="size-3.5 text-primary" /> <strong>Support Line:</strong> <a href="tel:+918639858221" className="hover:text-primary underline">+91 8639858221</a> / <a href="tel:+919390326541" className="hover:text-primary underline">+91 9390326541</a></p>
-                <p><strong>Physical Return Facility:</strong> Sri Udharchi Enterprises, H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, Andhra Pradesh - 515241</p>
               </div>
             </section>
           </div>

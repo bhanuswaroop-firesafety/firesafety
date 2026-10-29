@@ -2366,6 +2366,46 @@ function AdminPage() {
                     </div>
 
                     <div className="mt-4 space-y-4 text-xs">
+                      {/* Statutory Supplier / Issuer Information */}
+                      <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/80 pb-2.5 gap-2">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">
+                              Supplier / Invoiced By
+                            </span>
+                            <h4 className="text-sm font-bold text-foreground mt-0.5">
+                              Sri Udharchi Enterprises
+                              <span className="text-muted-foreground font-medium text-xs block sm:inline sm:ml-2">
+                                (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>)
+                              </span>
+                            </h4>
+                          </div>
+                          <div className="text-right sm:self-auto self-start">
+                            <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                              GSTIN: {businessSettings.gstin || "37AAEFU1234F1Z5"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2 text-[11px] text-muted-foreground">
+                          <div>
+                            <strong className="text-foreground block text-[10px] uppercase tracking-wider">
+                              Registered Office Address:
+                            </strong>
+                            <span className="leading-relaxed block mt-0.5">
+                              {businessSettings.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}
+                            </span>
+                          </div>
+                          <div>
+                            <strong className="text-foreground block text-[10px] uppercase tracking-wider">
+                              Office &amp; Logistics Depot:
+                            </strong>
+                            <span className="leading-relaxed block mt-0.5">
+                              {businessSettings.primaryDepotAddress || "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Customer & Shipping Details */}
                       <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-border bg-muted/20 p-4">
                         <div>
@@ -5251,18 +5291,49 @@ function AdminPage() {
                   </div>
 
                   <div className="space-y-3 text-xs">
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Commercial Entity Name
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.entityName}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, entityName: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none font-semibold"
+                          placeholder="Sri Udharchi Enterprises"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Proprietor / Legal Name
+                        </label>
+                        <input
+                          type="text"
+                          value={businessSettings.proprietor || "Dabbara Bhanu Swaroop"}
+                          onChange={(e) =>
+                            setBusinessSettings({ ...businessSettings, proprietor: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none font-semibold"
+                          placeholder="Dabbara Bhanu Swaroop"
+                        />
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block font-semibold text-foreground mb-1">
-                        Registered Entity Name
+                        Registered Office Address (Statutory KYC / Legal)
                       </label>
-                      <input
-                        type="text"
-                        value={businessSettings.entityName}
+                      <textarea
+                        rows={2}
+                        value={businessSettings.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}
                         onChange={(e) =>
-                          setBusinessSettings({ ...businessSettings, entityName: e.target.value })
+                          setBusinessSettings({ ...businessSettings, registeredAddress: e.target.value })
                         }
-                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none font-semibold"
-                        placeholder="Sri Udharchi Enterprises"
+                        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        placeholder="4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"
                       />
                     </div>
 
@@ -6072,16 +6143,38 @@ function AdminPage() {
 
                     <div className="text-xs">
                       <label className="block font-semibold text-foreground mb-1">
-                        Physical Office &amp; Supply Hub Address
+                        Registered Office Address
                       </label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                         <textarea
                           rows={2}
-                          value={contactSettings.address}
+                          value={contactSettings.registeredAddress || ""}
                           onChange={(e) =>
                             setContactSettings({
                               ...contactSettings,
+                              registeredAddress: e.target.value,
+                            })
+                          }
+                          placeholder="4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"
+                          className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-xs">
+                      <label className="block font-semibold text-foreground mb-1">
+                        Physical Office &amp; Central Depot Address
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                        <textarea
+                          rows={2}
+                          value={contactSettings.officeDepotAddress || contactSettings.address || ""}
+                          onChange={(e) =>
+                            setContactSettings({
+                              ...contactSettings,
+                              officeDepotAddress: e.target.value,
                               address: e.target.value,
                             })
                           }

@@ -34,7 +34,11 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_0.9fr_1fr] lg:px-8">
         <div>
           <BrandLogo />
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-2 text-xs font-semibold text-foreground">
+            Sri Udharchi Enterprises
+            <span className="block text-muted-foreground font-normal">Proprietor: Dabbara Bhanu Swaroop</span>
+          </p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
             Sri Udharchi Enterprises provides end-to-end fire protection systems, industrial safety
             equipment, professional engineering consultation, testing, and annual maintenance
             services across Andhra Pradesh and Pan-India.
@@ -162,7 +166,20 @@ export function SiteFooter() {
             </li>
             <li className="flex items-start gap-3">
               <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>{contact.address}</span>
+              <div className="space-y-1.5 text-xs">
+                <div>
+                  <strong className="block text-foreground text-[11px] uppercase tracking-wider">
+                    Registered Office
+                  </strong>
+                  <span>{contact.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}</span>
+                </div>
+                <div className="pt-1 border-t border-border/50">
+                  <strong className="block text-foreground text-[11px] uppercase tracking-wider">
+                    Office &amp; Logistics Depot
+                  </strong>
+                  <span>{contact.officeDepotAddress || "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"}</span>
+                </div>
+              </div>
             </li>
             {hasInstagram && (
               <li className="flex items-center gap-3 pt-1">
@@ -188,7 +205,7 @@ export function SiteFooter() {
       <div className="border-t border-border px-5 py-5 text-xs text-muted-foreground">
         <div className="mx-auto flex max-w-7xl flex-col lg:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-            <span>© 2026 Sri Udharchi Enterprises. All rights reserved.</span>
+            <span>© 2026 Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop). All rights reserved.</span>
             <span className="hidden sm:inline text-border">|</span>
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
               <a href="/privacy" className="transition-colors hover:text-primary">

@@ -134,9 +134,9 @@ function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
-  const [city, setCity] = useState("Palasamudram");
+  const [city, setCity] = useState("");
   const [state, setState] = useState("Andhra Pradesh");
-  const [pincode, setPincode] = useState("515241");
+  const [pincode, setPincode] = useState("");
   const [isB2B, setIsB2B] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [gstin, setGstin] = useState("");
@@ -565,6 +565,46 @@ function CheckoutPage() {
 
               {/* Order Details Body */}
               <div className="p-6 sm:p-8 space-y-6">
+                {/* Statutory Supplier / Billed By Header */}
+                <div className="rounded-xl border border-border bg-muted/20 p-4 text-xs space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/80 pb-2.5 gap-2">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">
+                        Supplier / Invoiced By
+                      </span>
+                      <h3 className="text-sm font-bold text-foreground mt-0.5">
+                        Sri Udharchi Enterprises
+                        <span className="text-muted-foreground font-medium text-xs block sm:inline sm:ml-2">
+                          (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>)
+                        </span>
+                      </h3>
+                    </div>
+                    <div className="text-right sm:self-auto self-start">
+                      <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        GSTIN: 37AAEFU1234F1Z5
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 text-[11px] text-muted-foreground">
+                    <div>
+                      <strong className="text-foreground block text-[10px] uppercase tracking-wider">
+                        Registered Office Address:
+                      </strong>
+                      <span className="leading-relaxed block mt-0.5">
+                        4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India
+                      </span>
+                    </div>
+                    <div>
+                      <strong className="text-foreground block text-[10px] uppercase tracking-wider">
+                        Office &amp; Logistics Depot:
+                      </strong>
+                      <span className="leading-relaxed block mt-0.5">
+                        H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-border bg-muted/30 p-4 text-xs">
                   <div>
                     <span className="text-muted-foreground block">Customer Information:</span>

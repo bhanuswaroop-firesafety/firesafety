@@ -208,7 +208,7 @@ async function processDueReminders() {
                 <p>To ensure uninterrupted NBC 2016 and IS 15683 compliance, please schedule an authorized on-site inspection or cylinder refill with our certified safety engineers.</p>
                 <p><strong>Hotline:</strong> ${contactInfo.supportPhone}<br/><strong>Email:</strong> ${contactInfo.supportEmail}</p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p style="font-size: 11px; color: #888;">Sri Udharchi Enterprises • H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241</p>
+                <p style="font-size: 11px; color: #888;">Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop) • Registered Office: 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India • Office &amp; Depot: H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241</p>
               </div>
             `,
           });

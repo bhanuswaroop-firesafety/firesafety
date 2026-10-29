@@ -839,7 +839,7 @@ function Index() {
             <SectionHeading
               eyebrow="Get in Touch"
               title="Request a Quote or Site Survey"
-              copy="Tell us about your facility requirements. Our licensed safety engineers will provide technical specs and formal quotation within 24 hours."
+              copy="Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop). Tell us about your facility requirements. Our licensed safety engineers will provide technical specs and formal quotation within 24 hours."
             />
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-1 mt-6">
               {[
@@ -850,6 +850,12 @@ function Index() {
                   "Official Email",
                   "sriudharchienterprises@gmail.com",
                   "mailto:sriudharchienterprises@gmail.com",
+                ],
+                [
+                  MapPin,
+                  "Registered Office",
+                  "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, AP - 515445",
+                  "#",
                 ],
                 [
                   MapPin,

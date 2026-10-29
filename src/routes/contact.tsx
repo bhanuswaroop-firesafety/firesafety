@@ -33,7 +33,7 @@ export const Route = createFileRoute("/contact")({
     seoHead({
       title: "Contact Us & 24/7 Safety Dispatch | Sri Udharchi Enterprises",
       description:
-        "Contact Sri Udharchi Enterprises for 24/7 emergency fire safety dispatch, equipment quotations, on-site audits, and depot support in Palasamudram, AP.",
+        "Contact Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop) for 24/7 emergency fire safety dispatch, equipment quotations, registered in Dharmapuram, Ananthapuramu, and central depot in Palasamudram, AP.",
       path: "/contact",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },
@@ -154,29 +154,53 @@ function ContactPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                <div className="mb-3 inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <MapPin className="size-5" />
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    <MapPin className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-foreground">
+                      Business Identity & Addresses
+                    </h3>
+                    <p className="text-xs font-semibold text-primary mt-0.5">
+                      Sri Udharchi Enterprises
+                      <span className="block text-muted-foreground font-normal">
+                        Proprietor: <strong>Dabbara Bhanu Swaroop</strong>
+                      </span>
+                    </p>
+                  </div>
                 </div>
-                <h3 className="font-display text-base font-bold text-foreground">
-                  Our Office & Supply Hub
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
-                  Sri Udharchi Enterprises
-                  <br />
-                  {contact.address}
-                </p>
-                <div className="mt-3">
-                  <a
-                    href="https://www.google.com/maps/search/?api=1&query=Kubera+Hills+Palasamudram+Andhra+Pradesh+515241"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center text-xs font-semibold text-primary hover:underline"
-                  >
-                    View on Google Maps →
-                  </a>
+
+                <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1 text-xs">
+                  <strong className="block text-foreground text-[11px] font-bold uppercase tracking-wider">
+                    Registered Office Address
+                  </strong>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {contact.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}
+                  </p>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
+
+                <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1 text-xs">
+                  <strong className="block text-foreground text-[11px] font-bold uppercase tracking-wider">
+                    Office &amp; Logistics Depot
+                  </strong>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {contact.officeDepotAddress || "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"}
+                  </p>
+                  <div className="mt-2 pt-1 border-t border-border/60">
+                    <a
+                      href="https://www.google.com/maps/search/?api=1&query=Kubera+Hills+Palasamudram+Andhra+Pradesh+515241"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center text-[11px] font-semibold text-primary hover:underline"
+                    >
+                      View Depot on Google Maps →
+                    </a>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
                   Serving clients across Andhra Pradesh, Telangana, Odisha, and Pan-India.
                 </p>
               </div>

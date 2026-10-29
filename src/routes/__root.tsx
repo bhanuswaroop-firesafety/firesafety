@@ -100,7 +100,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#1e3a5f" },
       { name: "geo.region", content: "IN-AP" },
-      { name: "geo.placename", content: "Palasamudram, Andhra Pradesh" },
+      { name: "geo.placename", content: "Dharmapuram, Ananthapuramu, Andhra Pradesh" },
       { name: "geo.position", content: "14.6519;77.6006" },
       { name: "ICBM", content: "14.6519, 77.6006" },
       { property: "og:site_name", content: "Sri Udharchi Enterprises" },

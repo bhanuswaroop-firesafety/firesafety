@@ -639,7 +639,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profile.phone) {
         const cleanPhoneDigits = profile.phone.replace(/\D/g, "").slice(-10);
         if (cleanPhoneDigits.length === 10) {
-          await savePhoneIndex(cleanPhoneDigits, profile.email, authenticatedUser.uid).catch(() => {});
+          await savePhoneIndex(cleanPhoneDigits, {
+            uid: authenticatedUser.uid,
+            email: profile.email || "",
+            name: profile.displayName,
+          }).catch(() => {});
         }
       }
       setUser(authenticatedUser);

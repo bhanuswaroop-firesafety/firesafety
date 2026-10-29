@@ -270,6 +270,10 @@ export interface RegionalDepot {
 // Business Profile & Depot Settings in Firestore (settings/business)
 export interface BusinessProfileSettings {
   entityName: string;
+  legalName?: string | undefined;
+  proprietor?: string | undefined;
+  registeredAddress?: string | undefined;
+  officeDepotAddress?: string | undefined;
   specialization: string;
   jurisdiction: string;
   standards: string;
@@ -295,6 +299,10 @@ export interface ContactSettings {
   supportEmail: string;
   adminEmail: string;
   address?: string | undefined;
+  registeredAddress?: string | undefined;
+  officeDepotAddress?: string | undefined;
+  legalName?: string | undefined;
+  proprietor?: string | undefined;
   updatedAt?: string | undefined;
 }
 

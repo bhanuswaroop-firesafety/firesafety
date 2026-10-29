@@ -87,12 +87,20 @@ export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   secondaryPhone: "+91 9390326541",
   supportEmail: "support@udharchi.in",
   adminEmail: "bhanuswaroop04@gmail.com",
-  address: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
+  legalName: "Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop)",
+  proprietor: "Dabbara Bhanu Swaroop",
+  registeredAddress: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India",
+  officeDepotAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
+  address: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India",
 };
 
 // Default Business Profile & Regional Depot Settings
 export const DEFAULT_BUSINESS_SETTINGS: BusinessProfileSettings = {
   entityName: "Sri Udharchi Enterprises",
+  legalName: "Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop)",
+  proprietor: "Dabbara Bhanu Swaroop",
+  registeredAddress: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India",
+  officeDepotAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
   specialization: "Industrial Fire & Safety Engineering",
   jurisdiction: "Andhra Pradesh, India",
   standards: "IS 15683 / NBC 2016 / PESO",
@@ -102,7 +110,7 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessProfileSettings = {
   stateCode: "37 (Andhra Pradesh)",
   pan: "AAEFU1234F",
   taxSlab: "18% GST (CGST 9% + SGST 9%)",
-  accountHolder: "Sri Udharchi Enterprises",
+  accountHolder: "Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop)",
   bankName: "State Bank of India (SBI)",
   accountNumber: "398582210012",
   ifscCode: "SBIN0001234",

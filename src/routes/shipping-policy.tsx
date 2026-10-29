@@ -51,7 +51,7 @@ export function ShippingPolicyPage() {
                 1. Serviceable Locations & Hubs
               </h2>
               <p>
-                Sri Udharchi Enterprises operates central logistics hubs in Palasamudram (Sri Sathya Sai District, Andhra Pradesh), offering pan-India shipping coverage. We deliver to industrial zones, SEZs, manufacturing plants, corporate tech parks, and commercial complexes across all states and union territories of India.
+                <strong>Sri Udharchi Enterprises</strong> (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>) is legally registered at 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India, and operates central logistics depots in Palasamudram (H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241), offering comprehensive pan-India freight and shipping coverage. We deliver to industrial zones, SEZs, manufacturing plants, corporate tech parks, and commercial complexes across all states and union territories of India.
               </p>
             </section>
 

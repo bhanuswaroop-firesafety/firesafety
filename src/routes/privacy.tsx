@@ -161,10 +161,18 @@ export function PrivacyPage() {
                 In compliance with the Information Technology Act, 2000 and the Consumer Protection (E-Commerce) Rules, 2020, our designated Grievance Officer details are published below:
               </p>
               <div className="mt-3 space-y-1.5 text-xs text-foreground">
+                <p><strong>Entity Name:</strong> Sri Udharchi Enterprises (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>)</p>
                 <p><strong>Grievance Officer:</strong> Sri Udharchi Enterprises Compliance Cell</p>
-                <p className="flex items-center gap-2"><MapPin className="size-3.5 text-primary" /> H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, Andhra Pradesh - 515241, India</p>
+                <p className="flex items-start gap-2">
+                  <MapPin className="size-3.5 text-primary mt-0.5 shrink-0" />
+                  <span><strong>Registered Address:</strong> 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <MapPin className="size-3.5 text-primary mt-0.5 shrink-0" />
+                  <span><strong>Office &amp; Logistics Depot:</strong> H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241</span>
+                </p>
                 <p className="flex items-center gap-2"><Mail className="size-3.5 text-primary" /> <a href="mailto:support@udharchi.in" className="hover:text-primary underline">support@udharchi.in</a></p>
-                <p className="flex items-center gap-2"><Phone className="size-3.5 text-primary" /> <a href="tel:+918639858221" className="hover:text-primary underline">+91 8639858221</a></p>
+                <p className="flex items-center gap-2"><Phone className="size-3.5 text-primary" /> <a href="tel:+918639858221" className="hover:text-primary underline">+91 8639858221</a> / <a href="tel:+919390326541" className="hover:text-primary underline">+91 9390326541</a></p>
               </div>
             </section>
           </div>

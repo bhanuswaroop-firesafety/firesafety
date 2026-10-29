@@ -38,6 +38,7 @@ import {
   Edit2,
   Sparkles,
   KeyRound,
+  Printer,
 } from "lucide-react";
 import {
   formatIndianMobileDisplay,
@@ -215,6 +216,8 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
 
   // Order Status History Modal
   const [historyOrder, setHistoryOrder] = useState<OrderItem | null>(null);
+  // Order Proforma Invoice Modal
+  const [invoiceModalOrder, setInvoiceModalOrder] = useState<OrderItem | null>(null);
 
   // If user was prompted to login to open a specific product or page, redirect back there
   useEffect(() => {
@@ -1215,6 +1218,17 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                             </div>
 
                             <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setInvoiceModalOrder(order)}
+                                className="text-xs h-8 gap-1.5 font-medium"
+                                title="View & Print Proforma Invoice"
+                              >
+                                <Printer className="size-3.5" />
+                                <span>Invoice</span>
+                              </Button>
+
                               <Button
                                 size="sm"
                                 onClick={() => {
@@ -2687,6 +2701,217 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                     variant="outline"
                     onClick={() => setHistoryOrder(null)}
                     className="text-xs h-8"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* PROFORMA INVOICE MODAL */}
+          {invoiceModalOrder && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+              <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <FileText className="size-5 text-primary" />
+                    <h3 className="font-display font-bold text-foreground text-base">
+                      Proforma Tax Invoice #{invoiceModalOrder.orderNumber || invoiceModalOrder.id}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceModalOrder(null)}
+                    className="size-8 rounded-lg text-muted-foreground hover:text-foreground flex items-center justify-center hover:bg-muted"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto space-y-4 pr-1 text-xs">
+                  {/* Supplier Header */}
+                  <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/80 pb-2 gap-1">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">
+                          Supplier / Invoiced By
+                        </span>
+                        <h4 className="text-sm font-bold text-foreground mt-0.5">
+                          Sri Udharchi Enterprises
+                          <span className="text-muted-foreground font-medium text-xs block sm:inline sm:ml-2">
+                            (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>)
+                          </span>
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded self-start sm:self-auto">
+                        GSTIN: 37AAEFU1234F1Z5
+                      </span>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 text-[11px] text-muted-foreground">
+                      <div>
+                        <strong className="text-foreground block text-[10px] uppercase tracking-wider">
+                          Registered Office:
+                        </strong>
+                        <span className="leading-relaxed block mt-0.5">
+                          4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India
+                        </span>
+                      </div>
+                      <div>
+                        <strong className="text-foreground block text-[10px] uppercase tracking-wider">
+                          Office &amp; Logistics Depot:
+                        </strong>
+                        <span className="leading-relaxed block mt-0.5">
+                          H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer & Order Metadata */}
+                  <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-border bg-muted/20 p-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Billed / Delivered To
+                      </span>
+                      <strong className="text-foreground text-sm block mt-0.5">
+                        {invoiceModalOrder.customerName}
+                      </strong>
+                      {invoiceModalOrder.companyName && (
+                        <span className="text-primary font-semibold block">
+                          🏢 {invoiceModalOrder.companyName}
+                        </span>
+                      )}
+                      {invoiceModalOrder.gstin && (
+                        <span className="text-muted-foreground block">
+                          GSTIN: {invoiceModalOrder.gstin}
+                        </span>
+                      )}
+                      <p className="text-muted-foreground mt-1">
+                        {invoiceModalOrder.shippingAddress}
+                      </p>
+                      <span className="text-muted-foreground block mt-1 font-mono">
+                        {invoiceModalOrder.customerPhone} • {invoiceModalOrder.customerEmail}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Invoice Particulars
+                      </span>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Invoice / Order Ref:</span>
+                        <span className="font-mono font-bold text-foreground">
+                          {invoiceModalOrder.orderNumber || invoiceModalOrder.id}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Invoice Date:</span>
+                        <span className="text-foreground">
+                          {formatKolkataDisplay(invoiceModalOrder.createdAt)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment Mode:</span>
+                        <span className="font-bold uppercase text-foreground">
+                          {invoiceModalOrder.paymentMethod === "razorpay"
+                            ? "Online Payment Gateway"
+                            : invoiceModalOrder.paymentMethod === "cod"
+                              ? "Cash on Delivery"
+                              : invoiceModalOrder.paymentMethod}
+                        </span>
+                      </div>
+                      {(invoiceModalOrder.paymentDetails?.paymentId || invoiceModalOrder.paymentId) && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Transaction ID:</span>
+                          <span className="font-mono text-primary font-bold">
+                            {invoiceModalOrder.paymentDetails?.paymentId || invoiceModalOrder.paymentId}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Items Table */}
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-muted/60 border-b border-border text-muted-foreground font-semibold">
+                        <tr>
+                          <th className="p-3">Item Description</th>
+                          <th className="p-3 text-center">Qty</th>
+                          <th className="p-3 text-right">Unit Price</th>
+                          <th className="p-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {invoiceModalOrder.items?.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-muted/10">
+                            <td className="p-3 font-medium text-foreground">{item.name}</td>
+                            <td className="p-3 text-center text-muted-foreground">{item.quantity}</td>
+                            <td className="p-3 text-right text-muted-foreground">
+                              ₹{(item.price || 0).toLocaleString("en-IN")}
+                            </td>
+                            <td className="p-3 text-right font-bold text-foreground">
+                              ₹{((item.price || 0) * (item.quantity || 1)).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2 text-xs">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Items Subtotal</span>
+                      <span className="font-medium text-foreground">
+                        ₹{(invoiceModalOrder.subtotal || 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    {invoiceModalOrder.discount && invoiceModalOrder.discount > 0 ? (
+                      <div className="flex justify-between text-emerald-600 font-semibold">
+                        <span>Promotional Discount</span>
+                        <span>-₹{invoiceModalOrder.discount.toLocaleString("en-IN")}</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Statutory GST (18%)</span>
+                      <span className="font-medium text-foreground">
+                        ₹{(invoiceModalOrder.gst || 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Freight &amp; Handling</span>
+                      <span className="font-medium text-foreground">
+                        {invoiceModalOrder.shipping === 0
+                          ? "FREE"
+                          : `₹${(invoiceModalOrder.shipping || 0).toLocaleString("en-IN")}`}
+                      </span>
+                    </div>
+                    <div className="border-t border-border pt-2 flex justify-between items-baseline font-bold text-sm">
+                      <span className="text-foreground">Total Invoiced Amount</span>
+                      <span className="font-display text-lg text-primary font-black">
+                        ₹{(invoiceModalOrder.total || 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border flex justify-between items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => window.print()}
+                    className="text-xs h-9 font-bold gap-1.5"
+                  >
+                    <Printer className="size-3.5" />
+                    <span>Print / Save Proforma Invoice</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setInvoiceModalOrder(null)}
+                    className="text-xs h-9"
                   >
                     Close
                   </Button>

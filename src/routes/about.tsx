@@ -9,6 +9,8 @@ import {
   Clock,
   FileCheck2,
   HardHat,
+  MapPin,
+  Building2,
   Phone,
   ShieldAlert,
   ShieldCheck,
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/about")({
     seoHead({
       title: "About Us & Safety Engineering Leadership | Sri Udharchi Enterprises",
       description:
-        "Learn about Sri Udharchi Enterprises, our mission, certified fire protection engineering team, NBC compliance records, and central depot in Palasamudram, AP.",
+        "Learn about Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop), our mission, certified fire protection engineering team, registered in Dharmapuram, Ananthapuramu, and central depot in Palasamudram, AP.",
       path: "/about",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },
@@ -53,8 +55,10 @@ function AboutPage() {
                 Dedicated to Protecting <span className="text-primary">Lives & Assets</span>
               </h1>
               <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Sri Udharchi Enterprises is a premier fire protection engineering, industrial safety
-                consulting, and workplace hazard mitigation firm headquartered at H-7, Kubera Hills,
+                <strong>Sri Udharchi Enterprises</strong> (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>) is a premier
+                fire protection engineering, industrial safety consulting, and workplace hazard mitigation firm.
+                Our Registered Office is located at 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India,
+                and our primary Office &amp; Central Logistics Depot is situated at H-7, Kubera Hills,
                 Palasamudram, Sri Sathya Sai District, AP - 515241, serving industrial and
                 commercial clients nationwide.
               </p>
@@ -202,6 +206,69 @@ function AboutPage() {
                 <a href="/services">
                   <Button>Explore Our Full Services Suite</Button>
                 </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Corporate Entity & Registered Address Details */}
+      <section className="border-t border-border bg-card/40 py-16">
+        <div className="mx-auto max-w-5xl px-5 lg:px-8">
+          <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+            <div className="flex items-center gap-3 border-b border-border pb-4">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Building2 className="size-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-bold text-foreground">
+                  Statutory Entity &amp; Registered Office Identity
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Official commercial registration and establishment details for Sri Udharchi Enterprises
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 text-xs">
+              <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-4">
+                <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-[11px]">
+                  <ShieldCheck className="size-4" />
+                  <span>Enterprise &amp; Proprietorship</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground block text-[11px]">Commercial Firm Name:</span>
+                  <strong className="text-foreground text-sm block">Sri Udharchi Enterprises</strong>
+                </div>
+                <div className="space-y-1 pt-1 border-t border-border/50">
+                  <span className="text-muted-foreground block text-[11px]">Legal Name / Proprietor:</span>
+                  <strong className="text-foreground text-sm block">Dabbara Bhanu Swaroop</strong>
+                </div>
+                <div className="space-y-1 pt-1 border-t border-border/50">
+                  <span className="text-muted-foreground block text-[11px]">Line of Business:</span>
+                  <span className="text-foreground font-medium block">
+                    Industrial Fire Safety Systems, ISI Extinguishers, Hydrant Engineering &amp; AMC Maintenance
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-4">
+                <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-[11px]">
+                  <MapPin className="size-4" />
+                  <span>Statutory Addresses</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground block text-[11px]">Registered Office Address:</span>
+                  <p className="text-foreground font-medium leading-relaxed">
+                    4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India
+                  </p>
+                </div>
+                <div className="space-y-1 pt-1 border-t border-border/50">
+                  <span className="text-muted-foreground block text-[11px]">Central Office &amp; Logistics Depot:</span>
+                  <p className="text-foreground font-medium leading-relaxed">
+                    H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241
+                  </p>
+                </div>
               </div>
             </div>
           </div>
