@@ -25,6 +25,7 @@ import type { ProductItem } from "@/lib/types";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { AuthRequiredModal } from "@/components/auth-required-modal";
+import { PromotionalOfferSection } from "@/components/promo-banner";
 import { seoHead, schemas } from "@/lib/seo";
 import { DEFAULT_PRODUCTS, resolveProductDisplayImage, getProductFallbackImage } from "@/lib/catalog-data";
 import extinguisherImg from "@/assets/fire-extinguisher.jpg";
@@ -248,6 +249,9 @@ export function ProductsPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
+
+      {/* Promotional Offer Banner pushed by Admin */}
+      <PromotionalOfferSection className="py-6 border-b border-border bg-muted/15" />
 
       {/* COMPACT PRODUCT-FIRST HEADER & FILTER TOOLBAR */}
       <section className="border-b border-border bg-card/80 backdrop-blur-md sticky top-[68px] sm:top-[76px] z-20 shadow-xs">

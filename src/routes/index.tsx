@@ -43,6 +43,7 @@ import { ContactForm } from "@/components/contact-form";
 import { NanoIcon, type NanoIconName } from "@/components/nano-icon";
 import { CategorySwiper } from "@/components/category-swiper";
 import { HeroBannerVideo } from "@/components/hero-banner-video";
+import { PromotionalOfferSection } from "@/components/promo-banner";
 import { useCart } from "@/lib/cart-context";
 import { subscribeProducts, getCachedProducts } from "@/lib/db-service";
 import type { ProductItem } from "@/lib/types";
@@ -424,6 +425,9 @@ function Index() {
           })}
         </div>
       </section>
+
+      {/* Admin Pushed Promotional Offer Banner */}
+      <PromotionalOfferSection className="py-8 bg-muted/20 border-b border-border" />
 
       {/* ACTIONABLE FEATURED PRODUCTS WITH ADD TO CART */}
       <section id="featured-products" className="py-16 md:py-24">

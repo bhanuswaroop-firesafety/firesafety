@@ -40,8 +40,9 @@ import type {
   ReminderItem,
   NotificationItem,
   PaymentLogItem,
+  BannerItem,
 } from "./types";
-export type { LeadItem, OrderItem, PaymentLogItem };
+export type { LeadItem, OrderItem, PaymentLogItem, BannerItem };
 import { OFFICIAL_CATALOG_PRODUCTS, DEFAULT_PRODUCTS, FEATURED_ID_MAP } from "./catalog-data";
 import {
   getKolkataISOString,
@@ -734,10 +735,11 @@ export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
     customerPhone: rawPhone,
     customerEmail: rawEmail,
     shippingAddress: order.shippingAddress || "",
-    paymentMethod: order.paymentMethod || "cod",
+    paymentMethod: order.paymentMethod || "phonepe",
     paymentStatus:
       order.paymentStatus ||
       (order.paymentMethod === "razorpay" ? "paid" : "pending"),
+    paymentId: order.paymentId || order.paymentDetails?.transactionId || undefined,
     paymentDetails: order.paymentDetails || undefined,
     items: order.items || [],
     subtotal: order.subtotal || 0,
@@ -1049,6 +1051,137 @@ export async function cancelOrder(
 export async function deleteOrder(orderId: string): Promise<void> {
   const docRef = doc(db, "orders", orderId);
   await deleteDoc(docRef);
+}
+
+/**
+ * Generate PhonePe & UPI Intent URLs for dynamic pricing checkout
+ */
+export function generatePhonePeUpiUrls(
+  amount: number,
+  orderNumber: string,
+  payeeName = "Sri Udharchi Enterprises",
+  upiId = "8639858221@ybl",
+) {
+  const cleanAmount = Number(amount || 0).toFixed(2);
+  const encodedName = encodeURIComponent(payeeName);
+  const note = encodeURIComponent(`Order ${orderNumber}`);
+
+  // Standard UPI URI specification
+  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}&mode=02&purpose=00`;
+
+  // App-specific intent URLs
+  const phonePeUrl = `phonepe://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
+  const gpayUrl = `tez://upi/pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
+  const paytmUrl = `paytmmp://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
+
+  return {
+    upiUrl,
+    phonePeUrl,
+    gpayUrl,
+    paytmUrl,
+    upiId,
+    amount: cleanAmount,
+    payeeName,
+  };
+}
+
+/**
+ * Admin action: verify PhonePe payment and confirm order
+ */
+export async function verifyOrderPayment(
+  orderId: string,
+  adminEmail: string,
+  note?: string,
+): Promise<void> {
+  const docRef = doc(db, "orders", orderId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) {
+    throw new Error(`Order #${orderId} was not found in Firestore.`);
+  }
+
+  const existingOrder = snap.data() as OrderItem;
+  const nowIso = getKolkataISOString();
+  const history = existingOrder.statusHistory ? [...existingOrder.statusHistory] : [];
+  const txnId =
+    existingOrder.paymentDetails?.transactionId ||
+    existingOrder.paymentId ||
+    "Submitted UTR";
+
+  history.push({
+    status: "confirmed",
+    timestamp: nowIso,
+    note:
+      note ||
+      `PhonePe payment verified successfully by Admin (Transaction ID / UTR: ${txnId}). Order confirmed.`,
+    updatedBy: `Admin (${adminEmail})`,
+  });
+
+  const updates: Record<string, any> = {
+    paymentStatus: "paid",
+    status: "confirmed",
+    "paymentDetails.verifiedAt": nowIso,
+    "paymentDetails.verifiedBy": adminEmail,
+    "paymentDetails.verificationNote": note || "PhonePe payment confirmed by admin",
+    statusHistory: history,
+    updatedAt: nowIso,
+  };
+
+  await updateDoc(docRef, updates);
+
+  // Send real-time notification to the customer
+  if (existingOrder.customerId) {
+    try {
+      await createNotification({
+        userId: existingOrder.customerId,
+        type: "order",
+        title: "Payment Verified & Order Confirmed! 🎉",
+        message: `Your PhonePe payment for Order #${existingOrder.orderNumber || orderId} (UTR: ${txnId}) has been verified successfully by our team. Your order is confirmed and scheduled for dispatch.`,
+        orderId: existingOrder.orderNumber || orderId,
+        read: false,
+        createdAt: nowIso,
+      });
+    } catch (e) {
+      console.warn("Failed sending verified payment notification to user:", e);
+    }
+  }
+}
+
+/**
+ * Customer or Admin update 13-digit transaction ID on an existing order
+ */
+export async function updateOrderTransactionId(
+  orderId: string,
+  transactionId: string,
+): Promise<void> {
+  const cleanTxn = transactionId.trim();
+  if (!cleanTxn) {
+    throw new Error("Please provide a valid transaction reference.");
+  }
+
+  const docRef = doc(db, "orders", orderId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) {
+    throw new Error(`Order #${orderId} was not found.`);
+  }
+
+  const existing = snap.data() as OrderItem;
+  const nowIso = getKolkataISOString();
+  const history = existing.statusHistory ? [...existing.statusHistory] : [];
+
+  history.push({
+    status: existing.status,
+    timestamp: nowIso,
+    note: `Updated PhonePe Transaction ID / UTR to: ${cleanTxn}`,
+    updatedBy: "Customer / Admin",
+  });
+
+  await updateDoc(docRef, {
+    paymentId: cleanTxn,
+    "paymentDetails.transactionId": cleanTxn,
+    "paymentDetails.submittedAt": nowIso,
+    statusHistory: history,
+    updatedAt: nowIso,
+  });
 }
 
 export async function getOrderForTracking(searchQuery: string): Promise<OrderItem | null> {
@@ -2241,5 +2374,117 @@ export function subscribePaymentLogs(callback: (logs: PaymentLogItem[]) => void)
       console.warn("Firestore payment_logs subscription notice:", err);
     },
   );
+}
+
+// ========================================================
+// Promotional Offer Banners (banners collection in Firestore)
+// ========================================================
+
+export const DEFAULT_BANNERS: BannerItem[] = [
+  {
+    id: "banner-diwali-special",
+    title: "Diwali Industrial Fire Safety Mega Offer — Flat 20% OFF",
+    description:
+      "Equip your factory, warehouse, and plant with certified ISI extinguishers, hydrant valves & safety gear at wholesale discounts.",
+    badge: "FESTIVE MEGA OFFER",
+    imageUrl: "/udharchi-hero.jpg",
+    ctaText: "Explore Sale Products",
+    ctaLink: "/products",
+    bgColor: "from-rose-600 via-red-600 to-amber-600",
+    textColor: "#ffffff",
+    isActive: true,
+    priority: 1,
+    createdAt: "2026-11-01T00:00:00+05:30",
+  },
+  {
+    id: "banner-audit-survey",
+    title: "Zero-Cost Industrial Fire Safety Survey & NOC Compliance Audit",
+    description:
+      "Book an on-site facility hazard audit by licensed NBC 2016 safety engineers. Fast dispatch across Andhra Pradesh & Pan-India.",
+    badge: "LIMITED TIME AUDIT",
+    imageUrl: "/manufacturing.jpg",
+    ctaText: "Request Free Site Survey",
+    ctaLink: "/contact",
+    bgColor: "from-blue-700 via-indigo-700 to-slate-900",
+    textColor: "#ffffff",
+    isActive: true,
+    priority: 2,
+    createdAt: "2026-11-05T00:00:00+05:30",
+  },
+];
+
+export async function getBanners(): Promise<BannerItem[]> {
+  try {
+    const colRef = collection(db, "banners");
+    const snap = await getDocs(colRef);
+    if (snap.empty) {
+      return DEFAULT_BANNERS;
+    }
+    const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BannerItem, "id">) }));
+    return list.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  } catch (err) {
+    console.warn("Firestore getBanners notice:", err);
+    return DEFAULT_BANNERS;
+  }
+}
+
+export function subscribeBanners(callback: (banners: BannerItem[]) => void): () => void {
+  try {
+    const colRef = collection(db, "banners");
+    return onSnapshot(
+      colRef,
+      (snap) => {
+        if (snap.empty) {
+          callback(DEFAULT_BANNERS);
+          return;
+        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BannerItem, "id">) }));
+        callback(list.sort((a, b) => (b.priority || 0) - (a.priority || 0)));
+      },
+      (err) => {
+        console.warn("subscribeBanners snapshot notice:", err);
+        callback(DEFAULT_BANNERS);
+      },
+    );
+  } catch (err) {
+    console.warn("subscribeBanners exception:", err);
+    callback(DEFAULT_BANNERS);
+    return () => {};
+  }
+}
+
+export async function saveBanner(
+  banner: Partial<Omit<BannerItem, "id">> & { id?: string | undefined },
+): Promise<string> {
+  const colRef = collection(db, "banners");
+  const id = banner.id || `banner-${Date.now()}`;
+  const now = getKolkataISOString();
+  const cleanData: BannerItem = {
+    id,
+    title: banner.title?.trim() || "Special Safety Offer",
+    description: banner.description?.trim() || "",
+    badge: banner.badge?.trim() || "SPECIAL OFFER",
+    imageUrl: banner.imageUrl?.trim() || "",
+    ctaText: banner.ctaText?.trim() || "Shop Now",
+    ctaLink: banner.ctaLink?.trim() || "/products",
+    bgColor: banner.bgColor || "from-primary to-rose-700",
+    textColor: banner.textColor || "#ffffff",
+    isActive: banner.isActive !== undefined ? banner.isActive : true,
+    priority: Number(banner.priority || 1),
+    createdAt: banner.createdAt || now,
+    updatedAt: now,
+  };
+  await setDoc(doc(colRef, id), cleanFirestoreData(cleanData), { merge: true });
+  return id;
+}
+
+export async function toggleBannerStatus(bannerId: string, isActive: boolean): Promise<void> {
+  const docRef = doc(db, "banners", bannerId);
+  await updateDoc(docRef, { isActive, updatedAt: getKolkataISOString() });
+}
+
+export async function deleteBanner(bannerId: string): Promise<void> {
+  const docRef = doc(db, "banners", bannerId);
+  await deleteDoc(docRef);
 }
 

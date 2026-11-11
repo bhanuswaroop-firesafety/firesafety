@@ -89,7 +89,7 @@ export interface OrderItem {
   shippingAddress: string;
   companyName?: string | undefined;
   gstin?: string | undefined;
-  paymentMethod: "razorpay" | "upi" | "card" | "netbanking" | "po" | "cod" | string;
+  paymentMethod: "phonepe" | "cod" | "upi" | "razorpay" | "card" | "netbanking" | "po" | string;
   items: Array<{
     name: string;
     quantity: number;
@@ -109,11 +109,19 @@ export interface OrderItem {
   updatedAt?: string | undefined;
   estimatedDelivery?: string | undefined;
 
-  // Razorpay payment details & audit tracking
+  // PhonePe / UPI & Gateway payment details & audit tracking
   paymentId?: string | undefined;
   paymentStatus?: "pending" | "paid" | "failed" | undefined;
   paymentDetails?: {
-    gateway: "razorpay" | "cod" | string;
+    gateway?: "phonepe" | "razorpay" | "cod" | "upi" | string | undefined;
+    transactionId?: string | undefined; // 13-digit PhonePe transaction ID / UTR
+    utr?: string | undefined;
+    upiId?: string | undefined;
+    amount?: number | undefined;
+    submittedAt?: string | undefined;
+    verifiedAt?: string | undefined;
+    verifiedBy?: string | undefined;
+    verificationNote?: string | undefined;
     paymentId?: string | undefined;
     razorpayOrderId?: string | undefined;
     signature?: string | undefined;
@@ -342,5 +350,22 @@ export interface CheckoutDraftDoc {
   paymentMethod?: string | undefined;
   notes?: string | undefined;
   updatedAt: string;
+}
+
+// Promotional Offer Banner in Firestore (banners/{bannerId})
+export interface BannerItem {
+  id: string;
+  title: string;
+  description?: string | undefined;
+  badge?: string | undefined;
+  imageUrl?: string | undefined;
+  ctaText: string;
+  ctaLink: string;
+  bgColor?: string | undefined;
+  textColor?: string | undefined;
+  isActive: boolean;
+  priority?: number | undefined;
+  createdAt: string;
+  updatedAt?: string | undefined;
 }
 

@@ -63,6 +63,16 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // Promotional Offer Banners:
+    // - Public read so any website visitor can view active banners.
+    // - Admin write: only authenticated admins can create, update, or delete.
+    // ========================================================
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
     // Inquiries / Lead Submissions:
     // Anyone can create (submit an inquiry form).
     // Only verified Admins can read, update status, or delete.
@@ -109,6 +119,7 @@ service cloud.firestore {
     // - Authenticated users can create orders and view their own orders.
     // - Admins can view and manage all orders.
     // - Customers can cancel their own placed/confirmed orders.
+    // - Customers can update 13-digit PhonePe transaction ID on pending orders while preserving critical fields.
     // ========================================================
     match /orders/{orderId} {
       allow create: if isSignedIn() && (
@@ -129,6 +140,23 @@ service cloud.firestore {
         resource.data.customerId == request.auth.uid &&
         request.resource.data.status == 'cancelled' &&
         resource.data.status in ['placed', 'confirmed']
+      ) || (
+        isSignedIn() &&
+        (resource.data.customerId == request.auth.uid ||
+         (resource.data.customerEmail != null && request.auth.token.email != null &&
+          resource.data.customerEmail.lower() == request.auth.token.email.lower())) &&
+        resource.data.status != 'cancelled' &&
+        (resource.data.paymentStatus == 'pending' ||
+         (!('paymentStatus' in resource.data) && resource.data.status in ['placed', 'confirmed', 'pending'])) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentDetails', 'paymentId', 'statusHistory', 'updatedAt']) &&
+        request.resource.data.paymentDetails is map &&
+        'transactionId' in request.resource.data.paymentDetails &&
+        request.resource.data.paymentDetails.transactionId is string &&
+        request.resource.data.paymentDetails.transactionId.size() >= 10 &&
+        request.resource.data.paymentDetails.transactionId.size() <= 35 &&
+        (!('paymentId' in request.resource.data) || (request.resource.data.paymentId is string && request.resource.data.paymentId.size() <= 50)) &&
+        (!('statusHistory' in request.resource.data) || (request.resource.data.statusHistory is list && request.resource.data.statusHistory.size() <= 50)) &&
+        (!('updatedAt' in request.resource.data) || (request.resource.data.updatedAt is string && request.resource.data.updatedAt.size() <= 50))
       );
       allow delete: if isAdmin();
     }

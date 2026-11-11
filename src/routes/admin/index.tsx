@@ -37,6 +37,12 @@ import {
   DEFAULT_BUSINESS_SETTINGS,
   syncRegisteredAuthAccounts,
   subscribePaymentLogs,
+  subscribeBanners,
+  saveBanner,
+  toggleBannerStatus,
+  deleteBanner,
+  verifyOrderPayment,
+  updateOrderTransactionId,
 } from "@/lib/db-service";
 import type {
   ProductItem,
@@ -54,6 +60,7 @@ import type {
   BusinessProfileSettings,
   RegionalDepot,
   PaymentLogItem,
+  BannerItem,
 } from "@/lib/types";
 import { formatKolkataDisplay, getKolkataDateString, getDaysDiff } from "@/lib/date-utils";
 import { ProductManager } from "@/components/admin/product-manager";
@@ -137,7 +144,7 @@ function AdminPage() {
 
   // Navigation tab in Admin Sidebar
   const [activeTab, setActiveTab] = useState<
-    "analytics" | "products" | "orders" | "inquiries" | "leads" | "users" | "settings" | "system" | "feedback" | "renewals"
+    "analytics" | "products" | "orders" | "banners" | "inquiries" | "leads" | "users" | "settings" | "system" | "feedback" | "renewals"
   >("analytics");
 
   // Mobile sidebar toggle
@@ -150,6 +157,41 @@ function AdminPage() {
   const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
   const [usersList, setUsersList] = useState<UserItem[]>([]);
   const [leadsList, setLeadsList] = useState<LeadItem[]>([]);
+
+  // Promotional Banners & Offers State
+  const [bannersList, setBannersList] = useState<BannerItem[]>([]);
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<BannerItem | null>(null);
+  const [bannerForm, setBannerForm] = useState<{
+    id?: string;
+    title: string;
+    description: string;
+    badge: string;
+    imageUrl: string;
+    ctaText: string;
+    ctaLink: string;
+    bgColor: string;
+    textColor: string;
+    isActive: boolean;
+    priority: number;
+  }>({
+    title: "",
+    description: "",
+    badge: "SPECIAL OFFER",
+    imageUrl: "/fire-extinguishers.jpg",
+    ctaText: "Shop Offer Now",
+    ctaLink: "/products",
+    bgColor: "from-red-600 via-rose-600 to-amber-600",
+    textColor: "#ffffff",
+    isActive: true,
+    priority: 1,
+  });
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
+
+  // PhonePe Payment Verification State
+  const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
+  const [editingTxnOrderId, setEditingTxnOrderId] = useState<string | null>(null);
+  const [newTxnInput, setNewTxnInput] = useState<string>("");
 
   // Razorpay Gateway Live Audit & Logs
   const [paymentLogs, setPaymentLogs] = useState<PaymentLogItem[]>([]);
@@ -324,6 +366,7 @@ function AdminPage() {
     const unsubContact = subscribeContactSettings((data) => setContactSettings(data));
     const unsubBusiness = subscribeBusinessSettings((data) => setBusinessSettings(data));
     const unsubPaymentLogs = subscribePaymentLogs((data) => setPaymentLogs(data));
+    const unsubBanners = subscribeBanners((data) => setBannersList(data));
 
     // Non-Blaze Dashboard Fallback on Load (Task E)
     processDueRemindersFallback().catch(() => {});
@@ -343,6 +386,7 @@ function AdminPage() {
       unsubContact();
       unsubBusiness();
       unsubPaymentLogs();
+      unsubBanners();
     };
   }, [user, isAdmin]);
 
@@ -350,7 +394,8 @@ function AdminPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (showPaymentLogsModal) setShowPaymentLogsModal(false);
+        if (isBannerModalOpen) setIsBannerModalOpen(false);
+        else if (showPaymentLogsModal) setShowPaymentLogsModal(false);
         else if (inspectingUserOrders) setInspectingUserOrders(null);
         else if (orderToDelete) setOrderToDelete(null);
         else if (selectedOrder) setSelectedOrder(null);
@@ -1301,6 +1346,13 @@ function AdminPage() {
           : null,
     },
     {
+      id: "banners" as const,
+      label: "Banners & Store Offers",
+      icon: Sparkles,
+      badge: bannersList.length > 0 ? `${bannersList.filter((b) => b.isActive).length} Active` : null,
+      urgentBadge: null,
+    },
+    {
       id: "renewals" as const,
       label: "Refills & Renewals (AMC)",
       icon: RotateCcw,
@@ -1775,7 +1827,9 @@ function AdminPage() {
                     ? "Products Catalog"
                     : activeTab === "orders"
                       ? "Orders & Dispatches"
-                      : activeTab === "renewals"
+                      : activeTab === "banners"
+                        ? "Banners & Store Offers"
+                        : activeTab === "renewals"
                         ? "Refills & Renewals (AMC)"
                         : activeTab === "feedback"
                           ? "Customer Feedback & Ratings"
@@ -2185,13 +2239,18 @@ function AdminPage() {
                               <div className="max-w-xs text-muted-foreground line-clamp-2">
                                 {ord.shippingAddress}
                               </div>
-                              <div className="mt-1 flex flex-col gap-1">
+                              <div className="mt-1 flex flex-col gap-1.5">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-[10px] uppercase font-bold text-muted-foreground">Mode:</span>
-                                  {ord.paymentMethod === "razorpay" || ord.paymentStatus === "paid" ? (
+                                  {ord.paymentStatus === "paid" ? (
                                     <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                       <CheckCircle2 className="size-2.5" />
-                                      PAID (Razorpay)
+                                      PAID ({ord.paymentMethod === "phonepe" ? "PhonePe" : ord.paymentMethod === "razorpay" ? "Razorpay" : "Online"})
+                                    </span>
+                                  ) : ord.paymentMethod === "phonepe" ? (
+                                    <span className="inline-flex items-center gap-1 rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 border border-purple-500/30">
+                                      <QrCode className="size-2.5" />
+                                      PhonePe UPI (Pending)
                                     </span>
                                   ) : ord.paymentMethod === "cod" ? (
                                     <span className="inline-flex items-center rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/30">
@@ -2203,13 +2262,58 @@ function AdminPage() {
                                     </span>
                                   )}
                                 </div>
-                                {(ord.paymentDetails?.paymentId || ord.paymentId) && (
-                                  <div
-                                    className="font-mono text-[10px] text-primary truncate max-w-[180px] bg-primary/10 px-1 py-0.5 rounded"
-                                    title={ord.paymentDetails?.paymentId || ord.paymentId}
-                                  >
-                                    TXN: {ord.paymentDetails?.paymentId || ord.paymentId}
+
+                                {/* 13-digit PhonePe Transaction ID / UTR */}
+                                {(ord.paymentDetails?.transactionId || ord.paymentDetails?.utr || ord.paymentDetails?.paymentId || ord.paymentId) && (
+                                  <div className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-800 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/25 max-w-[210px]">
+                                    <span className="font-semibold shrink-0">UTR:</span>
+                                    <span className="font-mono font-bold truncate select-all" title={ord.paymentDetails?.transactionId || ord.paymentDetails?.utr || ord.paymentDetails?.paymentId || ord.paymentId}>
+                                      {ord.paymentDetails?.transactionId || ord.paymentDetails?.utr || ord.paymentDetails?.paymentId || ord.paymentId}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(ord.paymentDetails?.transactionId || ord.paymentDetails?.utr || ord.paymentDetails?.paymentId || ord.paymentId || "");
+                                        showSuccessMessage("UTR copied to clipboard!");
+                                      }}
+                                      className="shrink-0 hover:text-purple-950 dark:hover:text-white"
+                                      title="Copy UTR"
+                                    >
+                                      <Copy className="size-2.5" />
+                                    </button>
                                   </div>
+                                )}
+
+                                {/* Quick PhonePe Verify Payment Button in Table Row */}
+                                {ord.paymentStatus !== "paid" && (ord.paymentMethod === "phonepe" || ord.paymentDetails?.transactionId) && (
+                                  <button
+                                    type="button"
+                                    disabled={verifyingOrderId === ord.id}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!ord.id) return;
+                                      if (!window.confirm(`Verify PhonePe payment of ₹${ord.total?.toLocaleString("en-IN")} for Order #${ord.orderNumber || ord.id}?\n\n13-Digit UTR: ${ord.paymentDetails?.transactionId || ord.paymentDetails?.utr || "Submitted"}\n\nThis will mark the order as PAID and CONFIRMED and send an instant notification to the customer.`)) return;
+                                      setVerifyingOrderId(ord.id);
+                                      try {
+                                        await verifyOrderPayment(ord.id, user?.email || "admin@udharchi.com", "PhonePe payment confirmed via merchant portal");
+                                        showSuccessMessage(`Payment for Order #${ord.orderNumber} successfully marked as PAID! Customer has been notified.`);
+                                      } catch (err: any) {
+                                        showSuccessMessage(`Verification error: ${err?.message || err}`);
+                                      } finally {
+                                        setVerifyingOrderId(null);
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 w-fit rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 text-[10px] font-bold shadow-xs transition-all disabled:opacity-50"
+                                    title="Mark PhonePe payment as received and confirmed"
+                                  >
+                                    {verifyingOrderId === ord.id ? (
+                                      <span className="size-2.5 animate-spin rounded-full border border-white border-t-transparent" />
+                                    ) : (
+                                      <CheckCircle2 className="size-2.5" />
+                                    )}
+                                    <span>Verify Payment</span>
+                                  </button>
                                 )}
                               </div>
                             </td>
@@ -2453,40 +2557,40 @@ function AdminPage() {
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground font-medium">Payment Mode:</span>
                               <span className="font-bold uppercase text-foreground">
-                                {selectedOrder.paymentMethod === "razorpay"
-                                  ? "Razorpay Online Gateway"
-                                  : selectedOrder.paymentMethod === "cod"
-                                    ? "Cash on Delivery"
-                                    : selectedOrder.paymentMethod}
+                                {selectedOrder.paymentMethod === "phonepe"
+                                  ? "PhonePe Direct UPI & QR"
+                                  : selectedOrder.paymentMethod === "razorpay"
+                                    ? "Razorpay Online Gateway"
+                                    : selectedOrder.paymentMethod === "cod"
+                                      ? "Cash on Delivery"
+                                      : selectedOrder.paymentMethod}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground font-medium">Payment Status:</span>
-                              {selectedOrder.paymentMethod === "razorpay" || selectedOrder.paymentStatus === "paid" ? (
+                              {selectedOrder.paymentStatus === "paid" ? (
                                 <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-2 py-0.5 font-bold uppercase text-[10px] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                   <CheckCircle2 className="size-3" />
-                                  PAID
+                                  PAID ({selectedOrder.paymentMethod === "phonepe" ? "PhonePe Verified" : "Online"})
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center rounded bg-amber-500/15 px-2 py-0.5 font-bold uppercase text-[10px] text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                  {selectedOrder.paymentStatus || "PENDING"}
+                                  {selectedOrder.paymentStatus?.toUpperCase() || "PENDING VERIFICATION"}
                                 </span>
                               )}
                             </div>
-                            {(selectedOrder.paymentDetails?.paymentId || selectedOrder.paymentId) && (
+                            {(selectedOrder.paymentDetails?.transactionId || selectedOrder.paymentDetails?.utr || selectedOrder.paymentDetails?.paymentId || selectedOrder.paymentId) && (
                               <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium">Transaction ID:</span>
+                                <span className="text-muted-foreground font-medium">PhonePe UTR / Txn:</span>
                                 <span className="font-mono font-bold text-primary select-all">
-                                  {selectedOrder.paymentDetails?.paymentId || selectedOrder.paymentId}
+                                  {selectedOrder.paymentDetails?.transactionId || selectedOrder.paymentDetails?.utr || selectedOrder.paymentDetails?.paymentId || selectedOrder.paymentId}
                                 </span>
                               </div>
                             )}
-                            {selectedOrder.paymentDetails?.razorpayOrderId && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground font-medium">Gateway Order ID:</span>
-                                <span className="font-mono text-muted-foreground select-all">
-                                  {selectedOrder.paymentDetails.razorpayOrderId}
-                                </span>
+                            {selectedOrder.paymentDetails?.verifiedBy && (
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-muted-foreground font-medium">Verified By:</span>
+                                <span className="text-foreground">{selectedOrder.paymentDetails.verifiedBy}</span>
                               </div>
                             )}
                             {selectedOrder.paymentDetails?.paidAt && (
@@ -2500,6 +2604,137 @@ function AdminPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* PhonePe Payment Verification Action Callout */}
+                      {selectedOrder.paymentStatus !== "paid" && (
+                        <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4 space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <h5 className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                                <QrCode className="size-4 text-purple-600 dark:text-purple-400" />
+                                <span>PhonePe Payment Verification (13-Digit UTR)</span>
+                              </h5>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Customer reference submitted via PhonePe UPI. Verify against your PhonePe Business statement.
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 font-mono text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded border border-purple-500/30">
+                              <span>UTR: {selectedOrder.paymentDetails?.transactionId || selectedOrder.paymentDetails?.utr || "Pending submission"}</span>
+                              {(selectedOrder.paymentDetails?.transactionId || selectedOrder.paymentDetails?.utr) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(selectedOrder.paymentDetails?.transactionId || selectedOrder.paymentDetails?.utr || "");
+                                    showSuccessMessage("UTR copied to clipboard!");
+                                  }}
+                                  className="ml-1 hover:text-white"
+                                  title="Copy UTR"
+                                >
+                                  <Copy className="size-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-purple-500/20">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={verifyingOrderId === selectedOrder.id}
+                              onClick={async () => {
+                                if (!selectedOrder.id) return;
+                                setVerifyingOrderId(selectedOrder.id);
+                                try {
+                                  await verifyOrderPayment(selectedOrder.id, user?.email || "admin@udharchi.com", "PhonePe payment confirmed via merchant portal");
+                                  showSuccessMessage(`Order #${selectedOrder.orderNumber || selectedOrder.id} verified as PAID & CONFIRMED! Customer notified.`);
+                                  setSelectedOrder({
+                                    ...selectedOrder,
+                                    status: "confirmed",
+                                    paymentStatus: "paid",
+                                    paymentDetails: {
+                                      gateway: selectedOrder.paymentDetails?.gateway || "phonepe",
+                                      ...selectedOrder.paymentDetails,
+                                      verifiedAt: new Date().toISOString(),
+                                      verifiedBy: user?.email || "admin@udharchi.com",
+                                      verificationNote: "PhonePe payment confirmed by admin",
+                                    },
+                                  });
+                                } catch (err: any) {
+                                  showSuccessMessage(`Verification error: ${err?.message || err}`);
+                                } finally {
+                                  setVerifyingOrderId(null);
+                                }
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+                            >
+                              {verifyingOrderId === selectedOrder.id ? (
+                                <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              ) : (
+                                <CheckCircle2 className="size-3.5" />
+                              )}
+                              <span>Verify Payment (Mark as Paid &amp; Confirmed)</span>
+                            </Button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingTxnOrderId(selectedOrder.id || null);
+                                setNewTxnInput(selectedOrder.paymentDetails?.transactionId || selectedOrder.paymentDetails?.utr || "");
+                              }}
+                              className="text-xs font-semibold text-primary hover:underline px-2 py-1"
+                            >
+                              {editingTxnOrderId === selectedOrder.id ? "Close Editor" : "Edit / Enter 13-Digit UTR"}
+                            </button>
+                          </div>
+
+                          {editingTxnOrderId === selectedOrder.id && (
+                            <div className="flex items-center gap-2 pt-2 border-t border-purple-500/20 flex-wrap">
+                              <input
+                                type="text"
+                                value={newTxnInput}
+                                onChange={(e) => setNewTxnInput(e.target.value.replace(/\D/g, "").slice(0, 13))}
+                                placeholder="13-digit PhonePe UTR"
+                                className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono w-56 text-foreground"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  if (!selectedOrder.id || newTxnInput.length < 8) {
+                                    alert("Please enter a valid 13-digit transaction reference number.");
+                                    return;
+                                  }
+                                  try {
+                                    await updateOrderTransactionId(selectedOrder.id, newTxnInput);
+                                    showSuccessMessage("PhonePe UTR updated successfully.");
+                                    setSelectedOrder({
+                                      ...selectedOrder,
+                                      paymentDetails: {
+                                        gateway: selectedOrder.paymentDetails?.gateway || "phonepe",
+                                        ...selectedOrder.paymentDetails,
+                                        transactionId: newTxnInput,
+                                        utr: newTxnInput,
+                                      },
+                                    });
+                                    setEditingTxnOrderId(null);
+                                  } catch (e: any) {
+                                    showSuccessMessage(`Update error: ${e?.message || e}`);
+                                  }
+                                }}
+                                className="text-xs h-8"
+                              >
+                                Save UTR
+                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingTxnOrderId(null)}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Itemized Table */}
                       <div className="rounded-xl border border-border overflow-hidden">
@@ -2638,6 +2873,453 @@ function AdminPage() {
                         Delete Permanently
                       </Button>
                     </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB: PROMOTIONAL BANNERS & STORE OFFERS */}
+          {/* ======================================================== */}
+          {activeTab === "banners" && (
+            <div className="space-y-6">
+              {/* Top Action Bar */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+                    <Sparkles className="size-5 text-amber-500" />
+                    <span>Promotional Banners &amp; Offers</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Push live promotional banners to your website. Active banners appear on the top announcement bar across all pages, and on the homepage and products catalog with full imagery and direct CTA buttons.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingBanner(null);
+                      setBannerForm({
+                        title: "",
+                        description: "",
+                        badge: "SPECIAL OFFER",
+                        imageUrl: "https://images.unsplash.com/photo-1582139329536-e7284fece509?w=800&auto=format&fit=crop&q=80",
+                        ctaText: "Claim Offer Now",
+                        ctaLink: "/products",
+                        bgColor: "from-red-600 via-rose-600 to-amber-600",
+                        textColor: "#ffffff",
+                        isActive: true,
+                        priority: bannersList.length + 1,
+                      });
+                      setIsBannerModalOpen(true);
+                    }}
+                    className="gap-1.5 font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                  >
+                    <Plus className="size-4" />
+                    <span>Create New Offer Banner</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Metrics & Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Total Banners</span>
+                  <div className="font-display text-2xl font-black text-foreground mt-1">
+                    {bannersList.length}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground mt-0.5 block">Configured in Firestore</span>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Live &amp; Active</span>
+                  <div className="font-display text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                    {bannersList.filter((b) => b.isActive).length}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground mt-0.5 block">Streaming on storefront</span>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Featured Priority Offer</span>
+                  <div className="font-bold text-foreground text-sm truncate mt-1">
+                    {bannersList.find((b) => b.isActive)?.title || "None Active"}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground mt-0.5 block">
+                    {bannersList.find((b) => b.isActive)?.badge || "Create one to boost sales"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Banners List & Visual Cards */}
+              <div className="space-y-4">
+                {bannersList.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center space-y-3">
+                    <Sparkles className="size-10 text-muted-foreground/40 mx-auto" />
+                    <h3 className="font-bold text-foreground">No Promotional Banners Yet</h3>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                      Create your first offer banner to showcase festive discounts, industrial safety surveys, or bulk purchasing offers to customers across the site.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingBanner(null);
+                        setBannerForm({
+                          title: "Festive Fire Safety Offer: Flat 20% Off",
+                          description: "Get certified ABC Dry Powder & Clean Agent Extinguishers with Free First-Year Inspection.",
+                          badge: "SPECIAL DEAL",
+                          imageUrl: "https://images.unsplash.com/photo-1582139329536-e7284fece509?w=800&auto=format&fit=crop&q=80",
+                          ctaText: "Shop Extinguishers Now",
+                          ctaLink: "/products",
+                          bgColor: "from-red-600 via-rose-600 to-amber-600",
+                          textColor: "#ffffff",
+                          isActive: true,
+                          priority: 1,
+                        });
+                        setIsBannerModalOpen(true);
+                      }}
+                      className="gap-1.5 text-xs font-bold"
+                    >
+                      <Plus className="size-3.5" />
+                      <span>Add First Offer Banner</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {bannersList.map((banner) => (
+                      <div
+                        key={banner.id}
+                        className={`rounded-2xl border transition-all overflow-hidden flex flex-col justify-between ${
+                          banner.isActive
+                            ? "border-primary/40 bg-card shadow-md"
+                            : "border-border bg-card/60 opacity-75"
+                        }`}
+                      >
+                        {/* Live Banner Card Preview */}
+                        <div className="relative p-5 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white min-h-[170px] flex flex-col justify-between">
+                          {banner.imageUrl && (
+                            <img
+                              src={banner.imageUrl}
+                              alt={banner.title}
+                              className="absolute inset-0 size-full object-cover opacity-25 mix-blend-overlay pointer-events-none"
+                            />
+                          )}
+
+                          <div className="relative z-10 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-600/40 border border-rose-500/50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-rose-200">
+                                <Sparkles className="size-2.5 text-amber-300" />
+                                <span>{banner.badge || "SPECIAL OFFER"}</span>
+                              </span>
+                              <span className="text-[10px] font-mono text-white/60">
+                                Priority #{banner.priority || 1}
+                              </span>
+                            </div>
+
+                            <h4 className="font-display font-black text-white text-base leading-snug line-clamp-2">
+                              {banner.title}
+                            </h4>
+
+                            {banner.description && (
+                              <p className="text-xs text-white/80 line-clamp-2 leading-relaxed">
+                                {banner.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="relative z-10 pt-3 flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1 text-xs font-bold text-slate-950 shadow-sm">
+                              <span>{banner.ctaText || "Claim Offer"}</span>
+                              <ChevronRight className="size-3" />
+                            </span>
+                            <span className="text-[10px] font-mono text-white/60">
+                              Link: {banner.ctaLink}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Banner Management Toolbar */}
+                        <div className="p-4 border-t border-border bg-muted/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await toggleBannerStatus(banner.id, !banner.isActive);
+                                  showSuccessMessage(`Banner "${banner.title}" is now ${!banner.isActive ? "ACTIVE & LIVE" : "INACTIVE"}.`);
+                                } catch (e: any) {
+                                  showSuccessMessage(`Error toggling banner: ${e?.message || e}`);
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-all text-xs border ${
+                                banner.isActive
+                                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                  : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <span className={`size-2 rounded-full ${banner.isActive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
+                              <span>{banner.isActive ? "Live on Storefront" : "Paused / Inactive"}</span>
+                            </button>
+                            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                              • Updated {banner.updatedAt ? new Date(banner.updatedAt).toLocaleDateString() : "Recently"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingBanner(banner);
+                                setBannerForm({
+                                  id: banner.id,
+                                  title: banner.title,
+                                  description: banner.description || "",
+                                  badge: banner.badge || "SPECIAL OFFER",
+                                  imageUrl: banner.imageUrl || "",
+                                  ctaText: banner.ctaText,
+                                  ctaLink: banner.ctaLink,
+                                  bgColor: banner.bgColor || "from-red-600 via-rose-600 to-amber-600",
+                                  textColor: banner.textColor || "#ffffff",
+                                  isActive: banner.isActive,
+                                  priority: banner.priority || 1,
+                                });
+                                setIsBannerModalOpen(true);
+                              }}
+                              className="h-8 px-2 text-xs gap-1"
+                            >
+                              <Edit3 className="size-3.5" />
+                              <span>Edit</span>
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                if (!window.confirm(`Delete banner "${banner.title}" permanently?`)) return;
+                                try {
+                                  await deleteBanner(banner.id);
+                                  showSuccessMessage(`Banner deleted successfully.`);
+                                } catch (e: any) {
+                                  showSuccessMessage(`Error deleting banner: ${e?.message || e}`);
+                                }
+                              }}
+                              className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10 gap-1"
+                            >
+                              <Trash2 className="size-3.5" />
+                              <span>Delete</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* CREATE / EDIT BANNER MODAL */}
+              {isBannerModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                  <div className="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-5">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="size-5 text-amber-500" />
+                        <h3 className="font-display text-base font-bold text-foreground">
+                          {editingBanner ? "Edit Promotional Offer Banner" : "Create New Offer Banner"}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsBannerModalOpen(false)}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                        aria-label="Close modal"
+                      >
+                        <X className="size-5" />
+                      </button>
+                    </div>
+
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!bannerForm.title.trim() || !bannerForm.ctaText.trim()) {
+                          alert("Please provide both a Banner Title and CTA Button Text.");
+                          return;
+                        }
+                        setIsSavingBanner(true);
+                        try {
+                          await saveBanner({
+                            id: bannerForm.id,
+                            title: bannerForm.title.trim(),
+                            description: bannerForm.description.trim(),
+                            badge: bannerForm.badge.trim(),
+                            imageUrl: bannerForm.imageUrl.trim(),
+                            ctaText: bannerForm.ctaText.trim(),
+                            ctaLink: bannerForm.ctaLink.trim() || "/products",
+                            bgColor: bannerForm.bgColor,
+                            textColor: bannerForm.textColor,
+                            isActive: bannerForm.isActive,
+                            priority: Number(bannerForm.priority) || 1,
+                          });
+                          showSuccessMessage(
+                            editingBanner
+                              ? "Banner updated successfully!"
+                              : "New offer banner published successfully!",
+                          );
+                          setIsBannerModalOpen(false);
+                        } catch (err: any) {
+                          showSuccessMessage(`Error saving banner: ${err?.message || err}`);
+                        } finally {
+                          setIsSavingBanner(false);
+                        }
+                      }}
+                      className="space-y-4 text-xs"
+                    >
+                      {/* Offer Badge & Priority */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-foreground block mb-1">Offer Badge Text</label>
+                          <input
+                            type="text"
+                            value={bannerForm.badge}
+                            onChange={(e) => setBannerForm({ ...bannerForm, badge: e.target.value })}
+                            placeholder="e.g. SPECIAL OFFER, DIWALI DEAL"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none uppercase"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-foreground block mb-1">Display Priority</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            value={bannerForm.priority}
+                            onChange={(e) => setBannerForm({ ...bannerForm, priority: parseInt(e.target.value) || 1 })}
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                          />
+                          <span className="text-[10px] text-muted-foreground mt-0.5 block">Higher priority appears first</span>
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <div>
+                        <label className="font-bold text-foreground block mb-1">Banner Title (Headline) *</label>
+                        <input
+                          type="text"
+                          required
+                          value={bannerForm.title}
+                          onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                          placeholder="e.g. Industrial Safety Month: Flat 25% Off Bulk Orders"
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none font-semibold"
+                        />
+                      </div>
+
+                      {/* Description / Subtitle */}
+                      <div>
+                        <label className="font-bold text-foreground block mb-1">Offer Details / Description</label>
+                        <textarea
+                          rows={2}
+                          value={bannerForm.description}
+                          onChange={(e) => setBannerForm({ ...bannerForm, description: e.target.value })}
+                          placeholder="e.g. ISI marked ABC Dry Chemical Powder extinguishers with complimentary wall brackets &amp; 1-year service warranty."
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Image URL & Quick Presets */}
+                      <div>
+                        <label className="font-bold text-foreground block mb-1">Offer Image URL</label>
+                        <input
+                          type="text"
+                          value={bannerForm.imageUrl}
+                          onChange={(e) => setBannerForm({ ...bannerForm, imageUrl: e.target.value })}
+                          placeholder="https://... or /image.jpg"
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground font-mono focus:border-primary focus:outline-none"
+                        />
+                        <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
+                          <span className="text-[10px] text-muted-foreground font-semibold">Presets:</span>
+                          {[
+                            { label: "Fire Extinguisher", url: "https://images.unsplash.com/photo-1582139329536-e7284fece509?w=800&auto=format&fit=crop&q=80" },
+                            { label: "Industrial Safety", url: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=800&auto=format&fit=crop&q=80" },
+                            { label: "Warehousing", url: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&auto=format&fit=crop&q=80" },
+                            { label: "Admin Hero", url: "/admin-login-hero.jpg" },
+                          ].map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => setBannerForm({ ...bannerForm, imageUrl: preset.url })}
+                              className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* CTA Button Text & Link */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-foreground block mb-1">CTA Button Text *</label>
+                          <input
+                            type="text"
+                            required
+                            value={bannerForm.ctaText}
+                            onChange={(e) => setBannerForm({ ...bannerForm, ctaText: e.target.value })}
+                            placeholder="e.g. Claim Offer Now"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-foreground block mb-1">CTA Destination Link *</label>
+                          <input
+                            type="text"
+                            required
+                            value={bannerForm.ctaLink}
+                            onChange={(e) => setBannerForm({ ...bannerForm, ctaLink: e.target.value })}
+                            placeholder="e.g. /products or /contact"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Active Status Checkbox */}
+                      <div className="pt-2 border-t border-border flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="banner-is-active"
+                          checked={bannerForm.isActive}
+                          onChange={(e) => setBannerForm({ ...bannerForm, isActive: e.target.checked })}
+                          className="size-4 rounded border-input text-primary focus:ring-primary"
+                        />
+                        <label htmlFor="banner-is-active" className="text-xs font-semibold text-foreground cursor-pointer">
+                          Publish live immediately to storefront (top bar &amp; offer cards)
+                        </label>
+                      </div>
+
+                      {/* Form Actions */}
+                      <div className="pt-4 border-t border-border flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsBannerModalOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={isSavingBanner}
+                          className="gap-1.5 font-bold"
+                        >
+                          {isSavingBanner ? (
+                            <span className="size-3.5 animate-spin rounded-full border border-white border-t-transparent" />
+                          ) : (
+                            <Save className="size-3.5" />
+                          )}
+                          <span>{editingBanner ? "Update Banner" : "Publish Banner"}</span>
+                        </Button>
+                      </div>
+                    </form>
                   </div>
                 </div>
               )}

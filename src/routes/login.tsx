@@ -39,6 +39,7 @@ import {
   Sparkles,
   KeyRound,
   Printer,
+  QrCode,
 } from "lucide-react";
 import {
   formatIndianMobileDisplay,
@@ -56,6 +57,7 @@ import {
   markNotificationRead,
   getOrderForTracking,
   getUserEmailByPhone,
+  updateOrderTransactionId,
 } from "@/lib/db-service";
 import type {
   OrderItem,
@@ -1057,10 +1059,15 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                                 </span>
 
                                 {/* Payment Status Badge */}
-                                {order.paymentMethod === "razorpay" || order.paymentStatus === "paid" ? (
+                                {order.paymentStatus === "paid" ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                     <CheckCircle2 className="size-3" />
-                                    <span>Paid Online (Razorpay)</span>
+                                    <span>PAID ({order.paymentMethod === "phonepe" ? "PhonePe Verified" : "Online Gateway"})</span>
+                                  </span>
+                                ) : order.paymentMethod === "phonepe" ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-purple-600 dark:text-purple-400 border border-purple-500/30">
+                                    <QrCode className="size-3" />
+                                    <span>PhonePe UPI (Pending)</span>
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border border-border">
@@ -1070,9 +1077,9 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                               </div>
                               <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground mt-1">
                                 <span>Placed on {formatKolkataDisplay(order.createdAt)}</span>
-                                {(order.paymentDetails?.paymentId || order.paymentId) && (
-                                  <span className="font-mono text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                                    TXN: {order.paymentDetails?.paymentId || order.paymentId}
+                                {(order.paymentDetails?.transactionId || order.paymentDetails?.utr || order.paymentDetails?.paymentId || order.paymentId) && (
+                                  <span className="font-mono text-[10px] text-purple-700 dark:text-purple-300 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                                    PhonePe UTR: {order.paymentDetails?.transactionId || order.paymentDetails?.utr || order.paymentDetails?.paymentId || order.paymentId}
                                   </span>
                                 )}
                               </div>
@@ -1087,6 +1094,54 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                               </span>
                             </div>
                           </div>
+
+                          {/* Pending PhonePe Payment Verification Alert Callout */}
+                          {order.paymentMethod === "phonepe" && order.paymentStatus !== "paid" && (
+                            <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-3.5 text-xs text-purple-900 dark:text-purple-200 space-y-2">
+                              <div className="flex items-start gap-2.5">
+                                <Clock className="size-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                  <p className="font-bold text-foreground text-xs leading-snug">
+                                    Hope you have made the payment. We will check and get back to you. This is pending, okay.
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    Our dispatch administrator will cross-check your 13-digit transaction ID with our PhonePe merchant records and confirm your order. You will receive an instant notification once confirmed.
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-500/20 text-[11px]">
+                                <span className="font-mono text-purple-800 dark:text-purple-300">
+                                  <strong>Submitted UTR:</strong>{" "}
+                                  <span className="font-black bg-purple-500/20 px-2 py-0.5 rounded text-xs">
+                                    {order.paymentDetails?.transactionId || order.paymentDetails?.utr || "Pending submission"}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const currentUtr = order.paymentDetails?.transactionId || order.paymentDetails?.utr || "";
+                                    const newUtr = window.prompt(
+                                      "Update your 13-digit PhonePe Transaction Reference / UTR:",
+                                      currentUtr,
+                                    );
+                                    if (newUtr && order.id) {
+                                      const clean = newUtr.replace(/\D/g, "").slice(0, 13);
+                                      if (clean.length < 8) {
+                                        alert("Please enter a valid 13-digit UTR number from your PhonePe receipt.");
+                                        return;
+                                      }
+                                      updateOrderTransactionId(order.id, clean)
+                                        .then(() => alert("Your 13-digit PhonePe Transaction ID was updated successfully!"))
+                                        .catch((err) => alert("Failed to update: " + err.message));
+                                    }
+                                  }}
+                                  className="text-primary font-bold hover:underline"
+                                >
+                                  Edit / Update 13-Digit UTR
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Task A: Expected Delivery Window */}
                           <div className="rounded-xl bg-muted/40 p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-border/60">

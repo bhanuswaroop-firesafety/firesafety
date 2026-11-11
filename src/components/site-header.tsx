@@ -33,6 +33,7 @@ import {
 } from "@/lib/db-service";
 import type { SocialSettings, ContactSettings } from "@/lib/types";
 import { BrandLogo } from "./brand-logo";
+import { TopAnnouncementBanner } from "./promo-banner";
 import { Button } from "./button";
 
 const navLinks = [
@@ -106,6 +107,9 @@ export function SiteHeader() {
 
   return (
     <>
+      {/* Dynamic Offer Banner pushed by Admin */}
+      <TopAnnouncementBanner />
+
       {/* Top Utility & Emergency Ticker Bar */}
       <div className="border-b border-border/80 bg-ink text-white/90 text-xs py-1.5 px-3 sm:px-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4">
