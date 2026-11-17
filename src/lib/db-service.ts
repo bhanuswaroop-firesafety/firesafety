@@ -116,6 +116,9 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessProfileSettings = {
   accountNumber: "398582210012",
   ifscCode: "SBIN0001234",
   upiId: "8639858221@ybl",
+  phonePeNumber: "8639858221",
+  phonePeMerchantName: "Sri Udharchi Enterprises",
+  bannersEnabled: true,
   depots: [
     {
       id: "depot-1",
@@ -2418,13 +2421,13 @@ export async function getBanners(): Promise<BannerItem[]> {
     const colRef = collection(db, "banners");
     const snap = await getDocs(colRef);
     if (snap.empty) {
-      return DEFAULT_BANNERS;
+      return [];
     }
     const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BannerItem, "id">) }));
     return list.sort((a, b) => (b.priority || 0) - (a.priority || 0));
   } catch (err) {
     console.warn("Firestore getBanners notice:", err);
-    return DEFAULT_BANNERS;
+    return [];
   }
 }
 
@@ -2435,7 +2438,7 @@ export function subscribeBanners(callback: (banners: BannerItem[]) => void): () 
       colRef,
       (snap) => {
         if (snap.empty) {
-          callback(DEFAULT_BANNERS);
+          callback([]);
           return;
         }
         const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BannerItem, "id">) }));
@@ -2443,12 +2446,12 @@ export function subscribeBanners(callback: (banners: BannerItem[]) => void): () 
       },
       (err) => {
         console.warn("subscribeBanners snapshot notice:", err);
-        callback(DEFAULT_BANNERS);
+        callback([]);
       },
     );
   } catch (err) {
     console.warn("subscribeBanners exception:", err);
-    callback(DEFAULT_BANNERS);
+    callback([]);
     return () => {};
   }
 }
@@ -2481,6 +2484,18 @@ export async function saveBanner(
 export async function toggleBannerStatus(bannerId: string, isActive: boolean): Promise<void> {
   const docRef = doc(db, "banners", bannerId);
   await updateDoc(docRef, { isActive, updatedAt: getKolkataISOString() });
+}
+
+export async function toggleAllBannersStatus(active: boolean): Promise<void> {
+  const colRef = collection(db, "banners");
+  const snap = await getDocs(colRef);
+  const now = getKolkataISOString();
+  const promises = snap.docs.map((d) => updateDoc(d.ref, { isActive: active, updatedAt: now }));
+  await Promise.all(promises);
+}
+
+export async function toggleBannersGlobal(enabled: boolean): Promise<void> {
+  await updateBusinessSettings({ bannersEnabled: enabled });
 }
 
 export async function deleteBanner(bannerId: string): Promise<void> {

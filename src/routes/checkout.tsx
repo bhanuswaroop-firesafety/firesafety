@@ -273,10 +273,15 @@ function CheckoutPage() {
 
   // Generate PhonePe UPI Links dynamically based on calculated price
   const activeUpiId = businessSettings.upiId || "8639858221@ybl";
+  const activePhonePeNumber = businessSettings.phonePeNumber || "8639858221";
+  const activePayeeName =
+    businessSettings.phonePeMerchantName ||
+    businessSettings.entityName ||
+    "Sri Udharchi Enterprises";
   const upiDetails = generatePhonePeUpiUrls(
     finalPayable,
     previewOrderId,
-    businessSettings.entityName || "Sri Udharchi Enterprises",
+    activePayeeName,
     activeUpiId,
   );
 
@@ -293,7 +298,7 @@ function CheckoutPage() {
     })
       .then((url) => setQrDataUrl(url))
       .catch((err) => console.warn("Failed generating QR Code:", err));
-  }, [finalPayable, previewOrderId, activeUpiId, businessSettings.entityName]);
+  }, [finalPayable, previewOrderId, activeUpiId, activePayeeName]);
 
   const copyToClipboard = (text: string, fieldName: string) => {
     try {
@@ -1407,9 +1412,23 @@ function CheckoutPage() {
                                   </div>
                                 </div>
                                 <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground">PhonePe Registered No:</span>
+                                  <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                                    <span>{activePhonePeNumber}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => copyToClipboard(activePhonePeNumber, "phonepeNum")}
+                                      className="p-1 rounded hover:bg-muted text-primary"
+                                      title="Copy PhonePe Number"
+                                    >
+                                      {copiedField === "phonepeNum" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
                                   <span className="text-muted-foreground">Beneficiary Name:</span>
                                   <span className="font-semibold text-foreground truncate max-w-[200px]">
-                                    {businessSettings.entityName || "Sri Udharchi Enterprises"}
+                                    {activePayeeName}
                                   </span>
                                 </div>
                               </div>
@@ -1681,10 +1700,10 @@ function CheckoutPage() {
                       Need custom invoicing or bulk transport dispatch?
                     </span>
                     <a
-                      href="tel:+918639858221"
+                      href={`tel:+91${activePhonePeNumber.replace(/\D/g, "")}`}
                       className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
                     >
-                      <Phone className="size-3.5" /> Call Dispatch Desk: 8639858221
+                      <Phone className="size-3.5" /> Call Dispatch Desk: {activePhonePeNumber}
                     </a>
                   </div>
 

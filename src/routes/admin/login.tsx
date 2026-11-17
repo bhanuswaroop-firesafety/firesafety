@@ -90,30 +90,20 @@ export function AdminLoginPage() {
 
     setSubmitting(true);
     try {
-      // Security check: Check if email is an authorized administrator (Super Admin or added in /authorized_admins)
-      const isAuthorized = await isEmailAuthorizedAdmin(targetEmail);
-      if (!isAuthorized) {
-        setErrorMsg(
-          "Access Denied: This email address is not an authorized administrator. Please contact your executive administrator to be provisioned.",
-        );
-        return;
-      }
-
-      // Authenticate via Firebase SDK with live user-entered credentials (NO hardcoded password)
+      // Authenticate via Firebase SDK with live user-entered credentials first
+      // Note: Must authenticate before checking Firestore authorization because Firestore rules require isSignedIn()
       const credential = await signInWithEmailAndPassword(auth, targetEmail, formData.password);
 
       if (credential.user) {
-        const authenticatedEmail = credential.user.email?.toLowerCase() || "";
-        const verifyAuth = await isEmailAuthorizedAdmin(authenticatedEmail);
-        if (!verifyAuth) {
+        const authenticatedEmail = (credential.user.email || targetEmail).toLowerCase().trim();
+        const isAuthorized = await isEmailAuthorizedAdmin(authenticatedEmail);
+        if (!isAuthorized) {
           await signOut(auth);
           setErrorMsg(
-            "Access Denied: This account is not authorized to access the Executive Administration Portal.",
+            "Access Denied: This email address is not an authorized administrator. Please contact your executive administrator to be provisioned.",
           );
           return;
         }
-
-
 
         // Successfully authenticated! Navigate to /admin
         navigate({ to: "/admin" });
@@ -191,10 +181,10 @@ export function AdminLoginPage() {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(
         "Could not send password reset email: " +
-          msg
-            .replace("Firebase: ", "")
-            .replace(/\(auth\/[^)]+\)/, "")
-            .trim(),
+        msg
+          .replace("Firebase: ", "")
+          .replace(/\(auth\/[^)]+\)/, "")
+          .trim(),
       );
     } finally {
       setResetLoading(false);

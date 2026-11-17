@@ -296,6 +296,9 @@ export interface BusinessProfileSettings {
   accountNumber: string;
   ifscCode: string;
   upiId: string;
+  phonePeNumber?: string | undefined;
+  phonePeMerchantName?: string | undefined;
+  bannersEnabled?: boolean | undefined;
   depots: RegionalDepot[];
   updatedAt?: string | undefined;
 }

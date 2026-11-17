@@ -82,6 +82,7 @@ export function clearGlobalRecaptchaVerifier() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserItem | null>(null);
+  const [isAuthorizedAdminState, setIsAuthorizedAdminState] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [authConfigError, setAuthConfigError] = useState(false);
 
@@ -110,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const isAuthAdmin =
                 isSuper ||
                 (currentUser.email ? await isEmailAuthorizedAdmin(currentUser.email) : false);
+              setIsAuthorizedAdminState(isAuthAdmin);
 
               if (!snap.exists()) {
                 // New user: Default to "customer" role. Never assign admin on client without server authorization.
@@ -187,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // User signed out
             setUser(null);
             setUserProfile(null);
+            setIsAuthorizedAdminState(false);
             setLoading(false);
           }
         },
@@ -201,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           setUser(null);
           setUserProfile(null);
+          setIsAuthorizedAdminState(false);
           setLoading(false);
         },
       );
@@ -208,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn("Firebase onAuthStateChanged setup notice:", err);
       setUser(null);
       setUserProfile(null);
+      setIsAuthorizedAdminState(false);
       setLoading(false);
     }
 
@@ -697,11 +702,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearGlobalRecaptchaVerifier();
     setUser(null);
     setUserProfile(null);
+    setIsAuthorizedAdminState(false);
   };
 
   const isAdmin = Boolean(
     user &&
       (userProfile?.role === "admin" ||
+        isAuthorizedAdminState ||
         (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()))),
   );
   const isStaff = Boolean(user && (userProfile?.role === "staff" || userProfile?.role === "admin"));

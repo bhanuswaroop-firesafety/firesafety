@@ -40,6 +40,8 @@ import {
   subscribeBanners,
   saveBanner,
   toggleBannerStatus,
+  toggleAllBannersStatus,
+  toggleBannersGlobal,
   deleteBanner,
   verifyOrderPayment,
   updateOrderTransactionId,
@@ -1349,7 +1351,12 @@ function AdminPage() {
       id: "banners" as const,
       label: "Banners & Store Offers",
       icon: Sparkles,
-      badge: bannersList.length > 0 ? `${bannersList.filter((b) => b.isActive).length} Active` : null,
+      badge:
+        businessSettings.bannersEnabled === false
+          ? "OFF"
+          : bannersList.length > 0
+            ? `${bannersList.filter((b) => b.isActive).length} Active`
+            : null,
       urgentBadge: null,
     },
     {
@@ -2919,6 +2926,116 @@ function AdminPage() {
                     <Plus className="size-4" />
                     <span>Create New Offer Banner</span>
                   </Button>
+                </div>
+              </div>
+
+              {/* Master Global Switch for Storefront Banners */}
+              <div
+                className={`rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm ${
+                  businessSettings.bannersEnabled === false
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                    : "border-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      businessSettings.bannersEnabled === false
+                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                        : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                    }`}
+                  >
+                    {businessSettings.bannersEnabled === false ? (
+                      <AlertTriangle className="size-5" />
+                    ) : (
+                      <CheckCircle2 className="size-5" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-display text-sm font-bold text-foreground">
+                        Storefront Promotional Banners System
+                      </h3>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                          businessSettings.bannersEnabled === false
+                            ? "bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-500/40"
+                            : "bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40"
+                        }`}
+                      >
+                        {businessSettings.bannersEnabled === false ? "DISABLED GLOBALLY" : "ACTIVE ON WEBSITE"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 max-w-xl leading-relaxed">
+                      {businessSettings.bannersEnabled === false
+                        ? "The banner functionality is turned OFF. No announcement bars or offer cards will appear anywhere on the website."
+                        : "The banner functionality is turned ON. Active banners stream live to the top announcement bar across all pages, the homepage, and the products catalog."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const nextState = businessSettings.bannersEnabled === false;
+                      try {
+                        await toggleBannersGlobal(nextState);
+                        setBusinessSettings({ ...businessSettings, bannersEnabled: nextState });
+                        showSuccessMessage(
+                          nextState
+                            ? "Storefront banners successfully enabled live!"
+                            : "Storefront banners turned OFF globally across the entire website.",
+                        );
+                      } catch (err: any) {
+                        showSuccessMessage(`Failed to update banner status: ${err?.message || err}`);
+                      }
+                    }}
+                    className={`font-bold text-xs gap-1.5 shadow-sm ${
+                      businessSettings.bannersEnabled === false
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : "bg-amber-600 hover:bg-amber-700 text-white"
+                    }`}
+                  >
+                    {businessSettings.bannersEnabled === false ? (
+                      <>
+                        <Check className="size-3.5" />
+                        <span>Turn ON Banners</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="size-3.5" />
+                        <span>Turn OFF Banners</span>
+                      </>
+                    )}
+                  </Button>
+
+                  {bannersList.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const hasActive = bannersList.some((b) => b.isActive);
+                        const confirmMsg = hasActive
+                          ? "Turn OFF all promotional banners? (They will remain in database but set to inactive)"
+                          : "Turn ON all promotional banners? (They will be set to active)";
+                        if (!window.confirm(confirmMsg)) return;
+                        try {
+                          await toggleAllBannersStatus(!hasActive);
+                          showSuccessMessage(
+                            hasActive
+                              ? "All banners set to INACTIVE."
+                              : "All banners set to ACTIVE.",
+                          );
+                        } catch (err: any) {
+                          showSuccessMessage(`Failed: ${err?.message || err}`);
+                        }
+                      }}
+                      className="text-xs h-8 text-muted-foreground hover:text-foreground"
+                    >
+                      {bannersList.some((b) => b.isActive) ? "Deactivate All" : "Activate All"}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -6262,7 +6379,7 @@ function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-semibold text-foreground mb-1">
                           IFSC Code
@@ -6279,18 +6396,134 @@ function AdminPage() {
                       </div>
                       <div>
                         <label className="block font-semibold text-foreground mb-1">
-                          UPI Virtual ID
+                          Primary UPI Virtual ID (VPA)
                         </label>
                         <input
                           type="text"
                           value={businessSettings.upiId}
                           onChange={(e) =>
-                            setBusinessSettings({ ...businessSettings, upiId: e.target.value })
+                            setBusinessSettings({ ...businessSettings, upiId: e.target.value.trim() })
                           }
-                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono text-foreground focus:border-primary focus:outline-none"
+                          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono font-bold text-foreground focus:border-primary focus:outline-none"
                           placeholder="8639858221@ybl"
                         />
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4B. Direct PhonePe UPI & Payment Gateway Configuration */}
+                <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-6 shadow-sm space-y-4 md:col-span-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-500/20 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="size-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0">
+                        <QrCode className="size-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-display text-sm font-bold text-foreground">
+                          Direct PhonePe &amp; Instant UPI Payment Settings
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Configure the exact PhonePe registered number, UPI VPA handle, and payee name used on the customer checkout page.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await updateBusinessSettings(businessSettings);
+                          showSuccessMessage("PhonePe UPI & payment settings saved successfully! Checkout is updated live.");
+                        } catch (err: any) {
+                          showSuccessMessage(`Failed saving settings: ${err?.message || err}`);
+                        }
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+                    >
+                      <Save className="size-3.5" />
+                      <span>Save PhonePe Settings</span>
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-foreground mb-1">
+                        PhonePe Registered Mobile Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={businessSettings.phonePeNumber || ""}
+                        onChange={(e) =>
+                          setBusinessSettings({
+                            ...businessSettings,
+                            phonePeNumber: e.target.value.replace(/\D/g, "").slice(0, 10),
+                          })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs font-mono font-bold text-foreground focus:border-purple-600 focus:outline-none"
+                        placeholder="8639858221"
+                      />
+                      <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                        Used for PhonePe transfer hotline, WhatsApp customer service, and verification.
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-foreground mb-1">
+                        PhonePe UPI ID / VPA <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={businessSettings.upiId || ""}
+                        onChange={(e) =>
+                          setBusinessSettings({
+                            ...businessSettings,
+                            upiId: e.target.value.trim(),
+                          })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs font-mono font-bold text-purple-700 dark:text-purple-300 focus:border-purple-600 focus:outline-none"
+                        placeholder="8639858221@ybl"
+                      />
+                      <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                        Embedded into dynamic scannable QR code and deep links (e.g. 8639858221@ybl).
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-foreground mb-1">
+                        Merchant / Payee Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={businessSettings.phonePeMerchantName || businessSettings.entityName || ""}
+                        onChange={(e) =>
+                          setBusinessSettings({
+                            ...businessSettings,
+                            phonePeMerchantName: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs font-bold text-foreground focus:border-purple-600 focus:outline-none"
+                        placeholder="Sri Udharchi Enterprises"
+                      />
+                      <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                        Beneficiary name shown inside PhonePe, GPay, and Paytm when paying.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Live UPI String & Status Preview */}
+                  <div className="rounded-xl border border-purple-500/20 bg-muted/40 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+                    <div className="space-y-0.5 truncate">
+                      <span className="text-[10px] text-muted-foreground font-sans block uppercase font-bold">
+                        Live Checkout UPI URI String:
+                      </span>
+                      <span className="text-purple-800 dark:text-purple-300 text-[11px] truncate select-all block">
+                        upi://pay?pa={businessSettings.upiId || "8639858221@ybl"}&amp;pn={encodeURIComponent(businessSettings.phonePeMerchantName || businessSettings.entityName || "Sri Udharchi Enterprises")}&amp;cu=INR
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 font-sans">
+                      <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 text-[10px] font-bold">
+                        <CheckCircle2 className="size-3" /> Live &amp; Active
+                      </span>
                     </div>
                   </div>
                 </div>

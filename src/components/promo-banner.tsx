@@ -1,25 +1,39 @@
 import { useState, useEffect } from "react";
 import { ArrowRight, Sparkles, X, Tag, ShieldCheck, Flame } from "lucide-react";
-import { subscribeBanners, DEFAULT_BANNERS } from "@/lib/db-service";
-import type { BannerItem } from "@/lib/types";
+import {
+  subscribeBanners,
+  subscribeBusinessSettings,
+  DEFAULT_BUSINESS_SETTINGS,
+} from "@/lib/db-service";
+import type { BannerItem, BusinessProfileSettings } from "@/lib/types";
 import { Button } from "@/components/button";
 
 /**
  * Top Announcement Bar shown above the navigation header
  */
 export function TopAnnouncementBanner() {
-  const [banners, setBanners] = useState<BannerItem[]>(DEFAULT_BANNERS);
+  const [bizSettings, setBizSettings] = useState<BusinessProfileSettings>(DEFAULT_BUSINESS_SETTINGS);
+  const [banners, setBanners] = useState<BannerItem[]>([]);
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeBanners((list) => {
+    const unsubBanners = subscribeBanners((list) => {
       setBanners(list);
     });
-    return () => unsub();
+    const unsubBiz = subscribeBusinessSettings((settings) => {
+      setBizSettings(settings);
+    });
+    return () => {
+      unsubBanners();
+      unsubBiz();
+    };
   }, []);
 
+  // If banners are disabled globally by admin or dismissed, hide banner
+  if (bizSettings.bannersEnabled === false || isDismissed) return null;
+
   const activeBanner = banners.find((b) => b.isActive);
-  if (!activeBanner || isDismissed) return null;
+  if (!activeBanner) return null;
 
   return (
     <aside
@@ -67,20 +81,30 @@ export function TopAnnouncementBanner() {
  * Rich Promotional Offer Showcase Card for Homepage & Products page
  */
 export function PromotionalOfferSection({ className = "" }: { className?: string }) {
-  const [banners, setBanners] = useState<BannerItem[]>(DEFAULT_BANNERS);
+  const [bizSettings, setBizSettings] = useState<BusinessProfileSettings>(DEFAULT_BUSINESS_SETTINGS);
+  const [banners, setBanners] = useState<BannerItem[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeBanners((list) => {
+    const unsubBanners = subscribeBanners((list) => {
       setBanners(list);
     });
-    return () => unsub();
+    const unsubBiz = subscribeBusinessSettings((settings) => {
+      setBizSettings(settings);
+    });
+    return () => {
+      unsubBanners();
+      unsubBiz();
+    };
   }, []);
+
+  // If banners are disabled globally by admin or no active banners, do not render
+  if (bizSettings.bannersEnabled === false) return null;
 
   const activeBanners = banners.filter((b) => b.isActive);
   if (activeBanners.length === 0) return null;
 
   const current = activeBanners[0];
-  if (!current) return null;
+  if (!current || !current.isActive) return null;
 
   return (
     <section className={`relative overflow-hidden ${className}`}>
