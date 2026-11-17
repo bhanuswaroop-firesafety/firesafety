@@ -115,7 +115,7 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessProfileSettings = {
   bankName: "State Bank of India (SBI)",
   accountNumber: "398582210012",
   ifscCode: "SBIN0001234",
-  upiId: "8639858221@ybl",
+  upiId: "sriudharchienterprises@okhdfcbank",
   phonePeNumber: "8639858221",
   phonePeMerchantName: "Sri Udharchi Enterprises",
   bannersEnabled: true,
@@ -1063,7 +1063,7 @@ export function generatePhonePeUpiUrls(
   amount: number,
   orderNumber: string,
   payeeName = "Sri Udharchi Enterprises",
-  upiId = "8639858221@ybl",
+  upiId = "sriudharchienterprises@okhdfcbank",
 ) {
   const cleanAmount = Number(amount || 0).toFixed(2);
   const encodedName = encodeURIComponent(payeeName);

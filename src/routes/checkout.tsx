@@ -45,6 +45,7 @@ import {
   ExternalLink,
   HelpCircle,
   Sparkles,
+  X,
 } from "lucide-react";
 
 import { seoHead } from "@/lib/seo";
@@ -225,6 +226,8 @@ function CheckoutPage() {
   // Payment states: PhonePe Direct UPI (primary & recommended) & COD
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("phonepe");
   const [phonePeTransactionId, setPhonePeTransactionId] = useState("");
+  const [showPhonePeModal, setShowPhonePeModal] = useState(false);
+  const [activeQrTab, setActiveQrTab] = useState<"dynamic" | "card">("dynamic");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [previewOrderId] = useState(() => generateOrderNumber());
@@ -272,7 +275,7 @@ function CheckoutPage() {
     Math.max(0, subtotal - discountAmount) + gstAmount + selectedShippingFee;
 
   // Generate PhonePe UPI Links dynamically based on calculated price
-  const activeUpiId = businessSettings.upiId || "8639858221@ybl";
+  const activeUpiId = businessSettings.upiId || "sriudharchienterprises@okhdfcbank";
   const activePhonePeNumber = businessSettings.phonePeNumber || "8639858221";
   const activePayeeName =
     businessSettings.phonePeMerchantName ||
@@ -310,42 +313,178 @@ function CheckoutPage() {
     }
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setValidationError("");
-
+  const validateDeliveryDetails = () => {
     // Validations: Full name
     if (!fullName.trim()) {
       setValidationError("Please enter your full name / contact person name.");
-      return;
+      return false;
     }
 
     // Mobile phone number strictly required (at least 10 digits)
     const cleanPhoneDigits = phone.trim().replace(/\D/g, "");
     if (!cleanPhoneDigits || cleanPhoneDigits.length < 10) {
       setValidationError("Please enter a valid 10-digit mobile number required to book your order.");
-      return;
+      return false;
     }
 
     // Valid email format strictly required
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !emailRegex.test(email.trim())) {
       setValidationError("Please enter a valid Gmail or corporate email address (e.g. yourname@gmail.com) for official GST billing.");
-      return;
+      return false;
     }
 
     if (!address.trim()) {
       setValidationError("Please enter your delivery site/facility address.");
-      return;
+      return false;
     }
     if (!pincode.trim() || pincode.trim().length < 6) {
       setValidationError("Please enter a valid 6-digit postal PIN code.");
-      return;
+      return false;
     }
 
     if (isB2B && !companyName.trim()) {
       setValidationError("Please enter your registered Company / Facility name.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handlePhonePeSubmit = async (txnIdToSubmit: string) => {
+    const cleanTxnId = txnIdToSubmit.trim();
+    if (!cleanTxnId || cleanTxnId.length < 8) {
+      setValidationError(
+        "Please enter your valid 12 or 13-digit PhonePe Transaction ID (starts with T) or bank UTR from your payment confirmation screen.",
+      );
       return;
+    }
+
+    if (!validateDeliveryDetails()) {
+      setShowPhonePeModal(false);
+      return;
+    }
+
+    const orderId = previewOrderId || generateOrderNumber();
+    const windowInfo = calculateDeliveryWindow(deliverySpeed, shippingSettings);
+    const fullShippingAddress = `${address.trim()}, ${city}, ${state} - ${pincode}`;
+    const customerUid =
+      user?.uid ||
+      userProfile?.id ||
+      `cust-${email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, "").slice(0, 10)}`;
+
+    setIsProcessing(true);
+    setProcessingStep("Submitting PhonePe payment details for verification...");
+
+    const confirmation: OrderConfirmationData = {
+      orderId,
+      orderDate: formatKolkataDisplay(new Date(), true),
+      customerName: fullName.trim(),
+      customerPhone: phone.trim(),
+      customerEmail: email.trim().toLowerCase(),
+      shippingAddress: fullShippingAddress,
+      companyName: isB2B ? companyName.trim() : undefined,
+      gstin: isB2B ? gstin.trim() : undefined,
+      paymentMethod: "phonepe",
+      paymentId: cleanTxnId,
+      transactionId: cleanTxnId,
+      paymentStatus: "pending",
+      items: cartItems.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+      })),
+      subtotal,
+      discount: discountAmount,
+      gst: gstAmount,
+      shipping: selectedShippingFee,
+      total: finalPayable,
+      estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+      shippingType: deliverySpeed,
+      expectedDeliveryFrom: windowInfo.fromISO,
+      expectedDeliveryTo: windowInfo.toISO,
+    };
+
+    try {
+      await submitOrder({
+        orderId,
+        orderNumber: orderId,
+        customerId: customerUid,
+        customerName: fullName.trim(),
+        customerPhone: phone.trim(),
+        customerEmail: email.trim().toLowerCase(),
+        shippingAddress: fullShippingAddress,
+        companyName: isB2B && companyName ? companyName.trim() : "",
+        gstin: isB2B && gstin ? gstin.trim() : "",
+        paymentMethod: "phonepe",
+        paymentStatus: "pending",
+        paymentId: cleanTxnId,
+        paymentDetails: {
+          gateway: "phonepe",
+          transactionId: cleanTxnId,
+          utr: cleanTxnId,
+          upiId: activeUpiId,
+          amount: finalPayable,
+          submittedAt: new Date().toISOString(),
+        },
+        items: cartItems.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+          productId: i.id,
+          renewalMonths: i.renewalMonths,
+        })),
+        subtotal,
+        discount: discountAmount,
+        gst: gstAmount,
+        shipping: selectedShippingFee,
+        total: finalPayable,
+        status: "placed",
+        shippingType: deliverySpeed,
+        expectedDeliveryFrom: windowInfo.fromISO,
+        expectedDeliveryTo: windowInfo.toISO,
+        shippingCharge: selectedShippingFee,
+        estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
+      });
+
+      if (user) {
+        await deleteCheckoutDraft(user.uid).catch(() => {});
+      }
+      clearCart();
+      setShowPhonePeModal(false);
+      setIsProcessing(false);
+      setConfirmedOrder(confirmation);
+    } catch (err: unknown) {
+      setIsProcessing(false);
+      const msg = err instanceof Error ? err.message : String(err);
+      setValidationError(`Order submission failed: ${msg}. Please check your connection and retry.`);
+    }
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setValidationError("");
+
+    if (!validateDeliveryDetails()) {
+      return;
+    }
+
+    // Persist booking draft to Firestore
+    if (user) {
+      saveCheckoutDraft(user.uid, {
+        fullName,
+        phone,
+        email,
+        address,
+        city,
+        state,
+        pincode,
+        isB2B,
+        companyName,
+        gstin,
+        deliverySpeed,
+        paymentMethod,
+      }).catch(() => {});
     }
 
     const orderId = previewOrderId || generateOrderNumber();
@@ -359,98 +498,25 @@ function CheckoutPage() {
     // === OPTION 1: PHONEPE DIRECT UPI & QR PAYMENT ===
     if (paymentMethod === "phonepe" || paymentMethod === "upi") {
       const cleanTxnId = phonePeTransactionId.trim();
-      if (!cleanTxnId || cleanTxnId.length < 10) {
-        setValidationError(
-          "Please enter the 13-digit PhonePe Transaction ID / UTR from your payment confirmation screen to submit your order (e.g., T2611... or 13-digit number).",
-        );
+      // If customer has NOT yet entered transaction ID, open the dedicated PhonePe gateway screen
+      if (!cleanTxnId) {
+        setShowPhonePeModal(true);
+        // On mobile devices, attempt to trigger PhonePe app deep link immediately
+        try {
+          if (typeof window !== "undefined") {
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isMobile) {
+              window.location.href = upiDetails.phonePeUrl;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not auto-redirect to PhonePe deep link:", e);
+        }
         return;
       }
 
-      setIsProcessing(true);
-      setProcessingStep("Submitting PhonePe payment details for verification...");
-
-      const confirmation: OrderConfirmationData = {
-        orderId,
-        orderDate: formatKolkataDisplay(new Date(), true),
-        customerName: fullName.trim(),
-        customerPhone: phone.trim(),
-        customerEmail: email.trim().toLowerCase(),
-        shippingAddress: fullShippingAddress,
-        companyName: isB2B ? companyName.trim() : undefined,
-        gstin: isB2B ? gstin.trim() : undefined,
-        paymentMethod: "phonepe",
-        paymentId: cleanTxnId,
-        transactionId: cleanTxnId,
-        paymentStatus: "pending",
-        items: cartItems.map((i) => ({
-          name: i.name,
-          quantity: i.quantity,
-          price: i.price,
-        })),
-        subtotal,
-        discount: discountAmount,
-        gst: gstAmount,
-        shipping: selectedShippingFee,
-        total: finalPayable,
-        estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
-        shippingType: deliverySpeed,
-        expectedDeliveryFrom: windowInfo.fromISO,
-        expectedDeliveryTo: windowInfo.toISO,
-      };
-
-      try {
-        await submitOrder({
-          orderId,
-          orderNumber: orderId,
-          customerId: customerUid,
-          customerName: fullName.trim(),
-          customerPhone: phone.trim(),
-          customerEmail: email.trim().toLowerCase(),
-          shippingAddress: fullShippingAddress,
-          companyName: isB2B && companyName ? companyName.trim() : "",
-          gstin: isB2B && gstin ? gstin.trim() : "",
-          paymentMethod: "phonepe",
-          paymentStatus: "pending",
-          paymentId: cleanTxnId,
-          paymentDetails: {
-            gateway: "phonepe",
-            transactionId: cleanTxnId,
-            utr: cleanTxnId,
-            upiId: activeUpiId,
-            amount: finalPayable,
-            submittedAt: new Date().toISOString(),
-          },
-          items: cartItems.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            price: i.price,
-            productId: i.id,
-            renewalMonths: i.renewalMonths,
-          })),
-          subtotal,
-          discount: discountAmount,
-          gst: gstAmount,
-          shipping: selectedShippingFee,
-          total: finalPayable,
-          status: "placed",
-          shippingType: deliverySpeed,
-          expectedDeliveryFrom: windowInfo.fromISO,
-          expectedDeliveryTo: windowInfo.toISO,
-          shippingCharge: selectedShippingFee,
-          estimatedDelivery: `${windowInfo.fromDisplay} - ${windowInfo.toDisplay}`,
-        });
-
-        if (user) {
-          await deleteCheckoutDraft(user.uid).catch(() => {});
-        }
-        clearCart();
-        setIsProcessing(false);
-        setConfirmedOrder(confirmation);
-      } catch (err: unknown) {
-        setIsProcessing(false);
-        const msg = err instanceof Error ? err.message : String(err);
-        setValidationError(`Order submission failed: ${msg}. Please check your connection and retry.`);
-      }
+      // If user already entered transaction ID, submit order
+      await handlePhonePeSubmit(cleanTxnId);
       return;
     }
 
@@ -1334,23 +1400,61 @@ function CheckoutPage() {
                           </div>
 
                           <div className="grid gap-6 md:grid-cols-[auto_1fr] items-center">
-                            {/* Left: Dynamic QR Code */}
+                            {/* Left: Dynamic QR Code with Tab Switcher */}
                             <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-border/80 shadow-md">
-                              {qrDataUrl ? (
-                                <img
-                                  src={qrDataUrl}
-                                  alt="PhonePe UPI QR Code"
-                                  className="size-44 sm:size-48 object-contain rounded-lg"
-                                />
+                              {/* QR Mode Switcher */}
+                              <div className="mb-2 flex items-center rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveQrTab("dynamic")}
+                                  className={`px-2 py-0.5 rounded transition-all ${
+                                    activeQrTab === "dynamic"
+                                      ? "bg-white text-slate-900 shadow-xs"
+                                      : "text-slate-500 hover:text-slate-800"
+                                  }`}
+                                >
+                                  Dynamic QR
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveQrTab("card")}
+                                  className={`px-2 py-0.5 rounded transition-all ${
+                                    activeQrTab === "card"
+                                      ? "bg-white text-slate-900 shadow-xs"
+                                      : "text-slate-500 hover:text-slate-800"
+                                  }`}
+                                >
+                                  Merchant Card
+                                </button>
+                              </div>
+
+                              {activeQrTab === "dynamic" ? (
+                                qrDataUrl ? (
+                                  <img
+                                    src={qrDataUrl}
+                                    alt="PhonePe UPI QR Code"
+                                    className="size-44 sm:size-48 object-contain rounded-lg"
+                                  />
+                                ) : (
+                                  <div className="size-44 sm:size-48 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                                    Generating QR...
+                                  </div>
+                                )
                               ) : (
-                                <div className="size-44 sm:size-48 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                                  Generating QR...
-                                </div>
+                                <img
+                                  src="/phonepe-upi-card.png"
+                                  alt="Sri Udharchi Official Merchant Card"
+                                  className="h-44 sm:h-48 w-auto object-contain rounded-lg"
+                                />
                               )}
                               <div className="mt-2 text-center">
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800">
                                   <QrCode className="size-3.5 text-[#5f259f]" />
-                                  <span>Scan via PhonePe / UPI</span>
+                                  <span>
+                                    {activeQrTab === "dynamic"
+                                      ? `Scan to Pay ₹${finalPayable.toLocaleString("en-IN")}`
+                                      : "Official Merchant UPI QR"}
+                                  </span>
                                 </span>
                               </div>
                             </div>
@@ -1359,16 +1463,26 @@ function CheckoutPage() {
                             <div className="space-y-3">
                               {/* Direct Open in PhonePe App button */}
                               <div>
-                                <a
-                                  href={upiDetails.phonePeUrl}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (validateDeliveryDetails()) {
+                                      setShowPhonePeModal(true);
+                                      try {
+                                        if (typeof window !== "undefined") {
+                                          window.location.href = upiDetails.phonePeUrl;
+                                        }
+                                      } catch (e) {}
+                                    }
+                                  }}
                                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#5f259f] hover:bg-[#521e8d] text-white px-5 py-3 text-sm font-bold shadow-md shadow-purple-900/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
                                 >
                                   <Smartphone className="size-4" />
-                                  <span>Open in PhonePe App (₹{finalPayable.toLocaleString("en-IN")})</span>
+                                  <span>Open PhonePe &amp; Pay ₹{finalPayable.toLocaleString("en-IN")}</span>
                                   <ExternalLink className="size-3.5 ml-1" />
-                                </a>
+                                </button>
                                 <p className="text-[11px] text-muted-foreground mt-1 text-center">
-                                  Opens PhonePe directly with payee &amp; exact amount pre-filled.
+                                  Launches PhonePe directly with payee &amp; exact amount pre-filled.
                                 </p>
                               </div>
 
@@ -1400,7 +1514,7 @@ function CheckoutPage() {
                                 <div className="flex items-center justify-between">
                                   <span className="text-muted-foreground">Payee UPI ID:</span>
                                   <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                                    <span>{activeUpiId}</span>
+                                    <span className="select-all">{activeUpiId}</span>
                                     <button
                                       type="button"
                                       onClick={() => copyToClipboard(activeUpiId, "upiId")}
@@ -1414,7 +1528,7 @@ function CheckoutPage() {
                                 <div className="flex items-center justify-between">
                                   <span className="text-muted-foreground">PhonePe Registered No:</span>
                                   <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                                    <span>{activePhonePeNumber}</span>
+                                    <span className="select-all">{activePhonePeNumber}</span>
                                     <button
                                       type="button"
                                       onClick={() => copyToClipboard(activePhonePeNumber, "phonepeNum")}
@@ -1435,32 +1549,31 @@ function CheckoutPage() {
                             </div>
                           </div>
 
-                          {/* 13-Digit PhonePe Transaction ID Input (Required) */}
+                          {/* 13-Digit PhonePe Transaction ID Input */}
                           <div className="pt-3 border-t border-border/70 space-y-2">
                             <label className="block text-xs font-bold text-foreground">
-                              Enter PhonePe 13-Digit Transaction ID / UTR <span className="text-red-500">*</span>
+                              Enter PhonePe 13-Digit Transaction ID / UTR (if already paid)
                             </label>
                             <div className="relative">
                               <input
                                 type="text"
-                                required
                                 value={phonePeTransactionId}
                                 onChange={(e) => setPhonePeTransactionId(e.target.value.trim())}
-                                placeholder="e.g. T261108152345 or 13-digit UTR"
-                                maxLength={30}
+                                placeholder="e.g. T261108152345 or 12/13-digit UTR"
+                                maxLength={35}
                                 className="w-full rounded-xl border border-purple-500/40 bg-background px-4 py-2.5 text-sm font-mono text-foreground focus:border-[#5f259f] focus:ring-2 focus:ring-[#5f259f]/20 focus:outline-none"
                               />
-                              {phonePeTransactionId.length >= 10 && (
+                              {phonePeTransactionId.length >= 8 && (
                                 <span className="absolute right-3 top-3 text-[11px] font-bold text-emerald-600 flex items-center gap-1">
                                   <CheckCircle2 className="size-4" />
-                                  <span>Valid Reference</span>
+                                  <span>Ready</span>
                                 </span>
                               )}
                             </div>
                             <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                               <HelpCircle className="size-3.5 text-primary shrink-0 mt-0.5" />
                               <span>
-                                Complete payment on PhonePe, open the receipt, copy the 13-digit <strong>Transaction ID</strong> (starts with T) or bank <strong>UTR</strong>, and paste it here.
+                                Complete payment on PhonePe, then paste the 13-digit <strong>Transaction ID</strong> (starts with T) or bank <strong>UTR</strong> to confirm your order.
                               </span>
                             </div>
                           </div>
@@ -1677,8 +1790,13 @@ function CheckoutPage() {
                         </span>
                       ) : paymentMethod === "phonepe" ? (
                         <span className="flex items-center gap-2">
-                          <QrCode className="size-4" />
-                          <span>Submit PhonePe Payment • ₹{finalPayable.toLocaleString("en-IN")}</span>
+                          <Smartphone className="size-4" />
+                          <span>
+                            {phonePeTransactionId.trim()
+                              ? `Confirm Order & Submit Payment • ₹${finalPayable.toLocaleString("en-IN")}`
+                              : `Pay ₹${finalPayable.toLocaleString("en-IN")} via PhonePe / UPI`}
+                          </span>
+                          <ArrowRight className="size-4" />
                         </span>
                       ) : paymentMethod === "razorpay" ? (
                         <span className="flex items-center gap-2">
@@ -1723,6 +1841,296 @@ function CheckoutPage() {
           </form>
         </div>
       </section>
+
+      {/* =========================================================================
+          PHONEPE DEDICATED PAYMENT SCREEN / MODAL (HIGH-CONVERTING GATEWAY UI)
+          ========================================================================= */}
+      {showPhonePeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl border border-purple-500/30 bg-card text-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-200 my-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-purple-500/20 bg-gradient-to-r from-[#5f259f] via-purple-900 to-indigo-950 px-5 py-4 text-white shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-white text-[#5f259f] shadow-inner font-black">
+                  <Smartphone className="size-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-base sm:text-lg font-black tracking-tight leading-tight">
+                      PhonePe UPI Payment
+                    </h3>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-400/30">
+                      <ShieldCheck className="size-3" /> Direct Gateway
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-purple-200">
+                    Order Ref: <span className="font-mono font-bold text-white">#{previewOrderId}</span> • Sri Udharchi Enterprises
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhonePeModal(false)}
+                className="rounded-full bg-white/10 p-2 text-purple-200 hover:bg-white/20 hover:text-white transition-colors"
+                title="Close"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-5">
+              {/* Live Amount Banner */}
+              <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-purple-500/10 via-[#5f259f]/5 to-transparent p-4 border border-purple-500/20">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">
+                    Total Invoiced Amount
+                  </span>
+                  <div className="font-display text-2xl sm:text-3xl font-black text-[#5f259f] dark:text-purple-300">
+                    ₹{finalPayable.toLocaleString("en-IN")}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    Inclusive of 18% GST &amp; Shipping • Zero Convenience Fees
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex flex-col items-end">
+                    <span className="text-[10px] font-semibold text-muted-foreground">Beneficiary Name</span>
+                    <span className="text-xs font-bold text-foreground max-w-[170px] truncate">
+                      {activePayeeName}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 1: Open PhonePe App (One-click trigger on Mobile) */}
+              <div className="space-y-2">
+                <a
+                  href={upiDetails.phonePeUrl}
+                  className="w-full inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#5f259f] to-[#4c1d80] hover:from-[#521e8d] hover:to-[#3e1769] text-white px-5 py-3.5 text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <Smartphone className="size-5" />
+                  <span>Open in PhonePe App (Pay ₹{finalPayable.toLocaleString("en-IN")})</span>
+                  <ExternalLink className="size-4 ml-0.5" />
+                </a>
+
+                {/* Other UPI Apps row */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground shrink-0">Other UPI:</span>
+                  <a
+                    href={upiDetails.gpayUrl}
+                    className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
+                  >
+                    Google Pay
+                  </a>
+                  <a
+                    href={upiDetails.paytmUrl}
+                    className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
+                  >
+                    Paytm
+                  </a>
+                  <a
+                    href={upiDetails.upiUrl}
+                    className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
+                  >
+                    Any UPI App
+                  </a>
+                </div>
+              </div>
+
+              {/* QR Code Section with Tabs */}
+              <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-border/70 flex-wrap gap-2">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <QrCode className="size-4 text-[#5f259f]" />
+                    <span>Scan to Pay (Desktop / Another Device)</span>
+                  </span>
+                  {/* Tab Selector */}
+                  <div className="inline-flex rounded-lg bg-muted p-1 text-[11px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setActiveQrTab("dynamic")}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        activeQrTab === "dynamic"
+                          ? "bg-card text-foreground font-bold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Dynamic Bill QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveQrTab("card")}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        activeQrTab === "card"
+                          ? "bg-card text-foreground font-bold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Official Merchant Card
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-2">
+                  {activeQrTab === "dynamic" ? (
+                    <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-border/80 shadow-md">
+                      {qrDataUrl ? (
+                        <img
+                          src={qrDataUrl}
+                          alt="Dynamic PhonePe UPI QR"
+                          className="size-44 sm:size-48 object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="size-44 sm:size-48 flex items-center justify-center text-xs text-muted-foreground">
+                          Generating QR...
+                        </div>
+                      )}
+                      <span className="mt-2 text-[11px] font-bold text-slate-800">
+                        Scan to Pay ₹{finalPayable.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-white border border-border/80 shadow-md">
+                      <img
+                        src="/phonepe-upi-card.png"
+                        alt="Sri Udharchi Official Merchant Card"
+                        className="h-48 sm:h-52 w-auto object-contain rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {/* Merchant Details & Copy buttons */}
+                  <div className="space-y-2.5 text-xs flex-1 w-full">
+                    <div className="rounded-xl border border-border/70 bg-card p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">Payee UPI ID:</span>
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                          <span className="select-all text-[11px] sm:text-xs">{activeUpiId}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(activeUpiId, "upiId")}
+                            className="p-1 rounded hover:bg-muted text-primary"
+                            title="Copy UPI ID"
+                          >
+                            {copiedField === "upiId" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">PhonePe Registered No:</span>
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                          <span className="select-all">{activePhonePeNumber}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(activePhonePeNumber, "phonepeNum")}
+                            className="p-1 rounded hover:bg-muted text-primary"
+                            title="Copy PhonePe Number"
+                          >
+                            {copiedField === "phonepeNum" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50 text-[11px]">
+                        <span className="text-muted-foreground">Proprietor:</span>
+                        <span className="font-semibold text-foreground">Dabbara Bhanu Swaroop</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Scan with PhonePe, Google Pay, Paytm, BHIM, or any UPI banking app.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 2: "HAVE YOU MADE THE PAYMENT?" VERIFICATION SECTION */}
+              <div className="rounded-2xl border-2 border-[#5f259f]/40 bg-gradient-to-br from-[#5f259f]/10 via-purple-500/5 to-transparent p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-[#5f259f] text-white shrink-0 mt-0.5">
+                    <CheckCircle2 className="size-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-display text-sm sm:text-base font-bold text-foreground">
+                      Have you made the payment?
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Once you finish the transfer in PhonePe, enter your 12 or 13-digit Transaction ID / UTR below to confirm your order.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1.5">
+                      Enter PhonePe 13-Digit Transaction ID / UTR <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={phonePeTransactionId}
+                        onChange={(e) => setPhonePeTransactionId(e.target.value.trim())}
+                        placeholder="e.g. T261108152345 or 12/13-digit UTR"
+                        maxLength={35}
+                        className="w-full rounded-xl border border-purple-500/40 bg-background px-4 py-3 text-sm font-mono text-foreground focus:border-[#5f259f] focus:ring-2 focus:ring-[#5f259f]/20 focus:outline-none placeholder:text-muted-foreground/60"
+                      />
+                      {phonePeTransactionId.length >= 8 && (
+                        <span className="absolute right-3.5 top-3.5 text-xs font-bold text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="size-4" />
+                          <span>Ready</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 rounded-xl bg-background/80 border border-border p-3 text-[11px] text-muted-foreground leading-relaxed">
+                    <HelpCircle className="size-4 text-[#5f259f] shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Where to find it:</strong> In PhonePe, open <em>History</em> &gt; tap the payment to <em>Sri Udharchi Enterprises</em> &gt; copy the 13-digit <strong>Transaction ID</strong> (starts with &apos;T&apos;) or bank <strong>UTR</strong>.
+                    </span>
+                  </div>
+
+                  {validationError && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-600 flex items-center gap-2">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span>{validationError}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-1 flex flex-col sm:flex-row gap-2.5">
+                    <button
+                      type="button"
+                      disabled={isProcessing || !phonePeTransactionId.trim()}
+                      onClick={() => handlePhonePeSubmit(phonePeTransactionId)}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-3.5 text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span>Verifying &amp; Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="size-4" />
+                          <span>Submit Transaction ID &amp; Confirm Order</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPhonePeModal(false)}
+                      className="px-4 py-3 rounded-xl border border-border bg-background hover:bg-muted text-xs font-semibold text-muted-foreground transition-colors"
+                    >
+                      Return to Checkout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Processing Overlay Dialog */}
       {isProcessing && (

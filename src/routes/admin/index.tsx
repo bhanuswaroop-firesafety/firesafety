@@ -6517,7 +6517,7 @@ function AdminPage() {
                         Live Checkout UPI URI String:
                       </span>
                       <span className="text-purple-800 dark:text-purple-300 text-[11px] truncate select-all block">
-                        upi://pay?pa={businessSettings.upiId || "8639858221@ybl"}&amp;pn={encodeURIComponent(businessSettings.phonePeMerchantName || businessSettings.entityName || "Sri Udharchi Enterprises")}&amp;cu=INR
+                        upi://pay?pa={businessSettings.upiId || "sriudharchienterprises@okhdfcbank"}&amp;pn={encodeURIComponent(businessSettings.phonePeMerchantName || businessSettings.entityName || "Sri Udharchi Enterprises")}&amp;cu=INR
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 font-sans">
