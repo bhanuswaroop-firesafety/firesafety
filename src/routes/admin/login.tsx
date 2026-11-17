@@ -15,6 +15,9 @@ import { useAuth, SUPER_ADMIN_EMAILS } from "@/lib/auth-context";
 import { isEmailAuthorizedAdmin } from "@/lib/db-service";
 import {
   auth,
+  db,
+  doc,
+  setDoc,
   googleProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -96,13 +99,32 @@ export function AdminLoginPage() {
 
       if (credential.user) {
         const authenticatedEmail = (credential.user.email || targetEmail).toLowerCase().trim();
-        const isAuthorized = await isEmailAuthorizedAdmin(authenticatedEmail);
+        const uid = credential.user.uid;
+        const isAuthorized = await isEmailAuthorizedAdmin(authenticatedEmail, uid);
         if (!isAuthorized) {
           await signOut(auth);
           setErrorMsg(
             "Access Denied: This email address is not an authorized administrator. Please contact your executive administrator to be provisioned.",
           );
           return;
+        }
+
+        // Successfully authenticated! Ensure users/{uid} document has role="admin"
+        try {
+          const userDocRef = doc(db, "users", uid);
+          await setDoc(
+            userDocRef,
+            {
+              id: uid,
+              email: authenticatedEmail,
+              role: "admin",
+              updatedAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+            },
+            { merge: true },
+          );
+        } catch (syncErr) {
+          console.warn("Notice updating admin user profile on login:", syncErr);
         }
 
         // Successfully authenticated! Navigate to /admin
@@ -136,16 +158,37 @@ export function AdminLoginPage() {
     setSubmitting(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const googleEmail = result.user?.email?.toLowerCase() || "";
+      const googleEmail = result.user?.email?.toLowerCase().trim() || "";
+      const uid = result.user?.uid;
 
       // Enforce authorized administrator check
-      const isAuthorized = await isEmailAuthorizedAdmin(googleEmail);
+      const isAuthorized = await isEmailAuthorizedAdmin(googleEmail, uid);
       if (!isAuthorized) {
         await signOut(auth);
         setErrorMsg(
           `Access Denied: Account (${googleEmail || "unknown"}) is not registered as an authorized administrator. Please request executive provisioning.`,
         );
         return;
+      }
+
+      // Successfully authenticated! Ensure users/{uid} document has role="admin"
+      if (uid) {
+        try {
+          const userDocRef = doc(db, "users", uid);
+          await setDoc(
+            userDocRef,
+            {
+              id: uid,
+              email: googleEmail,
+              role: "admin",
+              updatedAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+            },
+            { merge: true },
+          );
+        } catch (syncErr) {
+          console.warn("Notice updating admin user profile on Google login:", syncErr);
+        }
       }
 
       navigate({ to: "/admin" });

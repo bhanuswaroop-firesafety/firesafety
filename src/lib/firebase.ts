@@ -29,6 +29,9 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  deleteField,
 } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
@@ -144,6 +147,9 @@ export {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  deleteField,
   initializeApp,
   getApps,
   getAuth,

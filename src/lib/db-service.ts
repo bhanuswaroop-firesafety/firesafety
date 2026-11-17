@@ -18,6 +18,9 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   deleteApp,
+  arrayUnion,
+  arrayRemove,
+  deleteField,
 } from "./firebase";
 import type {
   ProductItem,
@@ -1575,27 +1578,79 @@ export async function seedOfficialCategories(): Promise<number> {
 // Authorized Admins Services
 // ========================================================
 
-export async function isEmailAuthorizedAdmin(email: string): Promise<boolean> {
+export async function isEmailAuthorizedAdmin(
+  email: string,
+  userUid?: string,
+): Promise<boolean> {
   if (!email) return false;
   const clean = email.toLowerCase().trim();
   if (clean === "bhanuswaroop04@gmail.com") return true;
 
+  // 1. Check settings/authorized_admins (Settings collection is public-read, immune to auth permission rules)
   try {
-    // 1. Check authorized_admins collection
+    const settingsDocRef = doc(db, "settings", "authorized_admins");
+    const snap = await getDoc(settingsDocRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data) {
+        const safeKey = clean.replace(/[^a-zA-Z0-9_]/g, "_");
+        if (data[safeKey] === true || data[clean] === true) return true;
+        if (
+          Array.isArray(data.emails) &&
+          data.emails.map((e: string) => String(e).toLowerCase().trim()).includes(clean)
+        ) {
+          return true;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Notice checking settings/authorized_admins:", err);
+  }
+
+  // 2. Check authorized_admins collection directly by document ID (clean email)
+  try {
     const docRef = doc(db, "authorized_admins", clean);
     const snap = await getDoc(docRef);
     if (snap.exists()) return true;
+  } catch (err) {
+    console.warn("Notice checking authorized_admins by doc ID:", err);
+  }
 
-    // 2. Check if registered in users collection with role === "admin"
+  // 3. Query authorized_admins collection where email == clean
+  try {
+    const colRef = collection(db, "authorized_admins");
+    const q = query(colRef, where("email", "==", clean));
+    const snap = await getDocs(q);
+    if (!snap.empty) return true;
+  } catch (err) {
+    console.warn("Notice querying authorized_admins by email:", err);
+  }
+
+  // 4. Check user document directly by UID if user is signed in
+  const uidToCheck = userUid || (typeof window !== "undefined" ? auth.currentUser?.uid : undefined);
+  if (uidToCheck) {
+    try {
+      const userDocRef = doc(db, "users", uidToCheck);
+      const userSnap = await getDoc(userDocRef);
+      if (userSnap.exists() && userSnap.data()?.role === "admin") {
+        return true;
+      }
+    } catch (err) {
+      console.warn("Notice checking users doc by UID:", err);
+    }
+  }
+
+  // 5. Query users collection where email == clean and role == admin
+  try {
     const usersCol = collection(db, "users");
     const q = query(usersCol, where("email", "==", clean), where("role", "==", "admin"));
     const usersSnap = await getDocs(q);
     if (!usersSnap.empty) return true;
-
-    return false;
-  } catch {
-    return false;
+  } catch (err) {
+    console.warn("Notice querying users by email:", err);
   }
+
+  return false;
 }
 
 export function subscribeAuthorizedAdmins(
@@ -1641,21 +1696,37 @@ export async function addAuthorizedAdmin(adminData: {
   // Uses an isolated secondary Firebase app to prevent logging out the current admin session
   let authProvisioned = false;
   let provisionedUid: string | null = null;
+  let authNotice = "";
+
   if (adminData.password && adminData.password.trim().length >= 6) {
+    const tempAppName = `AdminProvision_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    let tempApp: any = null;
     try {
-      const tempAppName = `AdminProvision_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const tempApp = initializeApp(firebaseConfig, tempAppName);
+      tempApp = initializeApp(firebaseConfig, tempAppName);
       const tempAuth = getAuth(tempApp);
       const cred = await createUserWithEmailAndPassword(tempAuth, cleanEmail, adminData.password.trim());
       provisionedUid = cred.user.uid;
       await signOut(tempAuth);
-      await deleteApp(tempApp);
       authProvisioned = true;
     } catch (authErr: any) {
-      if (authErr?.code === "auth/email-already-in-use") {
+      const code = authErr?.code || "";
+      const msg = authErr?.message || String(authErr);
+      if (code === "auth/email-already-in-use" || msg.includes("email-already-in-use")) {
         authProvisioned = true;
+        authNotice = "Account already exists in Firebase Auth; administrative role granted.";
       } else {
-        console.warn("Secondary auth provisioning notice:", authErr?.message || authErr);
+        console.error("Secondary auth provisioning error:", authErr);
+        throw new Error(
+          `Firebase Authentication error: ${msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)/, "").trim() || "Failed to create login account."}`,
+        );
+      }
+    } finally {
+      if (tempApp) {
+        try {
+          await deleteApp(tempApp);
+        } catch {
+          // ignore cleanup error
+        }
       }
     }
   }
@@ -1666,7 +1737,6 @@ export async function addAuthorizedAdmin(adminData: {
     email: cleanEmail,
     displayName: adminData.displayName || cleanEmail.split("@")[0],
     role: "admin",
-    department: adminData.department || "Operations",
     phone: adminData.phone || "",
     addedBy: adminData.addedBy || "Super Administrator",
     createdAt: now,
@@ -1676,20 +1746,41 @@ export async function addAuthorizedAdmin(adminData: {
   const docRef = doc(db, "authorized_admins", cleanEmail);
   await setDoc(docRef, cleanFirestoreData(record), { merge: true });
 
-  // 3. Sync to users collection so role === "admin" is immediately reflected
+  // 3. Update settings/authorized_admins (Public-read collection, guarantees instant login authorization)
+  try {
+    const settingsDocRef = doc(db, "settings", "authorized_admins");
+    const safeKey = cleanEmail.replace(/[^a-zA-Z0-9_]/g, "_");
+    await setDoc(
+      settingsDocRef,
+      {
+        [safeKey]: true,
+        [cleanEmail]: true,
+        emails: arrayUnion(cleanEmail),
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+  } catch (settingsErr) {
+    console.warn("Notice updating settings/authorized_admins:", settingsErr);
+  }
+
+  // 4. Sync to users collection so role === "admin" is immediately reflected
   try {
     if (provisionedUid) {
       const userDocRef = doc(db, "users", provisionedUid);
-      await setDoc(userDocRef, cleanFirestoreData({
-        id: provisionedUid,
-        email: cleanEmail,
-        displayName: adminData.displayName || cleanEmail.split("@")[0],
-        role: "admin",
-        department: adminData.department || "Operations",
-        phone: adminData.phone || "",
-        createdAt: now,
-        updatedAt: now,
-      }), { merge: true });
+      await setDoc(
+        userDocRef,
+        cleanFirestoreData({
+          id: provisionedUid,
+          email: cleanEmail,
+          displayName: adminData.displayName || cleanEmail.split("@")[0],
+          role: "admin",
+          phone: adminData.phone || "",
+          createdAt: now,
+          updatedAt: now,
+        }),
+        { merge: true },
+      );
     } else {
       const usersCol = collection(db, "users");
       const q = query(usersCol, where("email", "==", cleanEmail));
@@ -1702,9 +1793,11 @@ export async function addAuthorizedAdmin(adminData: {
     console.warn("User profile role sync notice:", uErr);
   }
 
-  const msg = authProvisioned
-    ? `Administrator ${cleanEmail} provisioned and authorized successfully with login credentials.`
-    : `Administrator ${cleanEmail} authorized successfully. Can sign in via Google or pre-registered account.`;
+  const msg = authNotice
+    ? `Administrator ${cleanEmail} authorized successfully! ${authNotice}`
+    : authProvisioned
+      ? `Administrator ${cleanEmail} provisioned and authorized successfully with full administrative access.`
+      : `Administrator ${cleanEmail} authorized successfully with full administrative access.`;
 
   return { success: true, message: msg };
 }
@@ -1716,6 +1809,20 @@ export async function removeAuthorizedAdmin(email: string): Promise<void> {
   }
   const docRef = doc(db, "authorized_admins", clean);
   await deleteDoc(docRef);
+
+  // Remove from settings/authorized_admins
+  try {
+    const settingsDocRef = doc(db, "settings", "authorized_admins");
+    const safeKey = clean.replace(/[^a-zA-Z0-9_]/g, "_");
+    await updateDoc(settingsDocRef, {
+      [safeKey]: deleteField(),
+      [clean]: deleteField(),
+      emails: arrayRemove(clean),
+      updatedAt: getKolkataISOString(),
+    });
+  } catch (settingsErr) {
+    console.warn("Notice updating settings/authorized_admins on revocation:", settingsErr);
+  }
 
   // Demote their role in users collection to 'staff' so they cannot enter admin portal
   try {

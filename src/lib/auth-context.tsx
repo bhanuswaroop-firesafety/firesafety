@@ -110,7 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 !!currentUser.email && SUPER_ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
               const isAuthAdmin =
                 isSuper ||
-                (currentUser.email ? await isEmailAuthorizedAdmin(currentUser.email) : false);
+                (currentUser.email
+                  ? await isEmailAuthorizedAdmin(currentUser.email, currentUser.uid)
+                  : false);
               setIsAuthorizedAdminState(isAuthAdmin);
 
               if (!snap.exists()) {
@@ -231,7 +233,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isSuper =
           !!cred.user.email && SUPER_ADMIN_EMAILS.includes(cred.user.email.toLowerCase());
         const isAuthAdmin =
-          isSuper || (cred.user.email ? await isEmailAuthorizedAdmin(cred.user.email) : false);
+          isSuper ||
+          (cred.user.email ? await isEmailAuthorizedAdmin(cred.user.email, cred.user.uid) : false);
 
         try {
           const snap = await getDoc(userDocRef);
@@ -369,7 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString();
 
     const isSuper = SUPER_ADMIN_EMAILS.includes(cleanEmail);
-    const isAuthAdmin = isSuper || (await isEmailAuthorizedAdmin(cleanEmail));
+    const isAuthAdmin = isSuper || (await isEmailAuthorizedAdmin(cleanEmail, cred.user.uid));
 
     const cleanPhone = metadata?.phone ? metadata.phone.replace(/\D/g, "").slice(-10) : "";
 

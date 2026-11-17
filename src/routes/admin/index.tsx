@@ -305,7 +305,6 @@ function AdminPage() {
     email: "",
     displayName: "",
     password: "",
-    department: "Operations & Field Safety",
     phone: "",
   });
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
@@ -810,26 +809,42 @@ function AdminPage() {
   };
 
   // Password Generator Helper for New Administrators
-  const generateSecurePassword = () => {
-    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
-    let pwd = "";
+  const generateSecurePasswordString = () => {
     const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     const lowers = "abcdefghijkmnpqrstuvwxyz";
     const nums = "23456789";
     const specials = "!@#$%&*";
+    let pwd = "";
     pwd += uppers[Math.floor(Math.random() * uppers.length)];
     pwd += lowers[Math.floor(Math.random() * lowers.length)];
     pwd += nums[Math.floor(Math.random() * nums.length)];
     pwd += specials[Math.floor(Math.random() * specials.length)];
-    for (let i = 0; i < 8; i++) {
+    const charset = uppers + lowers + nums + specials;
+    for (let i = 0; i < 6; i++) {
       pwd += charset[Math.floor(Math.random() * charset.length)];
     }
-    const shuffled = pwd
+    return pwd
       .split("")
       .sort(() => 0.5 - Math.random())
       .join("");
-    setNewAdminForm((prev) => ({ ...prev, password: shuffled }));
+  };
+
+  const generateSecurePassword = () => {
+    const pwd = generateSecurePasswordString();
+    setNewAdminForm((prev) => ({ ...prev, password: pwd }));
     showSuccessMessage("Generated high-strength administrative password.");
+  };
+
+  const openAddAdminModal = () => {
+    setAdminModalError("");
+    setAdminCreatedInfo(null);
+    setNewAdminForm({
+      email: "",
+      displayName: "",
+      password: generateSecurePasswordString(),
+      phone: "",
+    });
+    setIsAddAdminModalOpen(true);
   };
 
   // Create Administrator Account & Provision Login
@@ -847,8 +862,8 @@ function AdminPage() {
       return;
     }
 
-    if (newAdminForm.password && newAdminForm.password.trim().length < 6) {
-      setAdminModalError("Initial password must be at least 6 characters long.");
+    if (!newAdminForm.password || newAdminForm.password.trim().length < 6) {
+      setAdminModalError("Initial password is required and must be at least 6 characters long.");
       return;
     }
 
@@ -858,18 +873,14 @@ function AdminPage() {
         email: string;
         displayName: string;
         password?: string;
-        department?: string;
         phone?: string;
         addedBy?: string;
       } = {
         email,
         displayName: newAdminForm.displayName.trim() || (email.split("@")[0] ?? "Admin"),
-        department: newAdminForm.department.trim() || "Operations",
+        password: newAdminForm.password.trim(),
         addedBy: user?.email || "Super Administrator",
       };
-      if (newAdminForm.password.trim()) {
-        adminPayload.password = newAdminForm.password.trim();
-      }
       if (newAdminForm.phone.trim()) {
         adminPayload.phone = newAdminForm.phone.trim();
       }
@@ -884,15 +895,14 @@ function AdminPage() {
       showSuccessMessage(res.message);
       setAdminCreatedInfo({
         email,
-        password: newAdminForm.password.trim() || undefined,
+        password: newAdminForm.password.trim(),
         displayName: newAdminForm.displayName.trim() || email.split("@")[0] || "Admin",
       });
       // Reset input form
       setNewAdminForm({
         email: "",
         displayName: "",
-        password: "",
-        department: "Operations & Field Safety",
+        password: generateSecurePasswordString(),
         phone: "",
       });
     } catch (err: unknown) {
@@ -4797,11 +4807,7 @@ function AdminPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={() => {
-                      setAdminModalError("");
-                      setAdminCreatedInfo(null);
-                      setIsAddAdminModalOpen(true);
-                    }}
+                    onClick={openAddAdminModal}
                     className="gap-2 text-xs h-9 bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary/90 cursor-pointer"
                   >
                     <UserPlus className="size-4" />
@@ -4832,11 +4838,7 @@ function AdminPage() {
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => {
-                      setAdminModalError("");
-                      setAdminCreatedInfo(null);
-                      setIsAddAdminModalOpen(true);
-                    }}
+                    onClick={openAddAdminModal}
                     className="text-xs h-8 gap-1.5 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shrink-0 cursor-pointer"
                   >
                     <UserPlus className="size-3.5" />
@@ -4873,9 +4875,9 @@ function AdminPage() {
 
                         <div className="mt-3 space-y-1 text-[11px] text-muted-foreground border-t border-border/60 pt-2.5">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-foreground/80">Unit:</span>
-                            <span className="font-semibold text-foreground truncate max-w-[140px]">
-                              {admin.department || "Operations"}
+                            <span className="font-medium text-foreground/80">Access Level:</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              Full Administrator
                             </span>
                           </div>
                           {admin.phone && (
@@ -5745,8 +5747,9 @@ function AdminPage() {
                           {/* Initial Password */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="font-semibold text-foreground">
-                                Initial Password (Optional / Auto-provision)
+                              <label className="font-semibold text-foreground flex items-center gap-1.5">
+                                <span>Login Password</span>
+                                <span className="text-destructive font-bold">*</span>
                               </label>
                               <button
                                 type="button"
@@ -5754,14 +5757,15 @@ function AdminPage() {
                                 className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
                               >
                                 <Sparkles className="size-3" />
-                                <span>Generate Password</span>
+                                <span>Regenerate Password</span>
                               </button>
                             </div>
                             <div className="relative">
                               <Key className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                               <input
                                 type={showAdminPassword ? "text" : "password"}
-                                placeholder="Enter password or click 'Generate Password' (min 6 chars)"
+                                required
+                                placeholder="Enter secure password (min 6 chars)"
                                 value={newAdminForm.password}
                                 onChange={(e) =>
                                   setNewAdminForm((prev) => ({ ...prev, password: e.target.value }))
@@ -5781,39 +5785,21 @@ function AdminPage() {
                               </button>
                             </div>
                             <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                              If provided, a Firebase Auth account is created automatically so they
-                              can sign in via email and password. They can also use "Continue with
-                              Google" if this is a Google email.
+                              A login account will be provisioned with this password so the administrator can immediately sign in at <span className="font-mono text-foreground font-semibold">/admin/login</span>.
                             </p>
                           </div>
 
-                          {/* Department / Operational Unit */}
-                          <div>
-                            <label className="block font-semibold text-foreground mb-1">
-                              Department / Branch
-                            </label>
-                            <select
-                              value={newAdminForm.department}
-                              onChange={(e) =>
-                                setNewAdminForm((prev) => ({ ...prev, department: e.target.value }))
-                              }
-                              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                            >
-                              <option value="Operations & Field Safety">
-                                Operations & Field Safety
-                              </option>
-                              <option value="Fire Protection Engineering">
-                                Fire Protection Engineering
-                              </option>
-                              <option value="Hydrant & Piping Systems">
-                                Hydrant & Piping Systems
-                              </option>
-                              <option value="Safety Audits & Compliance">
-                                Safety Audits & Compliance
-                              </option>
-                              <option value="Procurement & Depots">Procurement & Depots</option>
-                              <option value="Executive Management">Executive Management</option>
-                            </select>
+                          {/* Full Administrative Access Level Notice */}
+                          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 flex items-start gap-2.5">
+                            <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                            <div className="text-[11px] leading-relaxed">
+                              <span className="font-bold text-foreground block">
+                                Full Administrative Access
+                              </span>
+                              <span className="text-muted-foreground">
+                                Provisioned administrator receives complete executive control over product catalog, order dispatch &amp; verification, customer RFQs, client database, and business settings.
+                              </span>
+                            </div>
                           </div>
 
                           {/* Contact Phone */}
@@ -5966,10 +5952,7 @@ function AdminPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setAdminCreatedInfo(null);
-                              setIsAddAdminModalOpen(true);
-                            }}
+                            onClick={openAddAdminModal}
                           >
                             + Add Another Admin
                           </Button>
