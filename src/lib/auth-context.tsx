@@ -82,7 +82,13 @@ export function clearGlobalRecaptchaVerifier() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserItem | null>(null);
-  const [isAuthorizedAdminState, setIsAuthorizedAdminState] = useState<boolean>(false);
+  const [isAuthorizedAdminState, setIsAuthorizedAdminState] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem("sue_admin_auth");
+      return !!cached;
+    }
+    return false;
+  });
   const [loading, setLoading] = useState(true);
   const [authConfigError, setAuthConfigError] = useState(false);
 
@@ -96,6 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         async (currentUser) => {
           if (currentUser) {
             setUser(currentUser);
+            const userEmail = currentUser.email?.toLowerCase().trim() || "";
+            const isSuper = !!userEmail && SUPER_ADMIN_EMAILS.includes(userEmail);
+            const isCachedAdmin =
+              typeof window !== "undefined" &&
+              sessionStorage.getItem("sue_admin_auth") === userEmail;
+
+            if (isSuper || isCachedAdmin) {
+              setIsAuthorizedAdminState(true);
+            }
+
             if (unsubscribeDoc) {
               unsubscribeDoc();
               unsubscribeDoc = null;
@@ -106,14 +122,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             try {
               const snap = await getDoc(userDocRef);
-              const isSuper =
-                !!currentUser.email && SUPER_ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
               const isAuthAdmin =
                 isSuper ||
-                (currentUser.email
-                  ? await isEmailAuthorizedAdmin(currentUser.email, currentUser.uid)
-                  : false);
-              setIsAuthorizedAdminState(isAuthAdmin);
+                isCachedAdmin ||
+                (userEmail ? await isEmailAuthorizedAdmin(userEmail, currentUser.uid) : false);
+
+              if (isAuthAdmin) {
+                setIsAuthorizedAdminState(true);
+                if (typeof window !== "undefined" && userEmail) {
+                  sessionStorage.setItem("sue_admin_auth", userEmail);
+                }
+              } else {
+                setIsAuthorizedAdminState(false);
+                if (typeof window !== "undefined") {
+                  sessionStorage.removeItem("sue_admin_auth");
+                }
+              }
 
               if (!snap.exists()) {
                 // New user: Default to "customer" role. Never assign admin on client without server authorization.
@@ -703,6 +727,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn("Sign out notice:", e);
     }
     clearGlobalRecaptchaVerifier();
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("sue_admin_auth");
+    }
     setUser(null);
     setUserProfile(null);
     setIsAuthorizedAdminState(false);
@@ -712,7 +739,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user &&
       (userProfile?.role === "admin" ||
         isAuthorizedAdminState ||
-        (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase()))),
+        (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) ||
+        (typeof window !== "undefined" &&
+          user.email &&
+          sessionStorage.getItem("sue_admin_auth") === user.email.toLowerCase())),
   );
   const isStaff = Boolean(user && (userProfile?.role === "staff" || userProfile?.role === "admin"));
   const isCustomer = Boolean(user && userProfile?.role === "customer");

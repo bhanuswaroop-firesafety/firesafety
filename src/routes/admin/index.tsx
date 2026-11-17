@@ -1244,12 +1244,12 @@ function AdminPage() {
     });
   }, [feedbackList, feedbackRatingFilter, feedbackProductFilter, feedbackDateFilter, feedbackSearch]);
 
-  if (authLoading) {
+  if (authLoading || (user && !isAdmin && userProfile === null)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <RefreshCw className="size-5 animate-spin text-primary" />
-          <span>Connecting to Firebase authentication...</span>
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <RefreshCw className="size-6 animate-spin text-primary" />
+          <span className="text-sm font-medium">Verifying administrator credentials...</span>
         </div>
       </div>
     );

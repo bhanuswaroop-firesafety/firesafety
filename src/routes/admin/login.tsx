@@ -109,6 +109,11 @@ export function AdminLoginPage() {
           return;
         }
 
+        // Prime synchronous admin auth cache so /admin doesn't flash access restricted during transition
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sue_admin_auth", authenticatedEmail);
+        }
+
         // Successfully authenticated! Ensure users/{uid} document has role="admin"
         try {
           const userDocRef = doc(db, "users", uid);
@@ -169,6 +174,11 @@ export function AdminLoginPage() {
           `Access Denied: Account (${googleEmail || "unknown"}) is not registered as an authorized administrator. Please request executive provisioning.`,
         );
         return;
+      }
+
+      // Prime synchronous admin auth cache so /admin doesn't flash access restricted during transition
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("sue_admin_auth", googleEmail);
       }
 
       // Successfully authenticated! Ensure users/{uid} document has role="admin"

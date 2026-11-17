@@ -46,7 +46,7 @@ export const Route = createFileRoute("/admin/leads")({
 });
 
 export function AdminLeadsPage() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, userProfile, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [leads, setLeads] = useState<LeadItem[]>([]);
@@ -178,8 +178,8 @@ export function AdminLeadsPage() {
     }
   };
 
-  // If auth is loading
-  if (authLoading) {
+  // If auth is loading or resolving admin status
+  if (authLoading || (user && !isAdmin && userProfile === null)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
