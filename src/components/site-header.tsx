@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   Lock,
@@ -75,6 +76,11 @@ export function SiteHeader() {
   const [mobileServicesOpen, setMobileServicesOpen] = useState(true);
   const [social, setSocial] = useState<SocialSettings>(DEFAULT_SOCIAL_SETTINGS);
   const [contact, setContact] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const unsubSocial = subscribeSocialSettings((settings) => setSocial(settings));
@@ -400,51 +406,57 @@ export function SiteHeader() {
             </button>
 
             {/* Mobile Menu Hamburger */}
-            <Button
-              variant="ghost"
-              className="size-10 px-0 rounded-xl lg:hidden active:scale-95 transition-transform"
+            <button
+              type="button"
+              className="flex size-10 items-center justify-center rounded-xl border border-border bg-card text-foreground lg:hidden shadow-xs active:scale-95 transition-transform cursor-pointer hover:bg-muted"
               aria-label="Open menu"
               aria-expanded={open}
               onClick={() => setOpen(true)}
             >
               <Menu className="size-5" />
-            </Button>
+            </button>
           </div>
         </div>
+      </header>
 
-        {/* Mobile Navigation Drawer (Sidebar) */}
-        <AnimatePresence>
-          {open && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Close menu"
-                className="fixed inset-0 z-50 bg-ink/75 backdrop-blur-xs lg:hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setOpen(false)}
-              />
+      {/* Mobile Navigation Drawer (Sidebar) - Rendered into body via Portal to escape header backdrop-blur and parent overflow constraints */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <div className="fixed inset-0 z-[100] lg:hidden">
+                {/* Backdrop Overlay */}
+                <motion.div
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Close menu"
+                  className="fixed inset-0 bg-ink/75 backdrop-blur-xs cursor-pointer"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setOpen(false)}
+                />
 
-              <motion.aside
-                className="fixed right-0 top-0 z-50 flex h-dvh w-[min(90vw,400px)] flex-col overflow-y-auto bg-background p-5 shadow-2xl lg:hidden border-l border-border"
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", stiffness: 360, damping: 34 }}
-              >
-                {/* 1. Drawer Header */}
-                <div className="flex items-center justify-between border-b border-border pb-3">
-                  <BrandLogo />
-                  <Button
-                    variant="ghost"
-                    className="size-10 px-0 rounded-lg hover:bg-muted"
-                    aria-label="Close menu"
-                    onClick={() => setOpen(false)}
-                  >
-                    <X className="size-5" />
-                  </Button>
-                </div>
+                {/* Mobile Drawer (Sidebar) */}
+                <motion.aside
+                  className="fixed right-0 top-0 z-[100] flex h-dvh w-[min(90vw,400px)] flex-col overflow-y-auto bg-background p-5 shadow-2xl border-l border-border"
+                  initial={{ x: "100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "100%" }}
+                  transition={{ type: "spring", stiffness: 360, damping: 34 }}
+                >
+                  {/* 1. Drawer Header */}
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <BrandLogo />
+                    <button
+                      type="button"
+                      className="flex size-10 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      aria-label="Close menu"
+                      onClick={() => setOpen(false)}
+                    >
+                      <X className="size-5" />
+                    </button>
+                  </div>
 
                 {/* Mobile Search Bar */}
                 <form
@@ -797,10 +809,11 @@ export function SiteHeader() {
                   </div>
                 </div>
               </motion.aside>
-            </>
+            </div>
           )}
-        </AnimatePresence>
-      </header>
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   );
 }

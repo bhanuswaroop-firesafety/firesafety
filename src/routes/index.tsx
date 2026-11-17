@@ -281,7 +281,7 @@ function Index() {
   }, [liveProducts]);
 
   return (
-    <main id="home" className="overflow-hidden bg-background pb-20 sm:pb-0">
+    <main id="home" className="overflow-x-clip bg-background pb-20 sm:pb-0">
       <SiteHeader />
 
       {/* Hero Section */}
@@ -326,30 +326,29 @@ function Index() {
 
             {/* CTAs */}
             <div className="mt-5 sm:mt-8 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-              <a href="/products" className="w-full sm:w-auto">
-                <Button className="h-11 sm:h-12 w-full px-2 sm:px-7 text-xs sm:text-sm font-bold shadow-lg shadow-primary/25">
-                  <ShoppingBag className="size-3.5 sm:size-4 mr-1 sm:mr-2" /> Shop Catalog
-                </Button>
-              </a>
+              <Button
+                href="/products"
+                className="h-11 sm:h-12 w-full sm:w-auto px-2 sm:px-7 text-xs sm:text-sm font-bold shadow-lg shadow-primary/25"
+              >
+                <ShoppingBag className="size-3.5 sm:size-4 mr-1 sm:mr-2" /> Shop Catalog
+              </Button>
 
-              <a href="#contact" className="w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  className="h-11 sm:h-12 w-full border-white/25 bg-white/10 px-2 sm:px-5 text-xs sm:text-sm font-bold text-white hover:bg-white/20 backdrop-blur-md"
-                >
-                  <FileText className="size-3.5 sm:size-4 mr-1 sm:mr-2 text-brand-warm" /> Formal
-                  Quote
-                </Button>
-              </a>
+              <Button
+                href="#contact"
+                variant="outline"
+                className="h-11 sm:h-12 w-full sm:w-auto border-white/25 bg-white/10 px-2 sm:px-5 text-xs sm:text-sm font-bold text-white hover:bg-white/20 backdrop-blur-md"
+              >
+                <FileText className="size-3.5 sm:size-4 mr-1 sm:mr-2 text-brand-warm" /> Formal
+                Quote
+              </Button>
 
-              <a href="tel:+918639858221" className="hidden sm:inline-block">
-                <Button
-                  variant="outline"
-                  className="h-12 border-primary-foreground/30 bg-transparent px-5 text-sm font-bold text-white hover:bg-white/10"
-                >
-                  <Phone className="size-4" /> 8639858221
-                </Button>
-              </a>
+              <Button
+                href="tel:+918639858221"
+                variant="outline"
+                className="hidden sm:inline-flex h-12 border-primary-foreground/30 bg-transparent px-5 text-sm font-bold text-white hover:bg-white/10"
+              >
+                <Phone className="size-4 mr-1.5" /> 8639858221
+              </Button>
             </div>
           </div>
         </div>
@@ -437,11 +436,9 @@ function Index() {
             title="Essential Fire & Industrial Safety Products"
             copy="Immediate dispatch available with statutory 18% GST invoices and manufacturer compliance certificates."
             action={
-              <a href="/products" className="hidden sm:inline-block">
-                <Button>
-                  Explore Full Catalog <ArrowRight className="size-4" />
-                </Button>
-              </a>
+              <Button href="/products" className="hidden sm:inline-flex">
+                Explore Full Catalog <ArrowRight className="size-4 ml-1" />
+              </Button>
             }
           />
 
@@ -468,16 +465,12 @@ function Index() {
                 Live products synced or published via the Admin Panel will appear here. You can also request an instant formal quotation directly from our certified safety engineers.
               </p>
               <div className="mt-5 flex justify-center gap-3">
-                <a href="#contact">
-                  <Button size="sm">
-                    <FileText className="size-3.5 mr-1.5" /> Request Custom Quote
-                  </Button>
-                </a>
-                <a href="/products">
-                  <Button variant="outline" size="sm">
-                    Browse All Categories
-                  </Button>
-                </a>
+                <Button href="#contact" size="sm">
+                  <FileText className="size-3.5 mr-1.5" /> Request Custom Quote
+                </Button>
+                <Button href="/products" variant="outline" size="sm">
+                  Browse All Categories
+                </Button>
               </div>
             </div>
           ) : (
@@ -550,16 +543,24 @@ function Index() {
 
                       <div className="mt-2.5 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
                         <Button
+                          type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => addToCart(prod, 1)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            addToCart(prod, 1);
+                          }}
                           className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold hover:bg-primary hover:text-primary-foreground"
                         >
                           <ShoppingBag className="size-3 mr-1 shrink-0" /> + Cart
                         </Button>
                         <Button
+                          type="button"
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             addToCart(prod, 1);
                             window.location.href = "/checkout";
                           }}
@@ -585,11 +586,9 @@ function Index() {
           )}
 
           <div className="mt-8 sm:mt-10 text-center">
-            <a href="/products">
-              <Button size="lg" className="w-full sm:w-auto">
-                View All Products & Specifications <ArrowRight className="size-4" />
-              </Button>
-            </a>
+            <Button href="/products" size="lg" className="w-full sm:w-auto">
+              View All Products & Specifications <ArrowRight className="size-4 ml-1.5" />
+            </Button>
           </div>
         </div>
       </section>
@@ -619,11 +618,9 @@ function Index() {
             title="Complete Fire & Industrial Safety Solutions"
             copy="Comprehensive safety engineering, statutory consultation, certified equipment supply, and round-the-clock maintenance adhering strictly to NBC 2016, NFPA, and BIS standards."
             action={
-              <a href="/services" className="hidden sm:inline-block">
-                <Button variant="outline">
-                  Full Service Directory <ArrowRight className="size-4" />
-                </Button>
-              </a>
+              <Button href="/services" variant="outline" className="hidden sm:inline-flex">
+                Full Service Directory <ArrowRight className="size-4 ml-1.5" />
+              </Button>
             }
           />
           <div className="mt-10">
@@ -767,11 +764,9 @@ function Index() {
             ))}
           </div>
           <div className="mt-6 sm:mt-8 text-center">
-            <a href="/industries">
-              <Button variant="outline" className="w-full sm:w-auto">
-                Explore Industry Specific Solutions <ArrowRight className="size-4" />
-              </Button>
-            </a>
+            <Button href="/industries" variant="outline" className="w-full sm:w-auto">
+              Explore Industry Specific Solutions <ArrowRight className="size-4 ml-1.5" />
+            </Button>
           </div>
         </div>
       </section>
@@ -826,11 +821,12 @@ function Index() {
                 </span>
               </div>
 
-              <a href="/projects" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md">
-                  View Project Portfolio <ArrowRight className="size-4" />
-                </Button>
-              </a>
+              <Button
+                href="/projects"
+                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-md"
+              >
+                View Project Portfolio <ArrowRight className="size-4 ml-1.5" />
+              </Button>
             </div>
           </div>
         </TiltedGridHero>
