@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -527,11 +527,11 @@ function CartPage() {
 
                   {/* Proceed to Checkout CTA */}
                   <div className="mt-6 space-y-2.5">
-                    <a href="/checkout" className="block w-full">
+                    <Link to="/checkout" className="block w-full">
                       <Button size="lg" className="w-full justify-center">
                         Proceed to Checkout <ArrowRight className="size-4" />
                       </Button>
-                    </a>
+                    </Link>
 
                     <a href="tel:+918639858221" className="block w-full">
                       <Button variant="outline" className="w-full justify-center text-xs">

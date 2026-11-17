@@ -424,13 +424,9 @@ function ProductViewPage() {
   };
 
   const handleBuyNow = () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
     if (!product) return;
-    addToCart(product, quantity);
-    window.location.href = "/checkout";
+    addToCart(product, quantity, false);
+    navigate({ to: "/checkout", search: { productId: product.id, qty: quantity } });
   };
 
   const handleQuoteSubmit = async (e: FormEvent) => {

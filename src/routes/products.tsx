@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -63,6 +63,7 @@ export const Route = createFileRoute("/products")({
 });
 
 export function ProductsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -142,20 +143,11 @@ export function ProductsPage() {
       return;
     }
 
-    if (!user) {
-      if (e) e.preventDefault();
-      setAuthPromptProduct({
-        name: prod.name,
-        url: `/products/${prod.id || prod.sku || prod.name}`,
-      });
-      return;
-    }
-
     if (action === "add") {
       addToCart(prod, 1);
     } else if (action === "buy") {
-      addToCart(prod, 1);
-      window.location.href = "/checkout";
+      addToCart(prod, 1, false);
+      navigate({ to: "/checkout", search: { productId: prod.id } });
     }
   };
 

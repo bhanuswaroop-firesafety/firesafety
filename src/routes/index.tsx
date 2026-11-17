@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "motion/react";
 import {
@@ -261,6 +261,7 @@ const CLIENT_TESTIMONIALS = [
 ];
 
 function Index() {
+  const navigate = useNavigate();
   const [inquiryService, setInquiryService] = useState<string | undefined>(undefined);
   const { addToCart, setIsCartOpen, totalItems } = useCart();
   const [liveProducts, setLiveProducts] = useState<ProductItem[]>(() => getCachedProducts());
@@ -561,8 +562,8 @@ function Index() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            addToCart(prod, 1);
-                            window.location.href = "/checkout";
+                            addToCart(prod, 1, false);
+                            navigate({ to: "/checkout", search: { productId: prod.id } });
                           }}
                           className="h-8 sm:h-9 w-full px-1 sm:px-2 text-[10px] sm:text-xs font-bold"
                         >

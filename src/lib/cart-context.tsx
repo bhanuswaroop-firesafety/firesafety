@@ -65,6 +65,7 @@ interface CartContextType {
         }
       | ProductItem,
     quantity?: number,
+    openDrawer?: boolean,
   ) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
@@ -87,6 +88,30 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const CART_STORAGE_KEY = "sue_cart_items";
+const COUPON_STORAGE_KEY = "sue_cart_coupon";
+
+function getInitialLocalCart(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getInitialLocalCoupon(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(COUPON_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function parsePriceToNumber(rawPrice?: string | number): number {
   if (typeof rawPrice === "number") return rawPrice;
   if (!rawPrice) return 0;
@@ -98,18 +123,41 @@ export function parsePriceToNumber(rawPrice?: string | number): number {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>(getInitialLocalCart);
+  const [couponCode, setCouponCode] = useState<string | null>(getInitialLocalCoupon);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(true);
   const [isCartLoading, setIsCartLoading] = useState(false);
+
+  // Synchronously persist cart changes to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+      } catch (e) {
+        console.warn("Failed saving cart to localStorage:", e);
+      }
+    }
+  }, [cartItems]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (couponCode) {
+          localStorage.setItem(COUPON_STORAGE_KEY, couponCode);
+        } else {
+          localStorage.removeItem(COUPON_STORAGE_KEY);
+        }
+      } catch (e) {
+        console.warn("Failed saving coupon to localStorage:", e);
+      }
+    }
+  }, [couponCode]);
 
   // Sync with Firestore carts/{uid} when user logs in or out
   useEffect(() => {
     if (!user) {
-      // Guest visitor: in-memory state only (resets on reload or logout)
-      setCartItems([]);
-      setCouponCode(null);
+      // Guest visitor: preserve local cart items so they can browse, add, and checkout seamlessly
       setIsHydrated(true);
       setIsCartLoading(false);
       return;
@@ -120,19 +168,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = subscribeCart(
       user.uid,
       (cartDoc) => {
-        if (cartDoc && Array.isArray(cartDoc.items)) {
+        if (cartDoc && Array.isArray(cartDoc.items) && cartDoc.items.length > 0) {
           setCartItems(cartDoc.items);
           setCouponCode(cartDoc.couponCode || null);
         } else {
-          setCartItems([]);
-          setCouponCode(null);
+          // If server cart is empty but local cart has items, sync existing local items to Firestore
+          setCartItems((prev) => {
+            if (prev.length > 0) {
+              syncToServer(prev, couponCode);
+              return prev;
+            }
+            return [];
+          });
         }
         setIsHydrated(true);
         setIsCartLoading(false);
       },
       (err) => {
         console.error("Firestore cart load error:", err);
-        toast.error("Could not sync your cart with the server. Please check your network.");
         setIsHydrated(true);
         setIsCartLoading(false);
       },
@@ -193,6 +246,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const performAddToCart = (
     item: Parameters<CartContextType["addToCart"]>[0],
     quantity: number,
+    openDrawer: boolean = true,
   ) => {
     const numericPrice = parsePriceToNumber(item.price);
     const id = item.id || `item-${item.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
@@ -235,11 +289,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
 
-    setIsCartOpen(true);
+    if (openDrawer) {
+      setIsCartOpen(true);
+    }
   };
 
-  const addToCart: CartContextType["addToCart"] = (item, quantity = 1) => {
-    performAddToCart(item, quantity);
+  const addToCart: CartContextType["addToCart"] = (item, quantity = 1, openDrawer = true) => {
+    performAddToCart(item, quantity, openDrawer);
   };
 
   const removeFromCart = (id: string) => {
@@ -274,6 +330,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = () => {
     setCartItems([]);
     setCouponCode(null);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(CART_STORAGE_KEY);
+        localStorage.removeItem(COUPON_STORAGE_KEY);
+      } catch (e) {}
+    }
     if (user) {
       clearServerCart(user.uid).catch((err) => {
         console.warn("Could not clear server cart:", err);

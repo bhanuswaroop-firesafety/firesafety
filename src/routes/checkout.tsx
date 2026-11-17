@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/button";
-import { useCart } from "@/lib/cart-context";
+import { useCart, parsePriceToNumber } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import QRCode from "qrcode";
 import {
@@ -17,6 +17,7 @@ import {
   generatePhonePeUpiUrls,
   subscribeBusinessSettings,
   DEFAULT_BUSINESS_SETTINGS,
+  getCachedProducts,
 } from "@/lib/db-service";
 import type { ShippingSettings, BusinessProfileSettings } from "@/lib/types";
 import { calculateDeliveryWindow, formatKolkataDisplay } from "@/lib/date-utils";
@@ -50,7 +51,21 @@ import {
 
 import { seoHead } from "@/lib/seo";
 
+interface CheckoutSearch {
+  productId?: string;
+  qty?: number;
+}
+
 export const Route = createFileRoute("/checkout")({
+  validateSearch: (search: Record<string, unknown>): CheckoutSearch => ({
+    productId: typeof search.productId === "string" ? search.productId : undefined,
+    qty:
+      typeof search.qty === "number"
+        ? search.qty
+        : typeof search.qty === "string"
+        ? parseInt(search.qty, 10) || undefined
+        : undefined,
+  }),
   head: () =>
     seoHead({
       title: "Secure Checkout | Sri Udharchi Enterprises",
@@ -120,19 +135,90 @@ const POPULAR_BANKS = [
 ];
 
 function CheckoutPage() {
+  const search = Route.useSearch();
+  const searchProductId = search?.productId;
+  const searchQty = Math.max(1, search?.qty || 1);
+
   const {
     cartItems,
-    subtotal,
-    gstAmount,
-    shippingFee,
+    subtotal: contextSubtotal,
+    gstAmount: contextGstAmount,
+    shippingFee: contextShippingFee,
     discountAmount,
     couponCode,
-    totalAmount,
-    totalItems,
+    totalAmount: contextTotalAmount,
+    totalItems: contextTotalItems,
     clearCart,
+    addToCart,
     isHydrated,
   } = useCart();
   const { user, userProfile } = useAuth();
+
+  // Instant product resolution based on productId query param
+  const urlProduct = useMemo(() => {
+    if (!searchProductId) return null;
+    const all = getCachedProducts();
+    return (
+      all.find(
+        (p) =>
+          p.id === searchProductId ||
+          p.sku === searchProductId ||
+          p.name.toLowerCase() === searchProductId.toLowerCase(),
+      ) || null
+    );
+  }, [searchProductId]);
+
+  // Synchronize URL product into global cart context (without opening drawer)
+  useEffect(() => {
+    if (urlProduct && !cartItems.some((i) => i.id === urlProduct.id)) {
+      addToCart(urlProduct, searchQty, false);
+    }
+  }, [urlProduct, searchQty, cartItems, addToCart]);
+
+  // If cart is momentarily hydrating from storage or empty, resolve immediately on frame 0
+  const activeItems = useMemo(() => {
+    if (cartItems.length > 0) return cartItems;
+    if (urlProduct) {
+      const numericPrice = parsePriceToNumber(urlProduct.price);
+      return [
+        {
+          id: urlProduct.id,
+          name: urlProduct.name,
+          category: urlProduct.category || "Safety Equipment",
+          price: numericPrice,
+          priceDisplay:
+            typeof urlProduct.price === "string"
+              ? urlProduct.price
+              : `₹${numericPrice.toLocaleString("en-IN")}`,
+          unit: urlProduct.unit || "unit",
+          image: urlProduct.image || "/sri-udharchi-enterprises-logo.png",
+          quantity: searchQty,
+          specs: urlProduct.specs,
+          sku: urlProduct.sku,
+        },
+      ];
+    }
+    return [];
+  }, [cartItems, urlProduct, searchQty]);
+
+  // Dynamic calculations reflecting activeItems
+  const subtotal = useMemo(() => {
+    return activeItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  }, [activeItems]);
+
+  const totalItems = useMemo(() => {
+    return activeItems.reduce((acc, item) => acc + item.quantity, 0);
+  }, [activeItems]);
+
+  const gstAmount = useMemo(() => {
+    const discountedBase = Math.max(0, subtotal - discountAmount);
+    return Math.round(discountedBase * 0.18);
+  }, [subtotal, discountAmount]);
+
+  const shippingFee = useMemo(() => {
+    if (subtotal === 0) return 0;
+    return subtotal >= 5000 ? 0 : 250;
+  }, [subtotal]);
 
   // Dynamic Shipping & Business Profile Settings from Firestore
   const [shippingSettings, setShippingSettings] =
@@ -389,7 +475,7 @@ function CheckoutPage() {
       paymentId: cleanTxnId,
       transactionId: cleanTxnId,
       paymentStatus: "pending",
-      items: cartItems.map((i) => ({
+      items: activeItems.map((i) => ({
         name: i.name,
         quantity: i.quantity,
         price: i.price,
@@ -427,12 +513,12 @@ function CheckoutPage() {
           amount: finalPayable,
           submittedAt: new Date().toISOString(),
         },
-        items: cartItems.map((i) => ({
+        items: activeItems.map((i) => ({
           name: i.name,
           quantity: i.quantity,
           price: i.price,
           productId: i.id,
-          renewalMonths: i.renewalMonths,
+          renewalMonths: (i as any).renewalMonths,
         })),
         subtotal,
         discount: discountAmount,
@@ -543,7 +629,7 @@ function CheckoutPage() {
         companyName: isB2B ? companyName.trim() : undefined,
         gstin: isB2B ? gstin.trim() : undefined,
         paymentMethod: "cod",
-        items: cartItems.map((i) => ({
+        items: activeItems.map((i) => ({
           name: i.name,
           quantity: i.quantity,
           price: i.price,
@@ -572,12 +658,12 @@ function CheckoutPage() {
           gstin: isB2B && gstin ? gstin.trim() : "",
           paymentMethod: "cod",
           paymentStatus: "pending",
-          items: cartItems.map((i) => ({
+          items: activeItems.map((i) => ({
             name: i.name,
             quantity: i.quantity,
             price: i.price,
             productId: i.id,
-            renewalMonths: i.renewalMonths,
+            renewalMonths: (i as any).renewalMonths,
           })),
           subtotal,
           discount: discountAmount,
@@ -908,7 +994,7 @@ function CheckoutPage() {
     );
   }
 
-  if (!isHydrated) {
+  if (!isHydrated && activeItems.length === 0) {
     return (
       <main className="min-h-screen bg-background text-foreground">
         <SiteHeader />
@@ -922,7 +1008,7 @@ function CheckoutPage() {
   }
 
   /* ---------------- EMPTY CART REDIRECT VIEW ---------------- */
-  if (cartItems.length === 0) {
+  if (activeItems.length === 0 && !searchProductId) {
     return (
       <main className="min-h-screen bg-background text-foreground">
         <SiteHeader />
@@ -1048,9 +1134,9 @@ function CheckoutPage() {
           )}
 
           <form onSubmit={handlePlaceOrder}>
-            <div className="grid gap-10 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
               {/* Left Column: Form Fields */}
-              <div className="space-y-8">
+              <div className="lg:col-span-7 xl:col-span-7 space-y-8">
                 {/* Step 1: Delivery Details */}
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-5">
                   <div className="flex items-center gap-2.5 pb-2 border-b border-border">
@@ -1576,6 +1662,27 @@ function CheckoutPage() {
                                 Complete payment on PhonePe, then paste the 13-digit <strong>Transaction ID</strong> (starts with T) or bank <strong>UTR</strong> to confirm your order.
                               </span>
                             </div>
+
+                            {phonePeTransactionId.trim() && (
+                              <button
+                                type="button"
+                                disabled={isProcessing}
+                                onClick={() => handlePhonePeSubmit(phonePeTransactionId)}
+                                className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-4 py-3 text-xs font-bold shadow-md transition-all cursor-pointer active:scale-[0.99]"
+                              >
+                                {isProcessing ? (
+                                  <>
+                                    <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                    <span>Verifying &amp; Submitting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="size-4" />
+                                    <span>Submit Transaction ID &amp; Confirm Order</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1637,7 +1744,7 @@ function CheckoutPage() {
               </div>
 
               {/* Right Column: Order Review Box */}
-              <div className="space-y-6">
+              <div className="lg:col-span-5 xl:col-span-5 space-y-6">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sticky top-24">
                   <h2 className="font-display text-base font-bold text-foreground pb-3 border-b border-border">
                     Order Overview ({totalItems} Items)
@@ -1645,7 +1752,7 @@ function CheckoutPage() {
 
                   {/* Compact Items Preview */}
                   <div className="my-4 max-h-56 overflow-y-auto space-y-3 pr-1 divide-y divide-border/60">
-                    {cartItems.map((item) => (
+                    {activeItems.map((item) => (
                       <div key={item.id} className="pt-2 first:pt-0 flex items-center gap-3">
                         <img
                           src={item.image}

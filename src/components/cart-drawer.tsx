@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
   X,
@@ -281,17 +282,17 @@ export function CartDrawer() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <a href="/cart" onClick={() => setIsCartOpen(false)} className="w-full">
+                  <Link to="/cart" onClick={() => setIsCartOpen(false)} className="w-full">
                     <Button variant="outline" className="w-full justify-center text-xs">
                       View Cart
                     </Button>
-                  </a>
+                  </Link>
 
-                  <a href="/checkout" onClick={() => setIsCartOpen(false)} className="w-full">
+                  <Link to="/checkout" onClick={() => setIsCartOpen(false)} className="w-full">
                     <Button className="w-full justify-center text-xs">
                       Checkout <ArrowRight className="size-3.5" />
                     </Button>
-                  </a>
+                  </Link>
                 </div>
 
                 <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-muted-foreground">
