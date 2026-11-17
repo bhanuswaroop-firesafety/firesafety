@@ -127,7 +127,10 @@ function ProductViewPage() {
   const { user, loading: authLoading } = useAuth();
   const { addToCart, totalItems, totalAmount, setIsCartOpen } = useCart();
 
-  const initialProduct = useMemo(() => findProductById(productId, []), [productId]);
+  const initialProduct = useMemo(
+    () => findProductById(productId, getCachedProducts()),
+    [productId],
+  );
   const [product, setProduct] = useState<ProductItem | null>(initialProduct);
   const [isLoading, setIsLoading] = useState<boolean>(!initialProduct);
   const [allProducts, setAllProducts] = useState<ProductItem[]>(() => getCachedProducts());
@@ -341,7 +344,7 @@ function ProductViewPage() {
     let resolved = false;
 
     // 1. Check immediate in-memory cache and default catalog (0ms latency)
-    const directFound = findProductById(productId, []);
+    const directFound = findProductById(productId, getCachedProducts());
     if (directFound) {
       setProduct(directFound);
       setIsLoading(false);
@@ -386,7 +389,7 @@ function ProductViewPage() {
     // 4. Safety timer: prevent indefinite loading state if network or Firestore encounters delays
     const safetyTimer = setTimeout(() => {
       if (isMounted && !resolved) {
-        const fallback = findProductById(productId, []);
+        const fallback = findProductById(productId, getCachedProducts());
         if (fallback) {
           setProduct(fallback);
         }
@@ -469,7 +472,7 @@ function ProductViewPage() {
   }, [product, allProducts]);
 
   // Skeleton Loading View: Prevents jarring "Not Found" flash while Firestore subscription resolves
-  if (isLoading) {
+  if (isLoading && !product) {
     return (
       <main className="min-h-screen bg-background text-foreground animate-in fade-in duration-200">
         <SiteHeader />
@@ -526,7 +529,7 @@ function ProductViewPage() {
   }
 
   // Only displayed after loading has finished and the product is truly not in Firestore or catalog
-  if (!product) {
+  if (!isLoading && !product) {
     return (
       <main className="min-h-screen bg-background text-foreground animate-in fade-in duration-300">
         <SiteHeader />
@@ -563,7 +566,7 @@ function ProductViewPage() {
   const categoryIcon = getCategoryIcon(product.category);
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen bg-background text-foreground pb-20 sm:pb-24">
       <SiteHeader />
 
       {/* Breadcrumb Navigation */}
@@ -1467,9 +1470,9 @@ function ProductViewPage() {
                   key={rel.id || rel.name}
                   className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg"
                 >
-                  <a
-                    href={`/products/${rel.id || rel.sku}`}
-                    className="relative aspect-[16/10] overflow-hidden bg-muted"
+                  <Link
+                    to={`/products/${rel.id || rel.sku}` as any}
+                    className="relative aspect-[16/10] overflow-hidden bg-muted block"
                   >
                     <img
                       src={rel.image}
@@ -1480,15 +1483,15 @@ function ProductViewPage() {
                     <span className="absolute left-2.5 top-2.5 rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-bold">
                       {rel.category}
                     </span>
-                  </a>
+                  </Link>
 
                   <div className="flex flex-1 flex-col p-4">
-                    <a
-                      href={`/products/${rel.id || rel.sku}`}
-                      className="font-display text-sm font-bold text-foreground hover:text-primary transition-colors line-clamp-1"
+                    <Link
+                      to={`/products/${rel.id || rel.sku}` as any}
+                      className="font-display text-sm font-bold text-foreground hover:text-primary transition-colors line-clamp-1 block"
                     >
                       {rel.name}
-                    </a>
+                    </Link>
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                       {rel.description}
                     </p>
@@ -1501,12 +1504,12 @@ function ProductViewPage() {
                             : `₹${rel.price}`
                           : "Quote"}
                       </span>
-                      <a
-                        href={`/products/${rel.id || rel.sku}`}
+                      <Link
+                        to={`/products/${rel.id || rel.sku}` as any}
                         className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
                       >
                         View Details <ArrowRight className="size-3" />
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -1518,7 +1521,7 @@ function ProductViewPage() {
 
       {/* Floating Cart Trigger */}
       {totalItems > 0 && (
-        <div className="fixed bottom-6 right-6 z-40">
+        <div className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-40">
           <button
             type="button"
             onClick={() => setIsCartOpen(true)}
@@ -1659,6 +1662,92 @@ function ProductViewPage() {
         redirectUrl={`/products/${productId}`}
         allowDismiss={true}
       />
+
+      {/* Sticky Bottom Bar for Instant "Add to Cart" and "Buy Now" */}
+      <aside
+        aria-label="Quick Purchase Actions"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-md px-3 py-2.5 sm:px-6 sm:py-3 shadow-2xl transition-all"
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 sm:gap-6">
+          {/* Left: Product Thumbnail & Price Preview */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-11 sm:size-12 shrink-0 rounded-xl border border-border bg-muted/40 p-1 flex items-center justify-center overflow-hidden">
+              <img
+                src={galleryImages[0] || resolveProductDisplayImage(product)}
+                alt={product.name}
+                className="size-full object-contain"
+              />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-display text-xs sm:text-sm font-bold text-foreground truncate max-w-[140px] sm:max-w-[280px] md:max-w-[400px]">
+                {product.name}
+              </h4>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="font-display text-xs sm:text-sm font-black text-primary">
+                  {typeof product.price === "number"
+                    ? `₹${product.price.toLocaleString("en-IN")}`
+                    : product.price || "Contact for Price"}
+                </span>
+                {product.inStock !== false && (
+                  <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    <CheckCircle2 className="size-2.5" /> In Stock
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Quantity Stepper & Dual CTA Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Quantity Stepper (visible on sm+) */}
+            <div className="hidden sm:flex items-center rounded-xl border border-border bg-muted/30 p-0.5">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-card hover:text-foreground font-bold transition-colors cursor-pointer"
+                title="Decrease quantity"
+              >
+                -
+              </button>
+              <span className="w-8 text-center text-xs font-bold font-mono text-foreground">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => q + 1)}
+                className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-card hover:text-foreground font-bold transition-colors cursor-pointer"
+                title="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Add to Cart CTA */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddToCart}
+              className="h-10 sm:h-11 px-3 sm:px-4 text-xs font-bold border-primary/40 hover:bg-primary/10 hover:border-primary shrink-0 transition-all cursor-pointer"
+            >
+              <ShoppingBag className="size-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">{addedToast ? "Added to Cart!" : "Add to Cart"}</span>
+              <span className="sm:hidden">{addedToast ? "Added!" : "+ Cart"}</span>
+            </Button>
+
+            {/* Buy Now CTA */}
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleBuyNow}
+              className="h-10 sm:h-11 px-4 sm:px-6 text-xs sm:text-sm font-bold shadow-md hover:shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 transition-all cursor-pointer"
+            >
+              <Zap className="size-4 mr-1 sm:mr-1.5" />
+              <span>Buy Now</span>
+            </Button>
+          </div>
+        </div>
+      </aside>
 
       <SiteFooter />
     </main>

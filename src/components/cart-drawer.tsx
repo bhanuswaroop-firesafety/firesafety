@@ -146,8 +146,8 @@ export function CartDrawer() {
               <div className="flex-1 overflow-y-auto px-5 py-4 divide-y divide-border/60">
                 {cartItems.map((item) => (
                   <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex gap-3.5">
-                    <a
-                      href={`/products/${item.id}`}
+                    <Link
+                      to={`/products/${item.id}` as any}
                       onClick={() => setIsCartOpen(false)}
                       className="shrink-0"
                     >
@@ -159,20 +159,20 @@ export function CartDrawer() {
                         referrerPolicy="no-referrer"
                         className="size-20 shrink-0 rounded-lg object-cover border border-border bg-muted hover:opacity-90 transition-opacity"
                       />
-                    </a>
+                    </Link>
 
                     <div className="flex flex-1 flex-col justify-between min-w-0">
                       <div>
                         <div className="flex items-start justify-between gap-2">
-                          <a
-                            href={`/products/${item.id}`}
+                          <Link
+                            to={`/products/${item.id}` as any}
                             onClick={() => setIsCartOpen(false)}
                             className="hover:text-primary transition-colors min-w-0"
                           >
                             <h4 className="text-xs font-bold text-foreground line-clamp-2 leading-tight">
                               {item.name}
                             </h4>
-                          </a>
+                          </Link>
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}

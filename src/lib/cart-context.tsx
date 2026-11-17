@@ -54,15 +54,15 @@ interface CartContextType {
   addToCart: (
     item:
       | {
-          id?: string | undefined;
-          name: string;
-          category?: string | undefined;
-          price?: string | number | undefined;
-          unit?: string | undefined;
-          image?: string | undefined;
-          specs?: string[] | string | undefined;
-          sku?: string | undefined;
-        }
+        id?: string | undefined;
+        name: string;
+        category?: string | undefined;
+        price?: string | number | undefined;
+        unit?: string | undefined;
+        image?: string | undefined;
+        specs?: string[] | string | undefined;
+        sku?: string | undefined;
+      }
       | ProductItem,
     quantity?: number,
     openDrawer?: boolean,
@@ -334,7 +334,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.removeItem(CART_STORAGE_KEY);
         localStorage.removeItem(COUPON_STORAGE_KEY);
-      } catch (e) {}
+      } catch (e) { }
     }
     if (user) {
       clearServerCart(user.uid).catch((err) => {
@@ -412,10 +412,10 @@ export function useCart(): CartContextType {
   if (!context) {
     return {
       cartItems: [],
-      addToCart: () => {},
-      removeFromCart: () => {},
-      updateQuantity: () => {},
-      clearCart: () => {},
+      addToCart: () => { },
+      removeFromCart: () => { },
+      updateQuantity: () => { },
+      clearCart: () => { },
       subtotal: 0,
       gstAmount: 0,
       shippingFee: 0,
@@ -423,11 +423,11 @@ export function useCart(): CartContextType {
       couponInfo: null,
       discountAmount: 0,
       applyCoupon: () => ({ success: false, message: "Cart not initialized" }),
-      removeCoupon: () => {},
+      removeCoupon: () => { },
       totalAmount: 0,
       totalItems: 0,
       isCartOpen: false,
-      setIsCartOpen: () => {},
+      setIsCartOpen: () => { },
       isHydrated: true,
       isCartLoading: false,
     };

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -552,8 +552,8 @@ export function ProductsPage() {
                       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-red-500/50 hover:shadow-lg"
                     >
                       {/* Product Image */}
-                      <a
-                        href={`/products/${prod.id || prod.sku || prod.name}`}
+                      <Link
+                        to={`/products/${prod.id || prod.sku || prod.name}` as any}
                         className="relative aspect-[4/3] overflow-hidden bg-slate-50/60 dark:bg-card/40 flex items-center justify-center p-2.5 block cursor-pointer"
                       >
                         <img
@@ -584,7 +584,7 @@ export function ProductsPage() {
                             Featured
                           </span>
                         ) : null}
-                      </a>
+                      </Link>
 
                       {/* Product Content */}
                       <div className="flex flex-1 flex-col p-3 sm:p-4">
@@ -595,12 +595,12 @@ export function ProductsPage() {
                             </span>
                           )}
 
-                          <a
-                            href={`/products/${prod.id || prod.sku || prod.name}`}
+                          <Link
+                            to={`/products/${prod.id || prod.sku || prod.name}` as any}
                             className="font-display text-xs sm:text-sm font-bold text-foreground hover:text-red-600 transition-colors line-clamp-2 leading-snug"
                           >
                             {prod.name}
-                          </a>
+                          </Link>
 
                           {/* Certified Specs Highlights */}
                           {prod.specs && prod.specs.length > 0 && (

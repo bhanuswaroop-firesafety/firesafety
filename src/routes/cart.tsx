@@ -282,7 +282,7 @@ function CartPage() {
                       >
                         {/* Product Info */}
                         <div className="flex gap-4 items-center">
-                          <a href={`/products/${item.id}`} className="shrink-0">
+                          <Link to={`/products/${item.id}` as any} className="shrink-0">
                             <img
                               src={item.image}
                               alt={item.name}
@@ -291,19 +291,19 @@ function CartPage() {
                               referrerPolicy="no-referrer"
                               className="size-20 shrink-0 rounded-xl object-cover border border-border bg-muted hover:opacity-90 transition-opacity"
                             />
-                          </a>
+                          </Link>
                           <div className="min-w-0">
                             <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-bold text-primary">
                               {item.category}
                             </span>
-                            <a
-                              href={`/products/${item.id}`}
+                            <Link
+                              to={`/products/${item.id}` as any}
                               className="hover:text-primary transition-colors block"
                             >
                               <h3 className="mt-1 font-display text-sm font-bold text-foreground leading-snug">
                                 {item.name}
                               </h3>
-                            </a>
+                            </Link>
                             {item.specs && item.specs.length > 0 && (
                               <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
                                 {item.specs[0]}

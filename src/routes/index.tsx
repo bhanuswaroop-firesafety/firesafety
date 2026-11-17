@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "motion/react";
 import {
@@ -494,8 +494,8 @@ function Index() {
                     key={prod.id || prod.sku || prod.name}
                     className="group flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-xs transition-all hover:border-primary/50 hover:shadow-xl"
                   >
-                    <a
-                      href={`/products/${prod.id || prod.sku || prod.name}`}
+                    <Link
+                      to={`/products/${prod.id || prod.sku || prod.name}` as any}
                       className="relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-50/60 dark:bg-card/40 flex items-center justify-center p-3 block cursor-pointer"
                     >
                       <img
@@ -511,17 +511,17 @@ function Index() {
                           In Stock
                         </span>
                       )}
-                    </a>
+                    </Link>
 
                     <div className="flex flex-1 flex-col p-2.5 sm:p-5">
-                      <a
-                        href={`/products/${prod.id || prod.sku || prod.name}`}
+                      <Link
+                        to={`/products/${prod.id || prod.sku || prod.name}` as any}
                         className="hover:text-primary transition-colors"
                       >
                         <h3 className="font-display text-xs sm:text-base font-bold text-foreground leading-snug line-clamp-2 min-h-[2rem] sm:min-h-0">
                           {prod.name}
                         </h3>
-                      </a>
+                      </Link>
                       <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
                         {specsText}
                       </p>
@@ -572,12 +572,12 @@ function Index() {
                       </div>
 
                       <div className="mt-2 text-center border-t border-border/60 pt-1.5">
-                        <a
-                          href={`/products/${prod.id || prod.sku || prod.name}`}
+                        <Link
+                          to={`/products/${prod.id || prod.sku || prod.name}` as any}
                           className="inline-flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold text-primary hover:underline"
                         >
                           View Product Details <ChevronRight className="size-3" />
-                        </a>
+                        </Link>
                       </div>
                     </div>
                   </div>
