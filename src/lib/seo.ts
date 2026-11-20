@@ -225,10 +225,10 @@ export const schemas = {
     email: "support@udharchi.in",
     address: {
       "@type": "PostalAddress",
-      streetAddress: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram",
-      addressLocality: "Ananthapuramu",
+      streetAddress: "H-7, Kubera Hills, Palasamudram",
+      addressLocality: "Sri Sathya Sai District",
       addressRegion: "Andhra Pradesh",
-      postalCode: "515445",
+      postalCode: "515241",
       addressCountry: "IN",
     },
     department: [

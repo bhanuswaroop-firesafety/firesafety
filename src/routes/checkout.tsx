@@ -802,15 +802,7 @@ function CheckoutPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 text-[11px] text-muted-foreground">
-                    <div>
-                      <strong className="text-foreground block text-[10px] uppercase tracking-wider">
-                        Registered Office Address:
-                      </strong>
-                      <span className="leading-relaxed block mt-0.5">
-                        4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India
-                      </span>
-                    </div>
+                  <div className="text-[11px] text-muted-foreground">
                     <div>
                       <strong className="text-foreground block text-[10px] uppercase tracking-wider">
                         Office &amp; Logistics Depot:
@@ -1158,7 +1150,7 @@ function CheckoutPage() {
                         required
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Ramesh Varma"
+                        placeholder="Enter full name"
                         className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
                       />
                     </div>
@@ -1297,7 +1289,7 @@ function CheckoutPage() {
                             type="text"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
-                            placeholder="e.g. Apex Engineering Ltd"
+                            placeholder="e.g. Sri Udharchi Enterprises"
                             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:border-primary focus:outline-none"
                           />
                         </div>

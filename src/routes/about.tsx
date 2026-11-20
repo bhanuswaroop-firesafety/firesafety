@@ -27,7 +27,7 @@ export const Route = createFileRoute("/about")({
     seoHead({
       title: "About Us & Safety Engineering Leadership | Sri Udharchi Enterprises",
       description:
-        "Learn about Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop), our mission, certified fire protection engineering team, registered in Dharmapuram, Ananthapuramu, and central depot in Palasamudram, AP.",
+        "Learn about Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop), our mission, certified fire protection engineering team, and central depot in Palasamudram, AP.",
       path: "/about",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },
@@ -57,8 +57,7 @@ function AboutPage() {
               <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
                 <strong>Sri Udharchi Enterprises</strong> (Proprietor: <strong>Dabbara Bhanu Swaroop</strong>) is a premier
                 fire protection engineering, industrial safety consulting, and workplace hazard mitigation firm.
-                Our Registered Office is located at 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India,
-                and our primary Office &amp; Central Logistics Depot is situated at H-7, Kubera Hills,
+                Our primary Office &amp; Central Logistics Depot is situated at H-7, Kubera Hills,
                 Palasamudram, Sri Sathya Sai District, AP - 515241, serving industrial and
                 commercial clients nationwide.
               </p>
@@ -222,7 +221,7 @@ function AboutPage() {
               </div>
               <div>
                 <h2 className="font-display text-xl font-bold text-foreground">
-                  Statutory Entity &amp; Registered Office Identity
+                  Statutory Entity &amp; Facility Identity
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Official commercial registration and establishment details for Sri Udharchi Enterprises
@@ -255,15 +254,9 @@ function AboutPage() {
               <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-4">
                 <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-[11px]">
                   <MapPin className="size-4" />
-                  <span>Statutory Addresses</span>
+                  <span>Central Facility Location</span>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-muted-foreground block text-[11px]">Registered Office Address:</span>
-                  <p className="text-foreground font-medium leading-relaxed">
-                    4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India
-                  </p>
-                </div>
-                <div className="space-y-1 pt-1 border-t border-border/50">
                   <span className="text-muted-foreground block text-[11px]">Central Office &amp; Logistics Depot:</span>
                   <p className="text-foreground font-medium leading-relaxed">
                     H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241

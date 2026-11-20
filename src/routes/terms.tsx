@@ -132,7 +132,7 @@ export function TermsPage() {
             <section className="space-y-3 rounded-2xl border border-border bg-card/60 p-6">
               <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
                 <ShieldCheck className="size-4 text-primary" />
-                9. Legal Entity Identification &amp; Registered Office
+                9. Legal Entity Identification &amp; Facility Location
               </h2>
               <div className="space-y-2 text-xs">
                 <p>
@@ -140,9 +140,6 @@ export function TermsPage() {
                 </p>
                 <p>
                   <strong>Legal Entity / Proprietor:</strong> Dabbara Bhanu Swaroop
-                </p>
-                <p>
-                  <strong>Registered Office Address:</strong> 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India
                 </p>
                 <p>
                   <strong>Office &amp; Logistics Depot:</strong> H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241

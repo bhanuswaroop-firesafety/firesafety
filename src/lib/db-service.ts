@@ -93,9 +93,9 @@ export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   adminEmail: "bhanuswaroop04@gmail.com",
   legalName: "Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop)",
   proprietor: "Dabbara Bhanu Swaroop",
-  registeredAddress: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India",
+  registeredAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
   officeDepotAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
-  address: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India",
+  address: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
 };
 
 // Default Business Profile & Regional Depot Settings
@@ -103,7 +103,7 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessProfileSettings = {
   entityName: "Sri Udharchi Enterprises",
   legalName: "Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop)",
   proprietor: "Dabbara Bhanu Swaroop",
-  registeredAddress: "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India",
+  registeredAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
   officeDepotAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
   specialization: "Industrial Fire & Safety Engineering",
   jurisdiction: "Andhra Pradesh, India",

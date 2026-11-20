@@ -169,12 +169,6 @@ export function SiteFooter() {
               <div className="space-y-1.5 text-xs">
                 <div>
                   <strong className="block text-foreground text-[11px] uppercase tracking-wider">
-                    Registered Office
-                  </strong>
-                  <span>{contact.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}</span>
-                </div>
-                <div className="pt-1 border-t border-border/50">
-                  <strong className="block text-foreground text-[11px] uppercase tracking-wider">
                     Office &amp; Logistics Depot
                   </strong>
                   <span>{contact.officeDepotAddress || "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"}</span>

@@ -385,7 +385,7 @@ export function ContactForm({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Rajesh Sharma"
+                    placeholder="Enter full name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
@@ -419,7 +419,7 @@ export function ContactForm({
                 <div className="relative mt-1">
                   <input
                     type="text"
-                    placeholder="e.g. Apex Pharma Mfg Pvt Ltd"
+                    placeholder="e.g. Sri Udharchi Enterprises Mfg Pvt Ltd"
                     value={formData.company}
                     onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                     className="w-full rounded-lg border border-input bg-background pl-9 pr-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"

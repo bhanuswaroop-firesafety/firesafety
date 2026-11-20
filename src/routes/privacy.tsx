@@ -165,10 +165,6 @@ export function PrivacyPage() {
                 <p><strong>Grievance Officer:</strong> Sri Udharchi Enterprises Compliance Cell</p>
                 <p className="flex items-start gap-2">
                   <MapPin className="size-3.5 text-primary mt-0.5 shrink-0" />
-                  <span><strong>Registered Address:</strong> 4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <MapPin className="size-3.5 text-primary mt-0.5 shrink-0" />
                   <span><strong>Office &amp; Logistics Depot:</strong> H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241</span>
                 </p>
                 <p className="flex items-center gap-2"><Mail className="size-3.5 text-primary" /> <a href="mailto:support@udharchi.in" className="hover:text-primary underline">support@udharchi.in</a></p>

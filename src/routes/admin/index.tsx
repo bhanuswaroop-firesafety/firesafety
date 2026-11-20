@@ -2507,15 +2507,7 @@ function AdminPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2 text-[11px] text-muted-foreground">
-                          <div>
-                            <strong className="text-foreground block text-[10px] uppercase tracking-wider">
-                              Registered Office Address:
-                            </strong>
-                            <span className="leading-relaxed block mt-0.5">
-                              {businessSettings.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}
-                            </span>
-                          </div>
+                        <div className="text-[11px] text-muted-foreground">
                           <div>
                             <strong className="text-foreground block text-[10px] uppercase tracking-wider">
                               Office &amp; Logistics Depot:
@@ -5732,7 +5724,7 @@ function AdminPage() {
                             </label>
                             <input
                               type="text"
-                              placeholder="e.g. Ramesh Kumar (Lead Safety Engineer)"
+                              placeholder="Enter full name &amp; designation"
                               value={newAdminForm.displayName}
                               onChange={(e) =>
                                 setNewAdminForm((prev) => ({
@@ -6110,12 +6102,12 @@ function AdminPage() {
                       </label>
                       <textarea
                         rows={2}
-                        value={businessSettings.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}
+                        value={businessSettings.registeredAddress || "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"}
                         onChange={(e) =>
                           setBusinessSettings({ ...businessSettings, registeredAddress: e.target.value })
                         }
                         className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
-                        placeholder="4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"
+                        placeholder="H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"
                       />
                     </div>
 
@@ -7054,7 +7046,7 @@ function AdminPage() {
                               registeredAddress: e.target.value,
                             })
                           }
-                          placeholder="4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"
+                          placeholder="H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241"
                           className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
                         />
                       </div>

@@ -854,12 +854,6 @@ function Index() {
                 ],
                 [
                   MapPin,
-                  "Registered Office",
-                  "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, AP - 515445",
-                  "#",
-                ],
-                [
-                  MapPin,
                   "Office & Logistics Depot",
                   "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
                   "https://www.google.com/maps/search/?api=1&query=Kubera+Hills+Palasamudram+Andhra+Pradesh+515241",

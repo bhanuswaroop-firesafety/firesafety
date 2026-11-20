@@ -1250,7 +1250,7 @@ function ProductViewPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Ramesh Kumar"
+                      placeholder="Enter full name"
                       value={quoteForm.name}
                       onChange={(e) => setQuoteForm((prev) => ({ ...prev, name: e.target.value }))}
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
@@ -1290,7 +1290,7 @@ function ProductViewPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Hyderabad Logistics Hub"
+                      placeholder="e.g. Sri Udharchi Enterprises"
                       value={quoteForm.company}
                       onChange={(e) =>
                         setQuoteForm((prev) => ({ ...prev, company: e.target.value }))

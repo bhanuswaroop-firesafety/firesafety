@@ -33,7 +33,7 @@ export const Route = createFileRoute("/contact")({
     seoHead({
       title: "Contact Us & 24/7 Safety Dispatch | Sri Udharchi Enterprises",
       description:
-        "Contact Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop) for 24/7 emergency fire safety dispatch, equipment quotations, registered in Dharmapuram, Ananthapuramu, and central depot in Palasamudram, AP.",
+        "Contact Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop) for 24/7 emergency fire safety dispatch, equipment quotations, and central depot in Palasamudram, AP.",
       path: "/contact",
       jsonLd: schemas.breadcrumbs([
         { name: "Home", path: "/" },
@@ -170,15 +170,6 @@ function ContactPage() {
                       </span>
                     </p>
                   </div>
-                </div>
-
-                <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1 text-xs">
-                  <strong className="block text-foreground text-[11px] font-bold uppercase tracking-wider">
-                    Registered Office Address
-                  </strong>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {contact.registeredAddress || "4-169-B, Dharmapuram, Peddapappur, Dharmapuram, Ananthapuramu, Andhra Pradesh, 515445, India"}
-                  </p>
                 </div>
 
                 <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-1 text-xs">
