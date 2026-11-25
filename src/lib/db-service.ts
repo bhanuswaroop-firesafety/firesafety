@@ -974,6 +974,11 @@ export async function updateOrderStatus(
         createdAt: nowIso,
       }).catch((e) => console.warn("Auto shipping notification notice:", e));
     }
+
+    // Trigger automated shipment email to customer via Cloud Function
+    triggerOrderShippingEmail(orderId, existingOrder.orderNumber).catch((e) =>
+      console.warn("Auto shipping email notice:", e),
+    );
   }
 
   if (normStatus === "delivered") {
@@ -1016,6 +1021,34 @@ export async function updateOrderStatus(
   }
 
   await updateDoc(orderRef, cleanFirestoreData(updates));
+}
+
+/**
+ * Triggers the automated order shipping confirmation email via Cloud Function
+ */
+export async function triggerOrderShippingEmail(
+  orderId: string,
+  orderNumber?: string,
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch("/api/sendOrderShippingEmail", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, orderNumber }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        success: true,
+        message: data.sent
+          ? "Shipping confirmation email dispatched to customer successfully."
+          : data.reason || data.error || "Email queued for delivery.",
+      };
+    }
+  } catch (e: unknown) {
+    console.warn("Direct shipping email invoke notice:", e);
+  }
+  return { success: false, message: "Could not trigger shipping email service." };
 }
 
 export async function cancelOrder(

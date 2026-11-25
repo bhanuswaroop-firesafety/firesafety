@@ -7,6 +7,7 @@
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
@@ -19,7 +20,7 @@ const db = admin.firestore();
 
 // Define Secrets and Environment Parameters
 const smtpPass = defineSecret("SMTP_PASS");
-const smtpUser = defineString("SMTP_USER", { default: "support@udharchi.in" });
+const smtpUser = defineString("SMTP_USER", { default: "sriudharchienterprises@gmail.com" });
 const adminEmail = defineString("ADMIN_EMAIL", { default: "bhanuswaroop04@gmail.com" });
 const razorpayKeySecret = defineSecret("RAZORPAY_KEY_SECRET");
 const razorpayKeyId = defineString("RAZORPAY_KEY_ID", { default: "rzp_test_TsSdQPZMXEYn5z" });
@@ -43,12 +44,24 @@ function getKolkataISOString() {
 }
 
 /**
- * Setup Email Transport using defineSecret and defineString
+ * Setup Email Transport using defineSecret and defineString with environment and settings fallbacks
  */
-function getEmailTransporter() {
+function getEmailTransporter(contactInfo) {
   try {
-    const user = smtpUser.value();
-    const pass = smtpPass.value();
+    let user = "";
+    let pass = "";
+    try {
+      user = smtpUser.value();
+    } catch (e) {}
+    try {
+      pass = smtpPass.value();
+    } catch (e) {}
+
+    if (!user && contactInfo && contactInfo.smtpUser) user = contactInfo.smtpUser;
+    if (!pass && contactInfo && contactInfo.smtpPass) pass = contactInfo.smtpPass;
+    if (!user) user = process.env.SMTP_USER || "sriudharchienterprises@gmail.com";
+    if (!pass) pass = process.env.SMTP_PASS || "";
+
     if (user && pass) {
       return nodemailer.createTransport({
         service: "gmail",
@@ -56,7 +69,7 @@ function getEmailTransporter() {
       });
     }
   } catch (err) {
-    console.warn("[Task E] Email transport not configured or secret missing:", err.message);
+    console.warn("[Email Service] Email transport not configured or secret missing:", err.message);
   }
   return null;
 }
@@ -71,17 +84,19 @@ async function getLiveContactSettings() {
       const data = snap.data();
       return {
         supportPhone: data.supportPhone || "+91 8639858221",
-        supportEmail: data.supportEmail || "support@udharchi.in",
-        adminEmail: data.adminEmail || adminEmail.value(),
+        supportEmail: data.supportEmail || "sriudharchienterprises@gmail.com",
+        adminEmail: data.adminEmail || "bhanuswaroop04@gmail.com",
+        smtpUser: data.smtpUser || "",
+        smtpPass: data.smtpPass || "",
       };
     }
   } catch (e) {
-    console.warn("[Task E] Could not fetch settings/contact, using defaults:", e.message);
+    console.warn("[Contact Settings] Could not fetch settings/contact, using defaults:", e.message);
   }
   return {
     supportPhone: "+91 8639858221",
-    supportEmail: "support@udharchi.in",
-    adminEmail: adminEmail.value(),
+    supportEmail: "sriudharchienterprises@gmail.com",
+    adminEmail: "bhanuswaroop04@gmail.com",
   };
 }
 
@@ -105,8 +120,8 @@ async function processDueReminders() {
   }
 
   console.log(`[Task E] Found ${snapshot.size} due reminder(s) to process.`);
-  const transporter = getEmailTransporter();
   const contactInfo = await getLiveContactSettings();
+  const transporter = getEmailTransporter(contactInfo);
   let processedCount = 0;
 
   for (const docSnap of snapshot.docs) {
@@ -392,5 +407,365 @@ exports.verifyRazorpayPayment = onRequest(
       res.status(500).json({ success: false, error: err.message });
     }
   }
+);
+
+/**
+ * Core Order Shipping Email Generator and Dispatcher
+ */
+async function sendShippingEmail(orderData, orderId) {
+  const contactInfo = await getLiveContactSettings();
+  const transporter = getEmailTransporter(contactInfo);
+  const recipientEmail = orderData.customerEmail;
+
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    console.warn(`[Order Dispatch] No valid customer email for order #${orderId}`);
+    return { sent: false, reason: "No valid customer email address provided on order" };
+  }
+
+  const orderNum = orderData.orderNumber || orderId;
+  const courier = orderData.courierName || "Express Courier Logistics";
+  const awb = orderData.trackingNumber || "Pending Carrier Scan";
+  const trackingUrl =
+    orderData.trackingUrl ||
+    `https://www.google.com/search?q=${encodeURIComponent(courier + " tracking " + awb)}`;
+  const customerName = orderData.customerName || "Valued Client";
+  const items = Array.isArray(orderData.items) ? orderData.items : [];
+  const dispatchNote = orderData.dispatchNote || "";
+  const nowDisplay = new Date().toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  const address = orderData.shippingAddress || {};
+  const addressParts = [
+    address.line1,
+    address.line2,
+    address.city,
+    address.state,
+    address.postalCode,
+  ].filter(Boolean);
+  const addressStr = addressParts.length > 0 ? addressParts.join(", ") : "Designated Delivery Facility";
+
+  // Build items rows
+  const itemsRows = items
+    .map(
+      (item) => `
+    <tr>
+      <td style="padding: 10px 12px; border-bottom: 1px solid #f0f0f0; color: #1e293b; font-size: 13px;">
+        <strong>${item.name || "Fire Safety Equipment"}</strong>
+      </td>
+      <td style="padding: 10px 12px; border-bottom: 1px solid #f0f0f0; color: #64748b; font-size: 13px; text-align: center;">
+        ${item.quantity || 1}
+      </td>
+      <td style="padding: 10px 12px; border-bottom: 1px solid #f0f0f0; color: #0f172a; font-size: 13px; text-align: right; font-weight: bold;">
+        ₹${((item.price || 0) * (item.quantity || 1)).toLocaleString("en-IN")}
+      </td>
+    </tr>
+  `,
+    )
+    .join("");
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Your Order Has Shipped - Sri Udharchi Enterprises</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 24px 12px;">
+        <tr>
+          <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+              
+              <!-- Brand Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); padding: 28px 24px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">
+                    SRI UDHARCHI ENTERPRISES
+                  </h1>
+                  <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                    NBC 2016 &amp; IS Certified Industrial Fire Protection
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Status Banner -->
+              <tr>
+                <td style="background-color: #eff6ff; border-bottom: 1px solid #dbeafe; padding: 20px 24px; text-align: center;">
+                  <div style="display: inline-block; background-color: #2563eb; color: #ffffff; border-radius: 50%; width: 44px; height: 44px; line-height: 44px; font-size: 22px; margin-bottom: 8px;">
+                    🚚
+                  </div>
+                  <h2 style="margin: 0; color: #1e40af; font-size: 19px; font-weight: 800;">
+                    Your Safety Order Has Shipped!
+                  </h2>
+                  <p style="margin: 6px 0 0 0; color: #3b82f6; font-size: 13px; font-weight: 600;">
+                    Order Reference: #${orderNum}
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Body Content -->
+              <tr>
+                <td style="padding: 28px 24px;">
+                  <p style="margin: 0 0 16px 0; color: #334155; font-size: 14px; line-height: 1.6;">
+                    Dear <strong>${customerName}</strong>,
+                  </p>
+                  <p style="margin: 0 0 20px 0; color: #334155; font-size: 14px; line-height: 1.6;">
+                    Your certified industrial fire protection equipment has been rigorously tested, packed, and dispatched from our <strong>Palasamudram Central Logistics Hub</strong>. It is now in transit with our authorized carrier partner.
+                  </p>
+
+                  <!-- Tracking & Courier Highlight Card -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #cbd5e1; margin-bottom: 24px;">
+                    <tr>
+                      <td style="padding: 20px;">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="padding-bottom: 12px;">
+                              <span style="display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Carrier Partner
+                              </span>
+                              <strong style="font-size: 16px; color: #0f172a;">
+                                ${courier}
+                              </strong>
+                            </td>
+                            <td align="right" style="padding-bottom: 12px;">
+                              <span style="display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Dispatched On
+                              </span>
+                              <span style="font-size: 13px; color: #334155; font-weight: 600;">
+                                ${nowDisplay}
+                              </span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colspan="2" style="padding-top: 10px; border-top: 1px dashed #cbd5e1;">
+                              <span style="display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                                Airway Bill / Consignment Number (AWB)
+                              </span>
+                              <div style="background-color: #ffffff; border: 1px solid #94a3b8; border-radius: 8px; padding: 10px 14px; display: inline-block;">
+                                <span style="font-family: monospace; font-size: 15px; font-weight: 800; color: #1e3a5f; letter-spacing: 1px;">
+                                  ${awb}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                          ${
+                            dispatchNote
+                              ? `
+                          <tr>
+                            <td colspan="2" style="padding-top: 12px;">
+                              <p style="margin: 0; font-size: 12px; color: #475569; font-style: italic;">
+                                <strong>Dispatch Routing Note:</strong> ${dispatchNote}
+                              </p>
+                            </td>
+                          </tr>
+                          `
+                              : ""
+                          }
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Primary CTA Button -->
+                  <div style="text-align: center; margin: 28px 0 24px 0;">
+                    <a href="${trackingUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 10px; box-shadow: 0 4px 10px rgba(37,99,235,0.3); text-transform: uppercase; letter-spacing: 0.5px;">
+                      Track Your Consignment Live →
+                    </a>
+                  </div>
+
+                  <!-- Delivery Address Card -->
+                  <div style="background-color: #f1f5f9; border-radius: 10px; padding: 14px 16px; margin-bottom: 24px;">
+                    <span style="display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">
+                      Delivery Facility
+                    </span>
+                    <p style="margin: 0; font-size: 12px; color: #334155; line-height: 1.5;">
+                      <strong>${customerName}</strong><br>
+                      ${addressStr}<br>
+                      ${orderData.customerPhone ? `Contact Phone: ${orderData.customerPhone}` : ""}
+                    </p>
+                  </div>
+
+                  <!-- Ordered Items Summary Table -->
+                  ${
+                    items.length > 0
+                      ? `
+                  <h3 style="margin: 0 0 12px 0; color: #0f172a; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Shipment Items (${items.length})
+                  </h3>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 24px;">
+                    <thead>
+                      <tr style="background-color: #f8fafc;">
+                        <th align="left" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; color: #64748b;">Item</th>
+                        <th align="center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; color: #64748b;">Qty</th>
+                        <th align="right" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; color: #64748b;">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${itemsRows}
+                      <tr style="background-color: #f8fafc;">
+                        <td colspan="2" style="padding: 10px 12px; font-size: 12px; font-weight: bold; color: #334155; text-align: right;">
+                          Total Invoiced:
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 13px; font-weight: 900; color: #0f172a; text-align: right;">
+                          ₹${(orderData.total || 0).toLocaleString("en-IN")}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  `
+                      : ""
+                  }
+
+                  <!-- Statutory Compliance Guarantee -->
+                  <div style="border-left: 3px solid #e11d48; padding-left: 12px; margin-bottom: 24px;">
+                    <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">
+                      <strong>Statutory Certification Guarantee:</strong> All equipment is supplied strictly under NBC 2016 Part 4 &amp; IS 15683 manufacturing standards, accompanied by factory test certificates and hydraulic pressure tags.
+                    </p>
+                  </div>
+
+                  <!-- Support Helpline -->
+                  <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;">
+                    Have questions about your delivery or on-site commissioning? Call our 24/7 Logistics Dispatch Desk at <a href="tel:+918639858221" style="color: #2563eb; text-decoration: none; font-weight: bold;">+91 8639858221</a> or email <a href="mailto:sriudharchienterprises@gmail.com" style="color: #2563eb; text-decoration: none;">sriudharchienterprises@gmail.com</a>.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #0f172a; padding: 20px 24px; text-align: center;">
+                  <p style="margin: 0 0 6px 0; color: #f8fafc; font-size: 12px; font-weight: bold;">
+                    Sri Udharchi Enterprises
+                  </p>
+                  <p style="margin: 0 0 4px 0; color: #94a3b8; font-size: 11px;">
+                    Proprietor: <strong>Dabbara Bhanu Swaroop</strong>
+                  </p>
+                  <p style="margin: 0; color: #64748b; font-size: 10px; line-height: 1.4;">
+                    Central Office &amp; Logistics Depot: H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  if (transporter) {
+    try {
+      const senderEmail = (contactInfo && contactInfo.supportEmail) || "sriudharchienterprises@gmail.com";
+      await transporter.sendMail({
+        from: `"Sri Udharchi Logistics" <${senderEmail}>`,
+        to: recipientEmail,
+        subject: `Your Safety Order #${orderNum} Has Shipped via ${courier} (AWB: ${awb})`,
+        html: emailHtml,
+      });
+
+      console.log(`[Order Dispatch] Successfully sent shipping email for Order #${orderNum} to ${recipientEmail}`);
+
+      // Also send administrative copy
+      try {
+        await transporter.sendMail({
+          from: `"Sri Udharchi Dispatch Bot" <${senderEmail}>`,
+          to: contactInfo.adminEmail || "bhanuswaroop04@gmail.com",
+          subject: `[Admin Alert] Order #${orderNum} Dispatched to ${customerName} (${courier})`,
+          text: `Order #${orderNum} marked shipped.\nCustomer: ${customerName} (${recipientEmail})\nCourier: ${courier}\nAWB: ${awb}\nTracking URL: ${trackingUrl}`,
+        });
+      } catch (adminErr) {
+        console.warn("[Order Dispatch] Admin notification copy failed:", adminErr.message);
+      }
+
+      // Mark email as sent in Firestore
+      try {
+        await db.collection("orders").doc(orderId).update({
+          shippingEmailSent: true,
+          shippingEmailSentAt: new Date().toISOString(),
+        });
+      } catch (e) {}
+
+      return { sent: true, recipient: recipientEmail };
+    } catch (mailErr) {
+      console.error(`[Order Dispatch] Failed sending shipping email for Order #${orderNum}:`, mailErr.message);
+      return { sent: false, error: mailErr.message };
+    }
+  } else {
+    console.warn(`[Order Dispatch] Email transporter not available. Please configure SMTP credentials.`);
+    return { sent: false, error: "SMTP transporter not configured" };
+  }
+}
+
+/**
+ * Firestore Trigger: Automatically send Shipping Confirmation Email when order status changes to "shipped"
+ */
+exports.onOrderStatusUpdated = onDocumentUpdated(
+  {
+    document: "orders/{orderId}",
+    secrets: [smtpPass],
+  },
+  async (event) => {
+    const beforeData = event.data?.before?.data();
+    const afterData = event.data?.after?.data();
+    if (!beforeData || !afterData) return;
+
+    const wasShipped = beforeData.status === "shipped" || beforeData.status === "dispatched";
+    const isShipped = afterData.status === "shipped" || afterData.status === "dispatched";
+
+    if (!wasShipped && isShipped) {
+      console.log(
+        `[Order Dispatch] Order #${afterData.orderNumber || event.params.orderId} status changed to SHIPPED. Triggering customer email...`,
+      );
+      await sendShippingEmail(afterData, event.params.orderId);
+    }
+  },
+);
+
+/**
+ * HTTP Endpoint: Send or re-send Order Shipping Notification Email on-demand
+ */
+exports.sendOrderShippingEmailManual = onRequest(
+  {
+    cors: true,
+    secrets: [smtpPass],
+  },
+  async (req, res) => {
+    try {
+      const { orderId, orderNumber } = req.body || req.query || {};
+      const targetId = orderId || orderNumber;
+      if (!targetId) {
+        res.status(400).json({ success: false, error: "Missing orderId or orderNumber parameter" });
+        return;
+      }
+
+      const docSnap = await db.collection("orders").doc(targetId).get();
+      let orderData = null;
+      let finalDocId = targetId;
+      if (docSnap.exists) {
+        orderData = docSnap.data();
+      } else {
+        const qSnap = await db.collection("orders").where("orderNumber", "==", targetId).limit(1).get();
+        if (!qSnap.empty) {
+          orderData = qSnap.docs[0].data();
+          finalDocId = qSnap.docs[0].id;
+        }
+      }
+
+      if (!orderData) {
+        res.status(404).json({ success: false, error: `Order #${targetId} was not found` });
+        return;
+      }
+
+      const result = await sendShippingEmail(orderData, finalDocId);
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[Order Dispatch] Error in sendOrderShippingEmailManual:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
 );
 

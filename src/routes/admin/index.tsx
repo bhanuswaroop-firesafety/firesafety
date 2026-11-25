@@ -13,6 +13,7 @@ import {
   subscribeCategories,
   subscribeOrders,
   updateOrderStatus,
+  triggerOrderShippingEmail,
   deleteOrder,
   subscribeAuthorizedAdmins,
   addAuthorizedAdmin,
@@ -1138,7 +1139,7 @@ function AdminPage() {
         updatedBy: userProfile?.displayName || user?.email || "Admin",
       });
       showSuccessMessage(
-        `Order #${shippingOrder.orderNumber || shippingOrder.id} marked as SHIPPED with courier tracking! Real-time notification dispatched to customer.`,
+        `Order #${shippingOrder.orderNumber || shippingOrder.id} marked as SHIPPED with courier tracking! Automated dispatch email & portal tracking notification sent to customer.`,
       );
       setShippingOrder(null);
     } catch (err: unknown) {
@@ -1147,6 +1148,21 @@ function AdminPage() {
       );
     } finally {
       setIsSubmittingShipping(false);
+    }
+  };
+
+  // Re-send Order Shipping Notification Email to Customer
+  const handleResendShippingEmail = async (ord: OrderItem) => {
+    if (!ord.id && !ord.orderNumber) return;
+    try {
+      const res = await triggerOrderShippingEmail(ord.id || "", ord.orderNumber);
+      showSuccessMessage(
+        res.success
+          ? `Shipping email dispatched to ${ord.customerEmail || "customer"}!`
+          : res.message || "Failed to dispatch shipping email.",
+      );
+    } catch (e: unknown) {
+      showSuccessMessage("Error sending shipping email: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -2418,6 +2434,17 @@ function AdminPage() {
                                 >
                                   <Truck className="size-4" />
                                 </button>
+                                {(ord.status === "shipped" || ord.status === "dispatched" || ord.status === "delivered") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResendShippingEmail(ord)}
+                                    className="rounded-md p-1.5 text-purple-600 hover:bg-purple-500/10 hover:text-purple-700 dark:text-purple-400"
+                                    title="Send / Resend Shipping Confirmation Email to Customer"
+                                    aria-label={`Resend dispatch email for order ${ord.orderNumber}`}
+                                  >
+                                    <Mail className="size-4" />
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => setSelectedOrder(ord)}
@@ -7575,10 +7602,10 @@ function AdminPage() {
                 <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-700 dark:text-blue-300">
                   <p className="font-semibold flex items-center gap-1.5">
                     <Truck className="size-3.5" />
-                    Customer Real-Time Tracking Sync
+                    Customer Real-Time Tracking &amp; Email Dispatch Sync
                   </p>
                   <p className="mt-0.5 text-[11px] opacity-90">
-                    When you save shipping details, this order is marked as <strong>SHIPPED</strong>, and the tracking number &amp; live link immediately reflect in the customer's portal and tracking timeline with an automated in-app notification.
+                    When you save shipping details, this order is marked as <strong>SHIPPED</strong>, and an automated branded <strong>Dispatch Confirmation Email</strong> is sent to <strong>{shippingOrder.customerEmail || "customer"}</strong> with the AWB, carrier link, and delivery details.
                   </p>
                 </div>
 

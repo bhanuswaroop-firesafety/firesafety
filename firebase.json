@@ -27,6 +27,10 @@
     "cleanUrls": true,
     "rewrites": [
       {
+        "source": "/api/sendOrderShippingEmail",
+        "function": "sendOrderShippingEmailManual"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
