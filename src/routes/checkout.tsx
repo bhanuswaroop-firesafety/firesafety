@@ -313,8 +313,9 @@ function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("phonepe");
   const [phonePeTransactionId, setPhonePeTransactionId] = useState("");
   const [showPhonePeModal, setShowPhonePeModal] = useState(false);
-  const [activeQrTab, setActiveQrTab] = useState<"dynamic" | "card">("dynamic");
+  const [activeQrTab, setActiveQrTab] = useState<"dynamic" | "flexible" | "card">("dynamic");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [flexibleQrDataUrl, setFlexibleQrDataUrl] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [previewOrderId] = useState(() => generateOrderNumber());
   const [paymentError, setPaymentError] = useState<{
@@ -374,9 +375,13 @@ function CheckoutPage() {
     activeUpiId,
   );
 
-  // Generate dynamic scannable QR Code
+  // Generate dynamic scannable QR Code & High-Value Flexible QR Code (no ₹2,000 NPCI limit)
   useEffect(() => {
     if (finalPayable <= 0) return;
+    if (finalPayable > 2000) {
+      setActiveQrTab("flexible");
+    }
+
     QRCode.toDataURL(upiDetails.upiUrl, {
       width: 320,
       margin: 2,
@@ -387,6 +392,17 @@ function CheckoutPage() {
     })
       .then((url) => setQrDataUrl(url))
       .catch((err) => console.warn("Failed generating QR Code:", err));
+
+    QRCode.toDataURL(upiDetails.flexibleUpiUrl, {
+      width: 320,
+      margin: 2,
+      color: {
+        dark: "#1e3a5f",
+        light: "#ffffff",
+      },
+    })
+      .then((url) => setFlexibleQrDataUrl(url))
+      .catch((err) => console.warn("Failed generating Flexible QR Code:", err));
   }, [finalPayable, previewOrderId, activeUpiId, activePayeeName]);
 
   const copyToClipboard = (text: string, fieldName: string) => {
@@ -1477,11 +1493,40 @@ function CheckoutPage() {
                             </div>
                           </div>
 
+                          {/* High-Value NPCI 2K Cap Advisory Banner */}
+                          {finalPayable > 2000 && (
+                            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+                              <div className="flex items-center gap-2 font-bold">
+                                <AlertCircle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                                <span>High-Value Payment Mode (Orders Above ₹2,000)</span>
+                              </div>
+                              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                                NPCI dynamic QR rules restrict pre-filled auto-amount QR codes to ₹2,000. To pay <strong>₹{finalPayable.toLocaleString("en-IN")}</strong> smoothly, use the <strong>High-Value QR</strong> or <strong>Merchant Card</strong> below and enter ₹{finalPayable.toLocaleString("en-IN")} manually in PhonePe/GPay/Paytm. Transactions up to ₹1,00,000 are fully supported without any limit!
+                              </p>
+                            </div>
+                          )}
+
                           <div className="grid gap-6 md:grid-cols-[auto_1fr] items-center">
-                            {/* Left: Dynamic QR Code with Tab Switcher */}
+                            {/* Left: Dynamic / Flexible QR Code with Tab Switcher */}
                             <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-border/80 shadow-md">
                               {/* QR Mode Switcher */}
                               <div className="mb-2 flex items-center rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveQrTab("flexible")}
+                                  className={`px-2 py-0.5 rounded transition-all flex items-center gap-1 ${
+                                    activeQrTab === "flexible"
+                                      ? "bg-[#5f259f] text-white shadow-xs"
+                                      : "text-slate-600 hover:text-slate-900"
+                                  }`}
+                                >
+                                  <span>High-Value QR</span>
+                                  {finalPayable > 2000 && (
+                                    <span className="rounded bg-amber-400 px-1 py-0.2 text-[9px] font-black text-slate-900">
+                                      &gt;₹2K
+                                    </span>
+                                  )}
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => setActiveQrTab("dynamic")}
@@ -1491,7 +1536,7 @@ function CheckoutPage() {
                                       : "text-slate-500 hover:text-slate-800"
                                   }`}
                                 >
-                                  Dynamic QR
+                                  Auto-Fill QR
                                 </button>
                                 <button
                                   type="button"
@@ -1506,7 +1551,19 @@ function CheckoutPage() {
                                 </button>
                               </div>
 
-                              {activeQrTab === "dynamic" ? (
+                              {activeQrTab === "flexible" ? (
+                                flexibleQrDataUrl ? (
+                                  <img
+                                    src={flexibleQrDataUrl}
+                                    alt="PhonePe High-Value QR Code"
+                                    className="size-44 sm:size-48 object-contain rounded-lg"
+                                  />
+                                ) : (
+                                  <div className="size-44 sm:size-48 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                                    Generating QR...
+                                  </div>
+                                )
+                              ) : activeQrTab === "dynamic" ? (
                                 qrDataUrl ? (
                                   <img
                                     src={qrDataUrl}
@@ -1529,9 +1586,11 @@ function CheckoutPage() {
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800">
                                   <QrCode className="size-3.5 text-[#5f259f]" />
                                   <span>
-                                    {activeQrTab === "dynamic"
-                                      ? `Scan to Pay ₹${finalPayable.toLocaleString("en-IN")}`
-                                      : "Official Merchant UPI QR"}
+                                    {activeQrTab === "flexible"
+                                      ? `Scan & Enter ₹${finalPayable.toLocaleString("en-IN")} in App`
+                                      : activeQrTab === "dynamic"
+                                        ? `Scan to Pay ₹${finalPayable.toLocaleString("en-IN")}`
+                                        : "Official Merchant UPI QR"}
                                   </span>
                                 </span>
                               </div>
@@ -1559,8 +1618,20 @@ function CheckoutPage() {
                                   <span>Open PhonePe &amp; Pay ₹{finalPayable.toLocaleString("en-IN")}</span>
                                   <ExternalLink className="size-3.5 ml-1" />
                                 </button>
+                                {finalPayable > 2000 && (
+                                  <a
+                                    href={upiDetails.phonePeFlexibleUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-[#5f259f] dark:text-purple-300 py-1.5 text-xs font-bold transition-colors"
+                                  >
+                                    <span>High-Value Open PhonePe (Manual ₹{finalPayable.toLocaleString("en-IN")} Entry)</span>
+                                  </a>
+                                )}
                                 <p className="text-[11px] text-muted-foreground mt-1 text-center">
-                                  Launches PhonePe directly with payee &amp; exact amount pre-filled.
+                                  {finalPayable > 2000
+                                    ? "For >₹2K, enter amount manually in PhonePe if dynamic limit appears."
+                                    : "Launches PhonePe directly with payee & exact amount pre-filled."}
                                 </p>
                               </div>
 
@@ -1568,27 +1639,42 @@ function CheckoutPage() {
                               <div className="flex items-center gap-2 pt-1">
                                 <span className="text-[11px] font-semibold text-muted-foreground shrink-0">Other Apps:</span>
                                 <a
-                                  href={upiDetails.gpayUrl}
+                                  href={finalPayable > 2000 ? upiDetails.gpayFlexibleUrl : upiDetails.gpayUrl}
                                   className="flex-1 text-center rounded-lg border border-border bg-muted/40 hover:bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors"
                                 >
                                   Google Pay
                                 </a>
                                 <a
-                                  href={upiDetails.paytmUrl}
+                                  href={finalPayable > 2000 ? upiDetails.paytmFlexibleUrl : upiDetails.paytmUrl}
                                   className="flex-1 text-center rounded-lg border border-border bg-muted/40 hover:bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors"
                                 >
                                   Paytm
                                 </a>
                                 <a
-                                  href={upiDetails.upiUrl}
+                                  href={finalPayable > 2000 ? upiDetails.flexibleUpiUrl : upiDetails.upiUrl}
                                   className="flex-1 text-center rounded-lg border border-border bg-muted/40 hover:bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors"
                                 >
                                   Any UPI
                                 </a>
                               </div>
 
-                              {/* UPI ID & Amount Copy Details */}
+                              {/* UPI ID, Amount & Payee Copy Details */}
                               <div className="rounded-xl border border-border/80 bg-muted/30 p-2.5 space-y-1.5 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground">Invoiced Payable:</span>
+                                  <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                                    <span className="select-all">₹{finalPayable.toLocaleString("en-IN")}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => copyToClipboard(String(finalPayable), "invoicedAmount")}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20"
+                                      title="Copy Exact Amount"
+                                    >
+                                      {copiedField === "invoicedAmount" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                                      <span>{copiedField === "invoicedAmount" ? "Copied" : "Copy Amount"}</span>
+                                    </button>
+                                  </div>
+                                </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-muted-foreground">Payee UPI ID:</span>
                                   <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
@@ -2012,29 +2098,53 @@ function CheckoutPage() {
                   <ExternalLink className="size-4 ml-0.5" />
                 </a>
 
+                {finalPayable > 2000 && (
+                  <a
+                    href={upiDetails.phonePeFlexibleUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-[#5f259f] dark:text-purple-300 py-2 text-xs font-bold transition-colors"
+                  >
+                    <span>High-Value Open PhonePe (Manual ₹{finalPayable.toLocaleString("en-IN")} Entry)</span>
+                  </a>
+                )}
+
                 {/* Other UPI Apps row */}
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-[11px] font-semibold text-muted-foreground shrink-0">Other UPI:</span>
                   <a
-                    href={upiDetails.gpayUrl}
+                    href={finalPayable > 2000 ? upiDetails.gpayFlexibleUrl : upiDetails.gpayUrl}
                     className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
                   >
                     Google Pay
                   </a>
                   <a
-                    href={upiDetails.paytmUrl}
+                    href={finalPayable > 2000 ? upiDetails.paytmFlexibleUrl : upiDetails.paytmUrl}
                     className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
                   >
                     Paytm
                   </a>
                   <a
-                    href={upiDetails.upiUrl}
+                    href={finalPayable > 2000 ? upiDetails.flexibleUpiUrl : upiDetails.upiUrl}
                     className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
                   >
                     Any UPI App
                   </a>
                 </div>
               </div>
+
+              {/* High-Value NPCI 2K Cap Advisory Banner */}
+              {finalPayable > 2000 && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+                  <div className="flex items-center gap-2 font-bold">
+                    <AlertCircle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>NPCI ₹2,000 QR Limit Notification</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                    If PhonePe notifies that payments above ₹2,000 are not allowed on this QR code, please select the <strong>High-Value QR</strong> or <strong>Merchant Card</strong> tab below. Scan it, enter <strong>₹{finalPayable.toLocaleString("en-IN")}</strong> manually, and authorize with UPI PIN. Payments up to ₹1,00,000 will process instantly!
+                  </p>
+                </div>
+              )}
 
               {/* QR Code Section with Tabs */}
               <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
@@ -2045,6 +2155,22 @@ function CheckoutPage() {
                   </span>
                   {/* Tab Selector */}
                   <div className="inline-flex rounded-lg bg-muted p-1 text-[11px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setActiveQrTab("flexible")}
+                      className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${
+                        activeQrTab === "flexible"
+                          ? "bg-[#5f259f] text-white font-bold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span>High-Value QR</span>
+                      {finalPayable > 2000 && (
+                        <span className="rounded bg-amber-400 px-1 py-0.2 text-[9px] font-black text-slate-900">
+                          &gt;₹2K
+                        </span>
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setActiveQrTab("dynamic")}
@@ -2071,7 +2197,24 @@ function CheckoutPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-2">
-                  {activeQrTab === "dynamic" ? (
+                  {activeQrTab === "flexible" ? (
+                    <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-border/80 shadow-md">
+                      {flexibleQrDataUrl ? (
+                        <img
+                          src={flexibleQrDataUrl}
+                          alt="High-Value PhonePe UPI QR"
+                          className="size-44 sm:size-48 object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="size-44 sm:size-48 flex items-center justify-center text-xs text-muted-foreground">
+                          Generating QR...
+                        </div>
+                      )}
+                      <span className="mt-2 text-[11px] font-bold text-slate-800">
+                        Scan &amp; Enter ₹{finalPayable.toLocaleString("en-IN")} in App
+                      </span>
+                    </div>
+                  ) : activeQrTab === "dynamic" ? (
                     <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-border/80 shadow-md">
                       {qrDataUrl ? (
                         <img
@@ -2101,6 +2244,22 @@ function CheckoutPage() {
                   {/* Merchant Details & Copy buttons */}
                   <div className="space-y-2.5 text-xs flex-1 w-full">
                     <div className="rounded-xl border border-border/70 bg-card p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">Invoiced Amount:</span>
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                          <span className="select-all">₹{finalPayable.toLocaleString("en-IN")}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(String(finalPayable), "modalInvoicedAmount")}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20"
+                            title="Copy Exact Amount"
+                          >
+                            {copiedField === "modalInvoicedAmount" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                            <span>{copiedField === "modalInvoicedAmount" ? "Copied" : "Copy"}</span>
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-muted-foreground">Payee UPI ID:</span>
                         <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">

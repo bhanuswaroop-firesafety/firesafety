@@ -1072,19 +1072,31 @@ export function generatePhonePeUpiUrls(
   const encodedName = encodeURIComponent(payeeName);
   const note = encodeURIComponent(`Order ${orderNumber}`);
 
-  // Standard UPI URI specification
-  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}&mode=02&purpose=00`;
+  // Standard UPI URI specification - Cleaned of &mode=02&purpose=00 which triggers static offline QR ₹2,000 limit in NPCI rules
+  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
 
-  // App-specific intent URLs
+  // Flexible / High-Value UPI URL without hardcoded amount: bypasses the NPCI ₹2,000 dynamic QR ceiling and allows paying up to ₹1,00,000
+  const flexibleUpiUrl = `upi://pay?pa=${upiId}&pn=${encodedName}&cu=INR&tn=${note}`;
+
+  // App-specific intent URLs (pre-filled amount)
   const phonePeUrl = `phonepe://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
   const gpayUrl = `tez://upi/pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
   const paytmUrl = `paytmmp://pay?pa=${upiId}&pn=${encodedName}&am=${cleanAmount}&cu=INR&tn=${note}`;
 
+  // App-specific flexible intent URLs (no pre-filled amount restriction for > ₹2,000 orders)
+  const phonePeFlexibleUrl = `phonepe://pay?pa=${upiId}&pn=${encodedName}&cu=INR&tn=${note}`;
+  const gpayFlexibleUrl = `tez://upi/pay?pa=${upiId}&pn=${encodedName}&cu=INR&tn=${note}`;
+  const paytmFlexibleUrl = `paytmmp://pay?pa=${upiId}&pn=${encodedName}&cu=INR&tn=${note}`;
+
   return {
     upiUrl,
+    flexibleUpiUrl,
     phonePeUrl,
+    phonePeFlexibleUrl,
     gpayUrl,
+    gpayFlexibleUrl,
     paytmUrl,
+    paytmFlexibleUrl,
     upiId,
     amount: cleanAmount,
     payeeName,

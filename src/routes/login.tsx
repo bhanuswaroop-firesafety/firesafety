@@ -40,6 +40,8 @@ import {
   KeyRound,
   Printer,
   QrCode,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   formatIndianMobileDisplay,
@@ -202,6 +204,8 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
   const [isSearchingTracking, setIsSearchingTracking] = useState<boolean>(false);
   const [trackingSearchError, setTrackingSearchError] = useState<string>("");
   const [copiedAwb, setCopiedAwb] = useState<boolean>(false);
+  const [copiedAwbOrderId, setCopiedAwbOrderId] = useState<string | null>(null);
+  const [expandedAuditTrailOrderId, setExpandedAuditTrailOrderId] = useState<string | null>(null);
 
   // Task D: Feedback Modal State
   const [feedbackOrder, setFeedbackOrder] = useState<OrderItem | null>(null);
@@ -359,6 +363,14 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
       navigator.clipboard.writeText(awb);
       setCopiedAwb(true);
       setTimeout(() => setCopiedAwb(false), 2000);
+    }
+  };
+
+  const handleCopyOrderAwb = (awb: string, orderId: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(awb);
+      setCopiedAwbOrderId(orderId);
+      setTimeout(() => setCopiedAwbOrderId(null), 2500);
     }
   };
 
@@ -1186,38 +1198,186 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                             </div>
                           </div>
 
-                          {/* Shipped Banner with Courier & Track Button */}
-                          {isShipped && (
-                            <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-blue-900 dark:text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="size-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                                  <Truck className="size-4 animate-pulse" />
-                                </div>
-                                <div>
-                                  <div className="font-bold flex items-center gap-1.5 flex-wrap">
-                                    <span>Dispatched via {order.courierName || "Express Courier"}</span>
-                                    {order.trackingNumber && (
-                                      <span className="font-mono text-blue-700 dark:text-blue-300 bg-blue-500/15 px-1.5 py-0.5 rounded text-[11px]">
-                                        AWB: {order.trackingNumber}
-                                      </span>
-                                    )}
+                          {/* Integrated Real-Time Order Tracking Stepper */}
+                          {isCancelled ? (
+                            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive flex items-center gap-2.5">
+                              <AlertCircle className="size-4 shrink-0" />
+                              <div className="space-y-0.5">
+                                <span className="font-bold block">Order Cancelled</span>
+                                <span className="text-[11px] opacity-90">
+                                  This order was cancelled. If you were charged, a reversal or credit voucher is processed as per policy.
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 sm:p-4 space-y-3">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-foreground flex items-center gap-1.5">
+                                  <Truck className="size-3.5 text-primary" />
+                                  <span>Live Fulfillment &amp; Dispatch Tracking</span>
+                                </span>
+                                <span className="text-[11px] font-bold text-primary capitalize bg-primary/10 px-2 py-0.5 rounded-full">
+                                  Current Stage: {order.status === "delivered"
+                                    ? "Delivered & Certified"
+                                    : order.status === "shipped" || order.status === "dispatched"
+                                      ? "Dispatched / In Transit"
+                                      : order.status === "confirmed"
+                                        ? "Confirmed & Packaging"
+                                        : "Order Placed"}
+                                </span>
+                              </div>
+
+                              {/* 5-Step Visual Stepper */}
+                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                                {TRACKING_STEPS.map((st) => {
+                                  const currentIdx = getTrackingStepIndex(order.status);
+                                  const isComplete = currentIdx >= st.step;
+                                  const isCurrent = currentIdx === st.step;
+                                  const IconComponent = st.icon;
+
+                                  return (
+                                    <div
+                                      key={st.step}
+                                      className={`rounded-xl p-2.5 border transition-all ${
+                                        isCurrent
+                                          ? "border-blue-500 bg-blue-500/10 shadow-xs ring-1 ring-blue-500/30"
+                                          : isComplete
+                                            ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
+                                            : "border-border/50 bg-background/50 text-muted-foreground opacity-60"
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <div
+                                          className={`size-6 rounded-md flex items-center justify-center ${
+                                            isCurrent
+                                              ? "bg-blue-600 text-white animate-pulse"
+                                              : isComplete
+                                                ? "bg-emerald-600 text-white"
+                                                : "bg-muted text-muted-foreground"
+                                          }`}
+                                        >
+                                          {isComplete && !isCurrent ? (
+                                            <Check className="size-3.5 stroke-[3]" />
+                                          ) : (
+                                            <IconComponent className="size-3" />
+                                          )}
+                                        </div>
+                                        <span className="text-[9px] font-mono font-bold text-muted-foreground">
+                                          0{st.step}
+                                        </span>
+                                      </div>
+                                      <div className="text-[11px] font-bold text-foreground leading-tight">
+                                        {st.title}
+                                      </div>
+                                      <p className="text-[9px] text-muted-foreground mt-0.5 leading-snug line-clamp-1">
+                                        {st.desc}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Live Courier & Dispatch Details Card (Visible based on Admin Updates) */}
+                          {(order.courierName || order.trackingNumber || order.trackingUrl || order.dispatchNote || isShipped) && (
+                            <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-card to-card p-4 text-xs space-y-3 shadow-xs">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="size-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                    <Truck className="size-4 animate-pulse" />
                                   </div>
-                                  <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
-                                    {order.dispatchNote || "In transit with real-time carrier tracking enabled."}
-                                  </p>
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 block tracking-wider">
+                                      Courier Partner &amp; Transit Info
+                                    </span>
+                                    <h4 className="font-display text-sm font-bold text-foreground">
+                                      {order.courierName || "Express Courier Logistics"}
+                                    </h4>
+                                  </div>
+                                </div>
+                                {order.shippedAt && (
+                                  <div className="text-left sm:text-right text-[11px] text-muted-foreground">
+                                    <span>Dispatched on {formatKolkataDisplay(order.shippedAt)}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                                {/* Consignment / AWB Card with 1-Click Copy */}
+                                {order.trackingNumber ? (
+                                  <div className="rounded-lg border border-border bg-background/80 p-2.5 space-y-1">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                                      Airway Bill / Consignment Number (AWB)
+                                    </span>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-mono text-xs sm:text-sm font-black text-foreground select-all tracking-wider">
+                                        {order.trackingNumber}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleCopyOrderAwb(
+                                            order.trackingNumber || "",
+                                            order.id || order.orderNumber || "",
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                                        title="Copy AWB Number"
+                                      >
+                                        {copiedAwbOrderId === (order.id || order.orderNumber) ? (
+                                          <>
+                                            <Check className="size-3 text-emerald-600" />
+                                            <span className="text-emerald-600">Copied!</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Copy className="size-3" />
+                                            <span>Copy AWB</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] text-muted-foreground italic">
+                                    AWB tracking number will appear upon pickup scan by carrier.
+                                  </div>
+                                )}
+
+                                {/* Carrier Portal Direct Action Button */}
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+                                  {order.trackingUrl ? (
+                                    <a
+                                      href={order.trackingUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-colors"
+                                    >
+                                      <span>Track on Carrier Website</span>
+                                      <ExternalLink className="size-3.5" />
+                                    </a>
+                                  ) : order.trackingNumber ? (
+                                    <a
+                                      href={`https://www.google.com/search?q=${encodeURIComponent((order.courierName || "courier") + " tracking " + order.trackingNumber)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 px-3.5 py-2 text-xs font-bold transition-colors"
+                                    >
+                                      <span>Track on Carrier Website</span>
+                                      <ExternalLink className="size-3.5" />
+                                    </a>
+                                  ) : null}
                                 </div>
                               </div>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedTrackingOrderId(order.id || order.orderNumber || null);
-                                  setAccountTab("tracking");
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shrink-0 shadow-xs"
-                              >
-                                <Truck className="size-3.5" />
-                                <span>Track Live Shipment</span>
-                              </Button>
+
+                              {/* Admin Dispatch Routing Notes */}
+                              {order.dispatchNote && (
+                                <div className="pt-2 border-t border-border/50 text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                  <span className="font-bold text-foreground shrink-0">Admin Dispatch Note:</span>
+                                  <span>{order.dispatchNote}</span>
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -1259,16 +1419,79 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
                             </div>
                           )}
 
+                          {/* Expandable Live Status Audit Trail */}
+                          {expandedAuditTrailOrderId === (order.id || order.orderNumber) && (
+                            <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-2 text-xs animate-in fade-in duration-200">
+                              <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
+                                <span className="font-bold text-foreground flex items-center gap-1.5">
+                                  <Clock className="size-3.5 text-primary" />
+                                  <span>Admin Status Audit Trail &amp; Updates</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedAuditTrailOrderId(null)}
+                                  className="text-[11px] text-muted-foreground hover:text-foreground font-semibold"
+                                >
+                                  Close
+                                </button>
+                              </div>
+
+                              {order.statusHistory && order.statusHistory.length > 0 ? (
+                                <div className="space-y-2 pt-1">
+                                  {order.statusHistory.map((entry, idx) => (
+                                    <div key={idx} className="flex items-start gap-2 text-[11px]">
+                                      <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                                      <div className="space-y-0.5 flex-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="font-bold text-foreground capitalize">
+                                            {entry.status}
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground">
+                                            {formatKolkataDisplay(entry.timestamp)}
+                                          </span>
+                                        </div>
+                                        {entry.note && (
+                                          <p className="text-muted-foreground text-[10px] leading-snug">
+                                            {entry.note}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-muted-foreground py-1">
+                                  Order placed on {formatKolkataDisplay(order.createdAt)}. Status updates logged by dispatch will appear here.
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {/* Actions & Audit History Button */}
                           <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs gap-2 flex-wrap">
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => setHistoryOrder(order)}
-                                className="text-muted-foreground hover:text-foreground text-[11px] flex items-center gap-1 font-medium"
+                                onClick={() =>
+                                  setExpandedAuditTrailOrderId((prev) =>
+                                    prev === (order.id || order.orderNumber)
+                                      ? null
+                                      : (order.id || order.orderNumber || null),
+                                  )
+                                }
+                                className="text-primary hover:underline text-[11px] flex items-center gap-1 font-semibold"
                               >
                                 <Clock className="size-3" />
-                                <span>Status History ({order.statusHistory?.length || 1})</span>
+                                <span>
+                                  {expandedAuditTrailOrderId === (order.id || order.orderNumber)
+                                    ? "Hide Status Trail"
+                                    : `Status Trail (${order.statusHistory?.length || 1})`}
+                                </span>
+                                {expandedAuditTrailOrderId === (order.id || order.orderNumber) ? (
+                                  <ChevronUp className="size-3" />
+                                ) : (
+                                  <ChevronDown className="size-3" />
+                                )}
                               </button>
                             </div>
 
