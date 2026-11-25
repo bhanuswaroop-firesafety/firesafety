@@ -350,6 +350,7 @@ function ProductViewPage() {
       setIsLoading(false);
       resolved = true;
     } else {
+      setProduct(null);
       setIsLoading(true);
     }
 
@@ -471,58 +472,152 @@ function ProductViewPage() {
     return [...sameCat, ...others].slice(0, 3);
   }, [product, allProducts]);
 
-  // Skeleton Loading View: Prevents jarring "Not Found" flash while Firestore subscription resolves
+  // High-Fidelity Product Skeleton Screen: Mirrors the exact layout with smooth shimmer animations
   if (isLoading && !product) {
     return (
-      <main className="min-h-screen bg-background text-foreground animate-in fade-in duration-200">
+      <main className="min-h-screen bg-background text-foreground pb-20 sm:pb-24 animate-in fade-in duration-150">
         <SiteHeader />
+
+        {/* Breadcrumb Skeleton */}
         <div className="border-b border-border bg-muted/30 py-3 text-xs">
           <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
-            <div className="h-4 w-12 rounded-sm bg-muted animate-pulse" />
-            <ChevronRight className="size-3.5 text-muted-foreground/40" />
-            <div className="h-4 w-32 rounded-sm bg-muted animate-pulse" />
-            <ChevronRight className="size-3.5 text-muted-foreground/40" />
-            <div className="h-4 w-24 rounded-sm bg-muted animate-pulse" />
+            <div className="h-4 w-12 rounded bg-muted animate-pulse" />
+            <ChevronRight className="size-3.5 text-muted-foreground/30" />
+            <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+            <ChevronRight className="size-3.5 text-muted-foreground/30" />
+            <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+            <ChevronRight className="size-3.5 text-muted-foreground/30" />
+            <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+          </div>
+        </div>
+
+        {/* Top Quick Navigation Bar Skeleton */}
+        <div className="border-b border-border/80 bg-muted/30 py-2.5 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 text-xs">
+            <div className="h-8 w-28 rounded-lg bg-muted/60 animate-pulse" />
+            <div className="h-5 w-36 rounded-full bg-muted/50 animate-pulse hidden sm:block" />
+            <div className="h-8 w-28 rounded-lg bg-muted/60 animate-pulse" />
           </div>
         </div>
 
         <section className="py-6 sm:py-8 lg:py-10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 items-start">
-              {/* Left Column Skeleton */}
-              <div className="lg:col-span-5 space-y-4">
-                <div className="relative h-[360px] sm:h-[420px] lg:h-[480px] w-full rounded-2xl border border-border bg-muted/40 animate-pulse flex flex-col items-center justify-center p-6 text-muted-foreground/50">
-                  <RefreshCw className="size-8 animate-spin text-primary/60 mb-2" />
-                  <span className="text-xs font-semibold">Loading certified product specifications...</span>
+              {/* Left Column: Visual Media Gallery Skeleton */}
+              <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-28 self-start">
+                {/* Main Media Box */}
+                <div className="relative h-[360px] sm:h-[420px] lg:h-[480px] w-full rounded-2xl border border-border bg-gradient-to-br from-muted/60 via-muted/40 to-muted/60 animate-pulse overflow-hidden p-6 flex items-center justify-center">
+                  {/* Top-left Badges */}
+                  <div className="absolute top-3 left-3 flex flex-col gap-2">
+                    <div className="h-6 w-24 rounded-lg bg-background/80 shadow-xs" />
+                    <div className="h-5 w-28 rounded-md bg-background/80 shadow-xs" />
+                  </div>
+                  {/* Top-right In-Stock Badge */}
+                  <div className="absolute top-3 right-3">
+                    <div className="h-6 w-28 rounded-full bg-background/80 shadow-xs" />
+                  </div>
+                  {/* Product Silhouette Placeholder */}
+                  <div className="flex flex-col items-center justify-center text-muted-foreground/40 gap-2">
+                    <Package className="size-16 animate-pulse" />
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <div className="size-16 rounded-xl bg-muted/40 animate-pulse" />
-                  <div className="size-16 rounded-xl bg-muted/40 animate-pulse" />
-                  <div className="size-16 rounded-xl bg-muted/40 animate-pulse" />
+
+                {/* Thumbnails Row */}
+                <div className="flex gap-2.5 overflow-hidden">
+                  <div className="size-16 sm:size-20 rounded-xl border border-primary/40 bg-muted/70 animate-pulse shrink-0" />
+                  <div className="size-16 sm:size-20 rounded-xl border border-border bg-muted/40 animate-pulse shrink-0" />
+                  <div className="size-16 sm:size-20 rounded-xl border border-border bg-muted/40 animate-pulse shrink-0" />
+                </div>
+
+                {/* Trust Badges Skeleton */}
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="h-16 rounded-xl border border-border bg-muted/30 animate-pulse" />
+                  <div className="h-16 rounded-xl border border-border bg-muted/30 animate-pulse" />
+                  <div className="h-16 rounded-xl border border-border bg-muted/30 animate-pulse" />
                 </div>
               </div>
 
-              {/* Right Column Skeleton */}
-              <div className="lg:col-span-7 space-y-5">
-                <div className="space-y-2">
-                  <div className="h-4 w-28 rounded-md bg-muted animate-pulse" />
-                  <div className="h-8 w-3/4 rounded-lg bg-muted animate-pulse" />
-                  <div className="h-4 w-1/2 rounded-md bg-muted animate-pulse" />
+              {/* Right Column: Details, Pricing & Action Buttons Skeleton */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Category & Title */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-24 rounded-md bg-muted/60 animate-pulse" />
+                    <div className="h-4 w-16 rounded bg-muted/40 animate-pulse" />
+                  </div>
+                  <div className="h-8 sm:h-10 w-4/5 rounded-xl bg-muted/80 animate-pulse" />
+                  {/* Stars Rating */}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <div className="h-4 w-28 rounded bg-amber-400/30 animate-pulse" />
+                    <div className="h-4 w-24 rounded bg-muted/50 animate-pulse" />
+                  </div>
                 </div>
-                <div className="h-12 w-48 rounded-xl bg-muted/60 animate-pulse" />
-                <div className="space-y-2 pt-2">
-                  <div className="h-4 w-full rounded-md bg-muted/50 animate-pulse" />
-                  <div className="h-4 w-5/6 rounded-md bg-muted/50 animate-pulse" />
-                  <div className="h-4 w-4/6 rounded-md bg-muted/50 animate-pulse" />
+
+                {/* Pricing Card Skeleton */}
+                <div className="rounded-2xl border border-border/80 bg-muted/30 p-5 space-y-3">
+                  <div className="flex items-baseline gap-3">
+                    <div className="h-9 sm:h-10 w-44 rounded-xl bg-primary/20 animate-pulse" />
+                    <div className="h-5 w-20 rounded bg-muted/50 animate-pulse" />
+                  </div>
+                  <div className="h-4 w-64 rounded bg-muted/50 animate-pulse" />
                 </div>
-                <div className="grid grid-cols-2 gap-3 pt-3">
-                  <div className="h-12 rounded-xl bg-muted/50 animate-pulse" />
-                  <div className="h-12 rounded-xl bg-muted/50 animate-pulse" />
+
+                {/* Action Buttons & Quantity */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="h-12 w-full sm:w-32 rounded-xl bg-muted/60 animate-pulse" />
+                    <div className="h-12 flex-1 rounded-xl bg-primary/30 animate-pulse" />
+                    <div className="h-12 flex-1 rounded-xl bg-amber-500/30 animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Key Technical Highlights Checklist */}
+                <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                  <div className="h-5 w-44 rounded-md bg-muted/70 animate-pulse" />
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-4 rounded-full bg-emerald-500/30 animate-pulse shrink-0" />
+                      <div className="h-4 w-5/6 rounded bg-muted/50 animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-4 rounded-full bg-emerald-500/30 animate-pulse shrink-0" />
+                      <div className="h-4 w-3/4 rounded bg-muted/50 animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-4 rounded-full bg-emerald-500/30 animate-pulse shrink-0" />
+                      <div className="h-4 w-2/3 rounded bg-muted/50 animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tabs Navigation Skeleton */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="h-9 w-32 rounded-xl bg-primary/20 animate-pulse shrink-0" />
+                    <div className="h-9 w-36 rounded-xl bg-muted/50 animate-pulse shrink-0" />
+                    <div className="h-9 w-32 rounded-xl bg-muted/50 animate-pulse shrink-0" />
+                    <div className="h-9 w-36 rounded-xl bg-muted/50 animate-pulse shrink-0" />
+                  </div>
+                  <div className="h-48 rounded-2xl border border-border bg-muted/20 animate-pulse p-5 space-y-3">
+                    <div className="h-4 w-3/4 rounded bg-muted/40" />
+                    <div className="h-4 w-5/6 rounded bg-muted/40" />
+                    <div className="h-4 w-2/3 rounded bg-muted/40" />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        {/* Sticky Mobile Bottom Bar Skeleton */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur sm:hidden flex items-center justify-between gap-3 shadow-lg">
+          <div className="h-6 w-24 rounded-md bg-primary/20 animate-pulse" />
+          <div className="flex gap-2 flex-1 justify-end">
+            <div className="h-10 w-24 rounded-xl bg-muted/60 animate-pulse" />
+            <div className="h-10 w-24 rounded-xl bg-amber-500/30 animate-pulse" />
+          </div>
+        </div>
+
         <SiteFooter />
       </main>
     );

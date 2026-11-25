@@ -458,11 +458,37 @@ export function ProductsPage() {
                   {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div
                       key={i}
-                      className="animate-pulse overflow-hidden rounded-xl border border-border bg-card p-3 space-y-3"
+                      className="flex flex-col overflow-hidden rounded-xl border border-border bg-card animate-pulse"
                     >
-                      <div className="aspect-[4/3] rounded-lg bg-muted" />
-                      <div className="h-4 w-3/4 rounded bg-muted" />
-                      <div className="h-3 w-1/2 rounded bg-muted" />
+                      {/* Image Silhouette & Badges Skeleton */}
+                      <div className="relative aspect-[4/3] bg-muted/50 p-2.5 flex items-center justify-center">
+                        <span className="absolute left-2.5 top-2.5 h-4 w-16 rounded-md bg-muted/80 shadow-2xs" />
+                        <span className="absolute right-2.5 top-2.5 h-4 w-14 rounded-md bg-muted/80 shadow-2xs" />
+                        <Package className="size-10 text-muted-foreground/30 animate-pulse" />
+                      </div>
+
+                      {/* Content Skeleton */}
+                      <div className="flex flex-1 flex-col p-3 sm:p-4 space-y-3">
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-16 rounded bg-muted/60" />
+                          <div className="h-4 w-5/6 rounded bg-muted/80" />
+                          <div className="h-3 w-3/5 rounded bg-muted/50" />
+                          {/* Specs Highlights Skeleton */}
+                          <div className="flex gap-1.5 pt-1">
+                            <div className="h-4 w-20 rounded bg-muted/40" />
+                            <div className="h-4 w-16 rounded bg-muted/40" />
+                          </div>
+                        </div>
+
+                        {/* Price & Action Button Skeleton */}
+                        <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="h-2.5 w-12 rounded bg-muted/50" />
+                            <div className="h-5 w-20 rounded bg-muted/80" />
+                          </div>
+                          <div className="h-8 w-16 rounded-lg bg-primary/20" />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
