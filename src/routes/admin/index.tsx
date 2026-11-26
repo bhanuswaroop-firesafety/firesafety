@@ -68,6 +68,7 @@ import type {
 import { formatKolkataDisplay, getKolkataDateString, getDaysDiff } from "@/lib/date-utils";
 import { ProductManager } from "@/components/admin/product-manager";
 import { AdminAnalytics } from "@/components/admin/admin-analytics";
+import { AdminManual } from "@/components/admin/admin-manual";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/button";
 import {
@@ -75,6 +76,7 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
+  BookOpen,
   Boxes,
   Building2,
   Check,
@@ -147,7 +149,7 @@ function AdminPage() {
 
   // Navigation tab in Admin Sidebar
   const [activeTab, setActiveTab] = useState<
-    "analytics" | "products" | "orders" | "banners" | "inquiries" | "leads" | "users" | "settings" | "system" | "feedback" | "renewals"
+    "analytics" | "products" | "orders" | "banners" | "inquiries" | "leads" | "users" | "settings" | "system" | "feedback" | "renewals" | "manual"
   >("analytics");
 
   // Mobile sidebar toggle
@@ -1477,6 +1479,13 @@ function AdminPage() {
       badge: "Live",
       urgentBadge: null,
     },
+    {
+      id: "manual" as const,
+      label: "User Manual & Docs",
+      icon: BookOpen,
+      badge: "Manual",
+      urgentBadge: null,
+    },
   ];
 
   // Section 3: Direct Public Portal & Storefront Navigation
@@ -1902,7 +1911,9 @@ function AdminPage() {
                                 ? "Users & Staff"
                                 : activeTab === "settings"
                                   ? "Business Profile & Settings"
-                                  : "Firebase & System"}
+                                  : activeTab === "manual"
+                                    ? "User & Operations Manual"
+                                    : "Firebase & System"}
               </span>
             </div>
           </div>
@@ -7358,6 +7369,13 @@ function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB: USER & OPERATIONS MANUAL */}
+          {/* ======================================================== */}
+          {activeTab === "manual" && (
+            <AdminManual onNavigateTab={(tab) => setActiveTab(tab as any)} />
           )}
 
         {/* TASK E & C: ORDER DELIVERY & INSTALLATION MODAL */}
