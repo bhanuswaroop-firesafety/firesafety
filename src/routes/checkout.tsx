@@ -1633,48 +1633,48 @@ function CheckoutPage() {
                             </div>
                           )}
 
-                          <div className="grid gap-6 md:grid-cols-[auto_1fr] items-center">
+                          <div className="grid gap-6 md:grid-cols-[auto_1fr] items-start">
                             {/* Left: Dynamic / Flexible QR Code with Tab Switcher */}
-                            <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-border/80 shadow-md">
+                            <div className="flex flex-col items-center justify-center p-3.5 sm:p-4 rounded-2xl bg-white border border-border/80 shadow-md w-full max-w-[320px] mx-auto md:mx-0">
                               {/* QR Mode Switcher */}
-                              <div className="mb-2 flex items-center rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
+                              <div className="mb-3 grid grid-cols-3 gap-1 w-full rounded-xl bg-slate-100 p-1 text-[11px] font-bold">
                                 <button
                                   type="button"
                                   onClick={() => setActiveQrTab("flexible")}
-                                  className={`px-2 py-0.5 rounded transition-all flex items-center gap-1 ${
+                                  className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 text-center ${
                                     activeQrTab === "flexible"
                                       ? "bg-[#5f259f] text-white shadow-xs"
                                       : "text-slate-600 hover:text-slate-900"
                                   }`}
                                 >
-                                  <span>High-Value QR</span>
+                                  <span className="truncate">High-Value</span>
                                   {finalPayable > 2000 && (
-                                    <span className="rounded bg-amber-400 px-1 py-0.2 text-[9px] font-black text-slate-900">
-                                      &gt;₹2K
+                                    <span className="shrink-0 rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black text-slate-900 leading-none">
+                                      &gt;2K
                                     </span>
                                   )}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setActiveQrTab("dynamic")}
-                                  className={`px-2 py-0.5 rounded transition-all ${
+                                  className={`py-1.5 px-1 rounded-lg transition-all text-center truncate ${
                                     activeQrTab === "dynamic"
-                                      ? "bg-white text-slate-900 shadow-xs"
+                                      ? "bg-white text-slate-900 shadow-xs font-bold"
                                       : "text-slate-500 hover:text-slate-800"
                                   }`}
                                 >
-                                  Auto-Fill QR
+                                  Auto-Fill
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setActiveQrTab("card")}
-                                  className={`px-2 py-0.5 rounded transition-all ${
+                                  className={`py-1.5 px-1 rounded-lg transition-all text-center truncate ${
                                     activeQrTab === "card"
-                                      ? "bg-white text-slate-900 shadow-xs"
+                                      ? "bg-white text-slate-900 shadow-xs font-bold"
                                       : "text-slate-500 hover:text-slate-800"
                                   }`}
                                 >
-                                  Merchant Card
+                                  Card
                                 </button>
                               </div>
 
@@ -1683,10 +1683,10 @@ function CheckoutPage() {
                                   <img
                                     src={flexibleQrDataUrl}
                                     alt="PhonePe High-Value QR Code"
-                                    className="size-44 sm:size-48 object-contain rounded-lg"
+                                    className="size-48 sm:size-52 object-contain rounded-lg"
                                   />
                                 ) : (
-                                  <div className="size-44 sm:size-48 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                                  <div className="size-48 sm:size-52 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
                                     Generating QR...
                                   </div>
                                 )
@@ -1695,10 +1695,10 @@ function CheckoutPage() {
                                   <img
                                     src={qrDataUrl}
                                     alt="PhonePe UPI QR Code"
-                                    className="size-44 sm:size-48 object-contain rounded-lg"
+                                    className="size-48 sm:size-52 object-contain rounded-lg"
                                   />
                                 ) : (
-                                  <div className="size-44 sm:size-48 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                                  <div className="size-48 sm:size-52 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
                                     Generating QR...
                                   </div>
                                 )
@@ -1706,11 +1706,11 @@ function CheckoutPage() {
                                 <img
                                   src="/phonepe-upi-card.png"
                                   alt="Sri Udharchi Official Merchant Card"
-                                  className="h-44 sm:h-48 w-auto object-contain rounded-lg"
+                                  className="h-48 sm:h-52 w-auto object-contain rounded-lg"
                                 />
                               )}
-                              <div className="mt-2 text-center">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800">
+                              <div className="mt-2.5 text-center">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
                                   <QrCode className="size-3.5 text-[#5f259f]" />
                                   <span>
                                     {activeQrTab === "flexible"
@@ -1724,9 +1724,9 @@ function CheckoutPage() {
                             </div>
 
                             {/* Right: Direct App Launch & Copy Links */}
-                            <div className="space-y-3">
+                            <div className="space-y-3.5 w-full">
                               {/* Direct Open in PhonePe App button */}
-                              <div>
+                              <div className="space-y-2">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1739,23 +1739,23 @@ function CheckoutPage() {
                                       } catch (e) {}
                                     }
                                   }}
-                                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#5f259f] hover:bg-[#521e8d] text-white px-5 py-3 text-sm font-bold shadow-md shadow-purple-900/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#5f259f] hover:bg-[#521e8d] text-white px-4 py-3 text-sm font-bold shadow-md shadow-purple-900/20 transition-all hover:scale-[1.01] active:scale-[0.99] text-center"
                                 >
-                                  <Smartphone className="size-4" />
+                                  <Smartphone className="size-4 shrink-0" />
                                   <span>Open PhonePe &amp; Pay ₹{finalPayable.toLocaleString("en-IN")}</span>
-                                  <ExternalLink className="size-3.5 ml-1" />
+                                  <ExternalLink className="size-3.5 shrink-0" />
                                 </button>
                                 {finalPayable > 2000 && (
                                   <a
                                     href={upiDetails.phonePeFlexibleUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-[#5f259f] dark:text-purple-300 py-1.5 text-xs font-bold transition-colors"
+                                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-[#5f259f] dark:text-purple-300 px-3 py-2 text-xs font-bold transition-colors text-center leading-snug"
                                   >
                                     <span>High-Value Open PhonePe (Manual ₹{finalPayable.toLocaleString("en-IN")} Entry)</span>
                                   </a>
                                 )}
-                                <p className="text-[11px] text-muted-foreground mt-1 text-center">
+                                <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
                                   {finalPayable > 2000
                                     ? "For >₹2K, enter amount manually in PhonePe if dynamic limit appears."
                                     : "Launches PhonePe directly with payee & exact amount pre-filled."}
@@ -1763,76 +1763,80 @@ function CheckoutPage() {
                               </div>
 
                               {/* Alternative UPI Apps Row */}
-                              <div className="flex items-center gap-2 pt-1">
-                                <span className="text-[11px] font-semibold text-muted-foreground shrink-0">Other Apps:</span>
-                                <a
-                                  href={finalPayable > 2000 ? upiDetails.gpayFlexibleUrl : upiDetails.gpayUrl}
-                                  className="flex-1 text-center rounded-lg border border-border bg-muted/40 hover:bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors"
-                                >
-                                  Google Pay
-                                </a>
-                                <a
-                                  href={finalPayable > 2000 ? upiDetails.paytmFlexibleUrl : upiDetails.paytmUrl}
-                                  className="flex-1 text-center rounded-lg border border-border bg-muted/40 hover:bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors"
-                                >
-                                  Paytm
-                                </a>
-                                <a
-                                  href={finalPayable > 2000 ? upiDetails.flexibleUpiUrl : upiDetails.upiUrl}
-                                  className="flex-1 text-center rounded-lg border border-border bg-muted/40 hover:bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors"
-                                >
-                                  Any UPI
-                                </a>
+                              <div className="pt-1 space-y-1.5">
+                                <span className="text-[11px] font-semibold text-muted-foreground block">Other UPI Apps:</span>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <a
+                                    href={finalPayable > 2000 ? upiDetails.gpayFlexibleUrl : upiDetails.gpayUrl}
+                                    className="text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 px-1 text-xs font-bold text-foreground transition-colors whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center"
+                                  >
+                                    Google Pay
+                                  </a>
+                                  <a
+                                    href={finalPayable > 2000 ? upiDetails.paytmFlexibleUrl : upiDetails.paytmUrl}
+                                    className="text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 px-1 text-xs font-bold text-foreground transition-colors whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center"
+                                  >
+                                    Paytm
+                                  </a>
+                                  <a
+                                    href={finalPayable > 2000 ? upiDetails.flexibleUpiUrl : upiDetails.upiUrl}
+                                    className="text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 px-1 text-xs font-bold text-foreground transition-colors whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center"
+                                  >
+                                    Any UPI
+                                  </a>
+                                </div>
                               </div>
 
                               {/* UPI ID, Amount & Payee Copy Details */}
-                              <div className="rounded-xl border border-border/80 bg-muted/30 p-2.5 space-y-1.5 text-xs">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-muted-foreground">Invoiced Payable:</span>
-                                  <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                                    <span className="select-all">₹{finalPayable.toLocaleString("en-IN")}</span>
+                              <div className="rounded-xl border border-border/80 bg-muted/30 p-3 sm:p-3.5 space-y-2 text-xs">
+                                <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/40">
+                                  <span className="text-muted-foreground text-[11px] font-medium shrink-0">Invoiced Payable:</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono font-bold text-foreground text-sm select-all">₹{finalPayable.toLocaleString("en-IN")}</span>
                                     <button
                                       type="button"
                                       onClick={() => copyToClipboard(String(finalPayable), "invoicedAmount")}
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20 transition-colors"
                                       title="Copy Exact Amount"
                                     >
                                       {copiedField === "invoicedAmount" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                                      <span>{copiedField === "invoicedAmount" ? "Copied" : "Copy Amount"}</span>
+                                      <span>{copiedField === "invoicedAmount" ? "Copied" : "Copy"}</span>
                                     </button>
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-muted-foreground">Payee UPI ID:</span>
-                                  <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                                    <span className="select-all">{activeUpiId}</span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 pb-2 border-b border-border/40">
+                                  <span className="text-muted-foreground text-[11px] font-medium shrink-0">Payee UPI ID:</span>
+                                  <div className="flex items-center justify-between sm:justify-end gap-2">
+                                    <span className="font-mono font-bold text-foreground text-[11px] sm:text-xs select-all break-all">{activeUpiId}</span>
                                     <button
                                       type="button"
                                       onClick={() => copyToClipboard(activeUpiId, "upiId")}
-                                      className="p-1 rounded hover:bg-muted text-primary"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted hover:bg-muted/80 text-foreground text-[10px] font-bold shrink-0 border border-border/60 transition-colors"
                                       title="Copy UPI ID"
                                     >
                                       {copiedField === "upiId" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                                      <span>{copiedField === "upiId" ? "Copied" : "Copy"}</span>
                                     </button>
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-muted-foreground">PhonePe Registered No:</span>
-                                  <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                                    <span className="select-all">{activePhonePeNumber}</span>
+                                <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
+                                  <span className="text-muted-foreground text-[11px] font-medium shrink-0">PhonePe Registered No:</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono font-bold text-foreground text-xs select-all">{activePhonePeNumber}</span>
                                     <button
                                       type="button"
                                       onClick={() => copyToClipboard(activePhonePeNumber, "phonepeNum")}
-                                      className="p-1 rounded hover:bg-muted text-primary"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted hover:bg-muted/80 text-foreground text-[10px] font-bold shrink-0 border border-border/60 transition-colors"
                                       title="Copy PhonePe Number"
                                     >
                                       {copiedField === "phonepeNum" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                                      <span>{copiedField === "phonepeNum" ? "Copied" : "Copy"}</span>
                                     </button>
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-muted-foreground">Beneficiary Name:</span>
-                                  <span className="font-semibold text-foreground truncate max-w-[200px]">
+                                <div className="flex items-center justify-between gap-2 pt-0.5">
+                                  <span className="text-muted-foreground text-[11px] font-medium shrink-0">Beneficiary Name:</span>
+                                  <span className="font-semibold text-foreground text-xs text-right truncate">
                                     {activePayeeName}
                                   </span>
                                 </div>
@@ -1841,7 +1845,7 @@ function CheckoutPage() {
                           </div>
 
                           {/* 13-Digit PhonePe Transaction ID Input */}
-                          <div className="pt-3 border-t border-border/70 space-y-2">
+                          <div className="pt-3 border-t border-border/70 space-y-2.5 pb-2">
                             <label className="block text-xs font-bold text-foreground">
                               Enter PhonePe 13-Digit Transaction ID / UTR (if already paid)
                             </label>
@@ -1850,18 +1854,18 @@ function CheckoutPage() {
                                 type="text"
                                 value={phonePeTransactionId}
                                 onChange={(e) => setPhonePeTransactionId(e.target.value.trim())}
-                                placeholder="e.g. T261108152345 or 12/13-digit UTR"
+                                placeholder="e.g. T261108152345 or bank UTR"
                                 maxLength={35}
-                                className="w-full rounded-xl border border-purple-500/40 bg-background px-4 py-2.5 text-sm font-mono text-foreground focus:border-[#5f259f] focus:ring-2 focus:ring-[#5f259f]/20 focus:outline-none"
+                                className="w-full rounded-xl border border-purple-500/40 bg-background px-4 py-2.5 text-xs sm:text-sm font-mono text-foreground focus:border-[#5f259f] focus:ring-2 focus:ring-[#5f259f]/20 focus:outline-none placeholder:text-muted-foreground/60 placeholder:font-sans"
                               />
                               {phonePeTransactionId.length >= 8 && (
-                                <span className="absolute right-3 top-3 text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                                <span className="absolute right-3 top-2.5 text-[11px] font-bold text-emerald-600 flex items-center gap-1">
                                   <CheckCircle2 className="size-4" />
                                   <span>Ready</span>
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                            <div className="flex items-start gap-1.5 text-xs text-muted-foreground leading-relaxed pt-0.5">
                               <HelpCircle className="size-3.5 text-primary shrink-0 mt-0.5" />
                               <span>
                                 Complete payment on PhonePe, then paste the 13-digit <strong>Transaction ID</strong> (starts with T) or bank <strong>UTR</strong> to confirm your order.
@@ -2230,33 +2234,35 @@ function CheckoutPage() {
                     href={upiDetails.phonePeFlexibleUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-[#5f259f] dark:text-purple-300 py-2 text-xs font-bold transition-colors"
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-[#5f259f] dark:text-purple-300 px-3 py-2 text-xs font-bold transition-colors text-center leading-snug"
                   >
                     <span>High-Value Open PhonePe (Manual ₹{finalPayable.toLocaleString("en-IN")} Entry)</span>
                   </a>
                 )}
 
                 {/* Other UPI Apps row */}
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground shrink-0">Other UPI:</span>
-                  <a
-                    href={finalPayable > 2000 ? upiDetails.gpayFlexibleUrl : upiDetails.gpayUrl}
-                    className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
-                  >
-                    Google Pay
-                  </a>
-                  <a
-                    href={finalPayable > 2000 ? upiDetails.paytmFlexibleUrl : upiDetails.paytmUrl}
-                    className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
-                  >
-                    Paytm
-                  </a>
-                  <a
-                    href={finalPayable > 2000 ? upiDetails.flexibleUpiUrl : upiDetails.upiUrl}
-                    className="flex-1 text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 text-xs font-bold text-foreground transition-colors"
-                  >
-                    Any UPI App
-                  </a>
+                <div className="pt-1 space-y-1.5">
+                  <span className="text-[11px] font-semibold text-muted-foreground block">Other UPI Apps:</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <a
+                      href={finalPayable > 2000 ? upiDetails.gpayFlexibleUrl : upiDetails.gpayUrl}
+                      className="text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 px-1 text-xs font-bold text-foreground transition-colors whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center"
+                    >
+                      Google Pay
+                    </a>
+                    <a
+                      href={finalPayable > 2000 ? upiDetails.paytmFlexibleUrl : upiDetails.paytmUrl}
+                      className="text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 px-1 text-xs font-bold text-foreground transition-colors whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center"
+                    >
+                      Paytm
+                    </a>
+                    <a
+                      href={finalPayable > 2000 ? upiDetails.flexibleUpiUrl : upiDetails.upiUrl}
+                      className="text-center rounded-xl border border-border bg-muted/40 hover:bg-muted py-2 px-1 text-xs font-bold text-foreground transition-colors whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center"
+                    >
+                      Any UPI
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -2275,50 +2281,50 @@ function CheckoutPage() {
 
               {/* QR Code Section with Tabs */}
               <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-border/70 flex-wrap gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-border/70 gap-2">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <QrCode className="size-4 text-[#5f259f]" />
                     <span>Scan to Pay (Desktop / Another Device)</span>
                   </span>
                   {/* Tab Selector */}
-                  <div className="inline-flex rounded-lg bg-muted p-1 text-[11px] font-semibold">
+                  <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1 text-[11px] font-bold w-full sm:w-auto">
                     <button
                       type="button"
                       onClick={() => setActiveQrTab("flexible")}
-                      className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${
+                      className={`py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 text-center ${
                         activeQrTab === "flexible"
-                          ? "bg-[#5f259f] text-white font-bold shadow-xs"
+                          ? "bg-[#5f259f] text-white shadow-xs font-bold"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <span>High-Value QR</span>
+                      <span className="truncate">High-Value</span>
                       {finalPayable > 2000 && (
-                        <span className="rounded bg-amber-400 px-1 py-0.2 text-[9px] font-black text-slate-900">
-                          &gt;₹2K
+                        <span className="shrink-0 rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black text-slate-900 leading-none">
+                          &gt;2K
                         </span>
                       )}
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveQrTab("dynamic")}
-                      className={`px-2.5 py-1 rounded-md transition-all ${
+                      className={`py-1.5 px-2 rounded-lg transition-all text-center truncate ${
                         activeQrTab === "dynamic"
                           ? "bg-card text-foreground font-bold shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      Dynamic Bill QR
+                      Auto-Fill
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveQrTab("card")}
-                      className={`px-2.5 py-1 rounded-md transition-all ${
+                      className={`py-1.5 px-2 rounded-lg transition-all text-center truncate ${
                         activeQrTab === "card"
                           ? "bg-card text-foreground font-bold shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      Official Merchant Card
+                      Card
                     </button>
                   </div>
                 </div>
@@ -2370,15 +2376,15 @@ function CheckoutPage() {
 
                   {/* Merchant Details & Copy buttons */}
                   <div className="space-y-2.5 text-xs flex-1 w-full">
-                    <div className="rounded-xl border border-border/70 bg-card p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground">Invoiced Amount:</span>
-                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                    <div className="rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 space-y-2">
+                      <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/40">
+                        <span className="text-muted-foreground text-[11px] font-medium shrink-0">Invoiced Amount:</span>
+                        <div className="flex items-center gap-2 font-mono font-bold text-foreground">
                           <span className="select-all">₹{finalPayable.toLocaleString("en-IN")}</span>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(String(finalPayable), "modalInvoicedAmount")}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20 transition-colors"
                             title="Copy Exact Amount"
                           >
                             {copiedField === "modalInvoicedAmount" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
@@ -2387,38 +2393,40 @@ function CheckoutPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground">Payee UPI ID:</span>
-                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                          <span className="select-all text-[11px] sm:text-xs">{activeUpiId}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 pb-2 border-b border-border/40">
+                        <span className="text-muted-foreground text-[11px] font-medium shrink-0">Payee UPI ID:</span>
+                        <div className="flex items-center justify-between sm:justify-end gap-2 font-mono font-bold text-foreground">
+                          <span className="select-all text-[11px] sm:text-xs break-all">{activeUpiId}</span>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(activeUpiId, "upiId")}
-                            className="p-1 rounded hover:bg-muted text-primary"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted hover:bg-muted/80 text-foreground text-[10px] font-bold shrink-0 border border-border/60 transition-colors"
                             title="Copy UPI ID"
                           >
                             {copiedField === "upiId" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                            <span>{copiedField === "upiId" ? "Copied" : "Copy"}</span>
                           </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground">PhonePe Registered No:</span>
-                        <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
-                          <span className="select-all">{activePhonePeNumber}</span>
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
+                        <span className="text-muted-foreground text-[11px] font-medium shrink-0">PhonePe Registered No:</span>
+                        <div className="flex items-center gap-2 font-mono font-bold text-foreground">
+                          <span className="select-all text-xs">{activePhonePeNumber}</span>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(activePhonePeNumber, "phonepeNum")}
-                            className="p-1 rounded hover:bg-muted text-primary"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted hover:bg-muted/80 text-foreground text-[10px] font-bold shrink-0 border border-border/60 transition-colors"
                             title="Copy PhonePe Number"
                           >
                             {copiedField === "phonepeNum" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                            <span>{copiedField === "phonepeNum" ? "Copied" : "Copy"}</span>
                           </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50 text-[11px]">
-                        <span className="text-muted-foreground">Proprietor:</span>
+                      <div className="flex items-center justify-between gap-2 pt-0.5 text-[11px]">
+                        <span className="text-muted-foreground font-medium shrink-0">Proprietor:</span>
                         <span className="font-semibold text-foreground">Dabbara Bhanu Swaroop</span>
                       </div>
                     </div>
@@ -2455,9 +2463,9 @@ function CheckoutPage() {
                         type="text"
                         value={phonePeTransactionId}
                         onChange={(e) => setPhonePeTransactionId(e.target.value.trim())}
-                        placeholder="e.g. T261108152345 or 12/13-digit UTR"
+                        placeholder="e.g. T261108152345 or bank UTR"
                         maxLength={35}
-                        className="w-full rounded-xl border border-purple-500/40 bg-background px-4 py-3 text-sm font-mono text-foreground focus:border-[#5f259f] focus:ring-2 focus:ring-[#5f259f]/20 focus:outline-none placeholder:text-muted-foreground/60"
+                        className="w-full rounded-xl border border-purple-500/40 bg-background px-4 py-3 text-xs sm:text-sm font-mono text-foreground focus:border-[#5f259f] focus:ring-2 focus:ring-[#5f259f]/20 focus:outline-none placeholder:text-muted-foreground/60 placeholder:font-sans"
                       />
                       {phonePeTransactionId.length >= 8 && (
                         <span className="absolute right-3.5 top-3.5 text-xs font-bold text-emerald-600 flex items-center gap-1">
