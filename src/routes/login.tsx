@@ -63,6 +63,11 @@ import {
   getUserEmailByPhone,
   updateOrderTransactionId,
 } from "@/lib/db-service";
+import {
+  requestPushPermissionAndGetToken,
+  getPushPermissionStatus,
+  listenToForegroundMessages,
+} from "@/lib/fcm-service";
 import type {
   OrderItem,
   FeedbackItem,
@@ -226,6 +231,39 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
   const [historyOrder, setHistoryOrder] = useState<OrderItem | null>(null);
   // Order Proforma Invoice Modal
   const [invoiceModalOrder, setInvoiceModalOrder] = useState<OrderItem | null>(null);
+
+  // FCM Web Push Notifications State
+  const [pushStatus, setPushStatus] = useState<NotificationPermission | "unsupported">("default");
+  const [isRequestingPush, setIsRequestingPush] = useState<boolean>(false);
+
+  const handleEnablePushNotifications = async () => {
+    setIsRequestingPush(true);
+    const res = await requestPushPermissionAndGetToken(user?.uid);
+    setIsRequestingPush(false);
+    setPushStatus(getPushPermissionStatus());
+    if (res.success) {
+      showSuccessMessage("Push notifications activated! You will receive live delivery updates on this device.");
+    } else {
+      showSuccessMessage(`Push notification notice: ${res.error || "Permission was not granted."}`);
+    }
+  };
+
+  useEffect(() => {
+    setPushStatus(getPushPermissionStatus());
+    if (user) {
+      let unsubForeground: (() => void) | null = null;
+      listenToForegroundMessages((payload) => {
+        const title = payload.notification?.title || payload.data?.title || "Order Update";
+        const body = payload.notification?.body || payload.data?.body || "";
+        showSuccessMessage(`${title}: ${body}`);
+      }).then((unsub) => {
+        unsubForeground = unsub;
+      });
+      return () => {
+        if (unsubForeground) unsubForeground();
+      };
+    }
+  }, [user]);
 
   // If user was prompted to login to open a specific product or page, redirect back there
   useEffect(() => {
@@ -991,6 +1029,28 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
               {/* TAB CONTENT: ORDERS */}
               {accountTab === "orders" && (
                 <div className="space-y-4">
+                  {pushStatus !== "granted" && pushStatus !== "unsupported" && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <Bell className="size-3.5" />
+                        </div>
+                        <span className="text-muted-foreground">
+                          Get real-time browser push alerts on this device when your orders are dispatched.
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleEnablePushNotifications}
+                        disabled={isRequestingPush}
+                        className="h-7 text-xs font-bold gap-1 shrink-0 self-start sm:self-auto"
+                      >
+                        <Zap className="size-3 text-amber-500" />
+                        <span>{isRequestingPush ? "Activating..." : "Enable Push Alerts"}</span>
+                      </Button>
+                    </div>
+                  )}
                   {userOrders.length === 0 ? (
                     <div className="rounded-2xl border border-border bg-card p-10 text-center space-y-3">
                       <div className="size-12 rounded-full bg-muted/60 mx-auto flex items-center justify-center text-muted-foreground">
@@ -1676,6 +1736,48 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
               {/* TAB CONTENT: NOTIFICATIONS */}
               {accountTab === "notifications" && (
                 <div className="space-y-4">
+                  {/* Push Notification (FCM) Status & Activation Card */}
+                  <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/5 via-card to-primary/5 p-4 sm:p-5 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                          <Smartphone className="size-5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-sm text-foreground">
+                              Instant Order & Dispatch Push Alerts
+                            </h4>
+                            {pushStatus === "granted" && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                            {pushStatus === "granted"
+                              ? "Push notifications are active on this device. You will receive live alerts when your order is confirmed, packed, shipped, or delivered."
+                              : pushStatus === "denied"
+                              ? "Browser push notifications are currently blocked in your browser settings. Please allow notifications for this site to receive live dispatch alerts."
+                              : "Get real-time alerts directly on your phone or PC when your order is dispatched, out for delivery, or has an important safety update."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {pushStatus !== "granted" && pushStatus !== "unsupported" && (
+                        <Button
+                          onClick={handleEnablePushNotifications}
+                          disabled={isRequestingPush}
+                          className="shrink-0 gap-1.5 font-bold shadow-md shadow-primary/20"
+                          size="sm"
+                        >
+                          <Bell className="size-3.5" />
+                          <span>{isRequestingPush ? "Activating..." : "Enable Push Alerts"}</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   {userNotifications.length === 0 ? (
                     <div className="rounded-2xl border border-border bg-card p-10 text-center space-y-3">
                       <div className="size-12 rounded-full bg-muted/60 mx-auto flex items-center justify-center text-muted-foreground">

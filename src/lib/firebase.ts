@@ -59,6 +59,10 @@ export const firebaseConfig = {
     "G-3Z5222VMF9",
 };
 
+export const FCM_VAPID_KEY =
+  import.meta.env["VITE_FIREBASE_VAPID_KEY"] ||
+  "BE-VomFWGHmp-mY0inyYIiuKLO0Wcybscx0D-9hldSNCWBZN1dmw077Io8TfMmpuekdDoDOFrGw3y9sgl8fD23A";
+
 if (!firebaseConfig.apiKey && typeof window !== "undefined") {
   console.error(
     "Firebase configuration error: VITE_FIREBASE_API_KEY is missing. Please define all VITE_FIREBASE_* variables in your .env file.",

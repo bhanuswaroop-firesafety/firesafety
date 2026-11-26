@@ -701,7 +701,58 @@ async function sendShippingEmail(orderData, orderId) {
 }
 
 /**
- * Firestore Trigger: Automatically send Shipping Confirmation Email when order status changes to "shipped"
+ * Send Firebase Cloud Messaging (FCM) push notification to all devices linked to a customer
+ */
+async function sendPushNotificationToCustomer(customerId, { title, body, url, orderId }) {
+  if (!customerId) return { sent: 0 };
+  try {
+    const tokens = new Set();
+    const userDoc = await db.collection("users").doc(customerId).get();
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      if (Array.isArray(data.fcmTokens)) {
+        data.fcmTokens.forEach((t) => t && typeof t === "string" && tokens.add(t));
+      }
+      if (data.fcmToken && typeof data.fcmToken === "string") {
+        tokens.add(data.fcmToken);
+      }
+    }
+
+    const tokenDocs = await db.collection("fcm_tokens").where("userId", "==", customerId).get();
+    tokenDocs.forEach((d) => {
+      const t = d.data()?.token || d.id;
+      if (t && typeof t === "string") tokens.add(t);
+    });
+
+    const tokenList = Array.from(tokens);
+    if (tokenList.length === 0) {
+      console.log(`[FCM Push] No push tokens found for customer ${customerId}`);
+      return { sent: 0 };
+    }
+
+    const message = {
+      notification: {
+        title,
+        body,
+      },
+      data: {
+        url: url || "/orders?tab=tracking",
+        orderId: orderId || "",
+      },
+      tokens: tokenList,
+    };
+
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log(`[FCM Push] Sent ${response.successCount}/${tokenList.length} notifications to customer ${customerId}`);
+    return { sent: response.successCount };
+  } catch (err) {
+    console.warn(`[FCM Push] Error sending push notification to customer ${customerId}:`, err.message);
+    return { sent: 0, error: err.message };
+  }
+}
+
+/**
+ * Firestore Trigger: Automatically send Shipping Confirmation Email and Push Notification when order status updates
  */
 exports.onOrderStatusUpdated = onDocumentUpdated(
   {
@@ -713,14 +764,51 @@ exports.onOrderStatusUpdated = onDocumentUpdated(
     const afterData = event.data?.after?.data();
     if (!beforeData || !afterData) return;
 
-    const wasShipped = beforeData.status === "shipped" || beforeData.status === "dispatched";
-    const isShipped = afterData.status === "shipped" || afterData.status === "dispatched";
+    const prevStatus = beforeData.status;
+    const newStatus = afterData.status;
+    const targetCustomer = afterData.customerId || afterData.userId;
+    const orderNum = afterData.orderNumber || event.params.orderId;
 
+    const wasShipped = prevStatus === "shipped" || prevStatus === "dispatched";
+    const isShipped = newStatus === "shipped" || newStatus === "dispatched";
+
+    // 1. Send Dispatch Email on Shipping
     if (!wasShipped && isShipped) {
       console.log(
-        `[Order Dispatch] Order #${afterData.orderNumber || event.params.orderId} status changed to SHIPPED. Triggering customer email...`,
+        `[Order Dispatch] Order #${orderNum} status changed to SHIPPED. Triggering customer email...`,
       );
       await sendShippingEmail(afterData, event.params.orderId);
+    }
+
+    // 2. Send Real-Time FCM Push Notification on any status transition
+    if (prevStatus !== newStatus && targetCustomer) {
+      let pushTitle = "";
+      let pushBody = "";
+
+      if (isShipped) {
+        const courier = afterData.courierName || "authorized courier";
+        const awb = afterData.trackingNumber ? ` (AWB: ${afterData.trackingNumber})` : "";
+        pushTitle = "Order Shipped! 🚚";
+        pushBody = `Your order #${orderNum} has been dispatched via ${courier}${awb}. Track live now!`;
+      } else if (newStatus === "confirmed") {
+        pushTitle = "Order Confirmed 📋";
+        pushBody = `Your equipment order #${orderNum} has been confirmed & scheduled for dispatch.`;
+      } else if (newStatus === "delivered") {
+        pushTitle = "Order Delivered & Certified ✅";
+        pushBody = `Your equipment order #${orderNum} has been safely delivered and certified on site.`;
+      } else if (newStatus === "cancelled") {
+        pushTitle = "Order Cancelled ⚠️";
+        pushBody = `Your equipment order #${orderNum} has been cancelled.`;
+      }
+
+      if (pushTitle) {
+        await sendPushNotificationToCustomer(targetCustomer, {
+          title: pushTitle,
+          body: pushBody,
+          url: `/orders?tab=tracking&orderId=${orderNum}`,
+          orderId: orderNum,
+        });
+      }
     }
   },
 );
