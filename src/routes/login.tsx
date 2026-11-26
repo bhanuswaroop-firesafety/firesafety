@@ -52,9 +52,11 @@ import type { ConfirmationResult } from "@/lib/firebase";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import {
   subscribeOrders,
+  subscribeUserOrders,
   cancelOrder,
   submitFeedback,
   subscribeReminders,
+  subscribeUserReminders,
   subscribeNotifications,
   markNotificationRead,
   getOrderForTracking,
@@ -236,39 +238,24 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
     }
   }, [user]);
 
-  // Real-time subscriptions for logged-in customer data
+  // Real-time subscriptions for logged-in customer data (connected to user.uid & email)
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setUserOrders([]);
+      setUserReminders([]);
+      setUserNotifications([]);
+      return;
+    }
 
-    const unsubOrders = subscribeOrders((allOrders) => {
-      const myOrders = allOrders.filter((o) => {
-        const matchesUid = o.customerId === user.uid;
-        const matchesEmail = Boolean(user.email && o.customerEmail?.toLowerCase() === user.email.toLowerCase());
-        const cleanUserPhone = (user.phoneNumber || userProfile?.phone || "").replace(/\D/g, "");
-        const cleanOrderPhone = (o.customerPhone || "").replace(/\D/g, "");
-        const matchesPhone = Boolean(
-          cleanUserPhone.length >= 10 &&
-            cleanOrderPhone.length >= 10 &&
-            (cleanUserPhone.endsWith(cleanOrderPhone) || cleanOrderPhone.endsWith(cleanUserPhone)),
-        );
-        return matchesUid || matchesEmail || matchesPhone;
-      });
-      setUserOrders(myOrders);
-    });
+    const unsubOrders = subscribeUserOrders(
+      user.uid,
+      (myOrders) => {
+        setUserOrders(myOrders);
+      },
+      user.email,
+    );
 
-    const unsubReminders = subscribeReminders((allReminders) => {
-      const myReminders = allReminders.filter((r) => {
-        const matchesUid = r.userId === user.uid;
-        const matchesEmail = Boolean(user.email && r.customerEmail?.toLowerCase() === user.email.toLowerCase());
-        const cleanUserPhone = (user.phoneNumber || userProfile?.phone || "").replace(/\D/g, "");
-        const cleanRemPhone = (r.customerPhone || "").replace(/\D/g, "");
-        const matchesPhone = Boolean(
-          cleanUserPhone.length >= 10 &&
-            cleanRemPhone.length >= 10 &&
-            (cleanUserPhone.endsWith(cleanRemPhone) || cleanRemPhone.endsWith(cleanUserPhone)),
-        );
-        return matchesUid || matchesEmail || matchesPhone;
-      });
+    const unsubReminders = subscribeUserReminders(user.uid, (myReminders) => {
       setUserReminders(myReminders);
     });
 
@@ -281,7 +268,7 @@ export function LoginPage({ initialMode = "login", initialTab }: LoginPageProps 
       unsubReminders();
       unsubNotes();
     };
-  }, [user, userProfile]);
+  }, [user]);
 
   // Task D: Find any delivered order overdue for feedback (delivered >= 3 days ago without feedback)
   const overdueFeedbackOrder = useMemo(() => {

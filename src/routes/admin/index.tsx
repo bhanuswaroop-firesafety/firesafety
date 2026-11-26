@@ -1121,6 +1121,27 @@ function AdminPage() {
     }
   };
 
+  // 1-Click WhatsApp Tracking Notification to Customer
+  const handleWhatsAppTracking = (ord: OrderItem) => {
+    const rawPhone = (ord.customerPhone || "").replace(/\D/g, "");
+    if (!rawPhone || rawPhone.length < 10) {
+      showSuccessMessage("Order has no valid customer mobile number.");
+      return;
+    }
+    const cleanPhone = rawPhone.slice(-10);
+    const courier = ord.courierName || "Authorized Logistics Partner";
+    const awb = ord.trackingNumber ? `\n📦 Consignment AWB: ${ord.trackingNumber}` : "";
+    const trackingLink =
+      ord.trackingUrl ||
+      `https://sriudharchienterprises.com/orders?tab=tracking&orderId=${ord.orderNumber || ord.id}`;
+    const note = ord.dispatchNote ? `\n📝 Dispatch Routing: ${ord.dispatchNote}` : "";
+
+    const text = encodeURIComponent(
+      `Hello ${ord.customerName || "Valued Customer"}, your industrial fire safety order #${ord.orderNumber || ord.id} from Sri Udharchi Enterprises has been DISPATCHED via ${courier}!${awb}\n\n🚚 Live Consignment Tracking Link:\n${trackingLink}${note}\n\nFor 24/7 technical and dispatch support, reach our Palasamudram Logistics Desk: +91 8639858221.\nSri Udharchi Enterprises`,
+    );
+    window.open(`https://wa.me/91${cleanPhone}?text=${text}`, "_blank");
+  };
+
   // Confirm Shipping with Courier & Tracking info
   const handleConfirmShippingOrder = async () => {
     if (!shippingOrder?.id) return;
@@ -1138,8 +1159,15 @@ function AdminPage() {
         note,
         updatedBy: userProfile?.displayName || user?.email || "Admin",
       });
+
+      // Attempt automated email dispatch
+      const emailRes = await triggerOrderShippingEmail(shippingOrder.id, shippingOrder.orderNumber);
+      const emailStatusText = emailRes.success
+        ? "Automated dispatch email sent to customer!"
+        : "Email notice: Configure Gmail App Password in Settings -> Communication to enable auto-emails.";
+
       showSuccessMessage(
-        `Order #${shippingOrder.orderNumber || shippingOrder.id} marked as SHIPPED with courier tracking! Automated dispatch email & portal tracking notification sent to customer.`,
+        `Order #${shippingOrder.orderNumber || shippingOrder.id} marked as SHIPPED with courier tracking! In-app notification delivered. ${emailStatusText}`,
       );
       setShippingOrder(null);
     } catch (err: unknown) {
@@ -2435,15 +2463,26 @@ function AdminPage() {
                                   <Truck className="size-4" />
                                 </button>
                                 {(ord.status === "shipped" || ord.status === "dispatched" || ord.status === "delivered") && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleResendShippingEmail(ord)}
-                                    className="rounded-md p-1.5 text-purple-600 hover:bg-purple-500/10 hover:text-purple-700 dark:text-purple-400"
-                                    title="Send / Resend Shipping Confirmation Email to Customer"
-                                    aria-label={`Resend dispatch email for order ${ord.orderNumber}`}
-                                  >
-                                    <Mail className="size-4" />
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleWhatsAppTracking(ord)}
+                                      className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
+                                      title="Notify Customer via WhatsApp with Live Tracking"
+                                      aria-label={`Send WhatsApp tracking for order ${ord.orderNumber}`}
+                                    >
+                                      <MessageSquare className="size-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleResendShippingEmail(ord)}
+                                      className="rounded-md p-1.5 text-purple-600 hover:bg-purple-500/10 hover:text-purple-700 dark:text-purple-400"
+                                      title="Send / Resend Shipping Confirmation Email to Customer"
+                                      aria-label={`Resend dispatch email for order ${ord.orderNumber}`}
+                                    >
+                                      <Mail className="size-4" />
+                                    </button>
+                                  </>
                                 )}
                                 <button
                                   type="button"
@@ -5482,6 +5521,20 @@ function AdminPage() {
                                           onChange={async (e) => {
                                             const nextStatus = e.target.value as OrderItem["status"];
                                             const targetId = ord.id || ord.orderNumber;
+                                            if (nextStatus === "shipped") {
+                                              setShippingOrder(ord);
+                                              setCourierInput(ord.courierName || "Blue Dart Express");
+                                              setTrackingNumInput(ord.trackingNumber || "");
+                                              setTrackingUrlInput(ord.trackingUrl || "");
+                                              setDispatchNoteInput(ord.dispatchNote || "Package dispatched from central distribution hub");
+                                              return;
+                                            }
+                                            if (nextStatus === "delivered") {
+                                              setDeliveringOrder(ord);
+                                              setInstallDateInput(getKolkataDateString());
+                                              setDeliveryNoteInput("Delivered and certified on site");
+                                              return;
+                                            }
                                             if (targetId) {
                                               await updateOrderStatus(targetId, nextStatus);
                                               showSuccessMessage(
@@ -7058,6 +7111,56 @@ function AdminPage() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-2 border-t border-border/60">
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Automated Dispatch SMTP / Gmail User
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                          <input
+                            type="email"
+                            value={contactSettings.smtpUser || ""}
+                            onChange={(e) =>
+                              setContactSettings({
+                                ...contactSettings,
+                                smtpUser: e.target.value,
+                              })
+                            }
+                            placeholder="sriudharchienterprises@gmail.com"
+                            className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none font-mono"
+                          />
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Sender Gmail address used by Cloud Functions to dispatch automated customer shipment updates.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-foreground mb-1">
+                          Gmail App Password (16 characters)
+                        </label>
+                        <div className="relative">
+                          <Key className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                          <input
+                            type="password"
+                            value={contactSettings.smtpPass || ""}
+                            onChange={(e) =>
+                              setContactSettings({
+                                ...contactSettings,
+                                smtpPass: e.target.value,
+                              })
+                            }
+                            placeholder="xxxx xxxx xxxx xxxx"
+                            className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none font-mono"
+                          />
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Generate via Google Account &rarr; Security &rarr; 2-Step Verification &rarr; App Passwords.
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="text-xs">
                       <label className="block font-semibold text-foreground mb-1">
                         Registered Office Address
@@ -7697,7 +7800,7 @@ function AdminPage() {
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+              <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
                 <Button
                   variant="outline"
                   size="sm"
@@ -7705,6 +7808,27 @@ function AdminPage() {
                   disabled={isSubmittingShipping}
                 >
                   Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  onClick={() => {
+                    const currentOrd = {
+                      ...shippingOrder,
+                      courierName: courierInput.trim() || "Blue Dart Express",
+                      trackingNumber: trackingNumInput.trim(),
+                      trackingUrl: trackingUrlInput.trim(),
+                      dispatchNote: dispatchNoteInput.trim(),
+                    };
+                    handleConfirmShippingOrder();
+                    handleWhatsAppTracking(currentOrd);
+                  }}
+                  disabled={isSubmittingShipping || !trackingNumInput.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                  title="Confirm dispatch and open customer WhatsApp chat with live tracking"
+                >
+                  <MessageSquare className="size-3.5" />
+                  <span>Dispatch &amp; WhatsApp User</span>
                 </Button>
                 <Button
                   size="sm"

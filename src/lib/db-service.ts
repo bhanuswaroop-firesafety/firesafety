@@ -91,6 +91,8 @@ export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   secondaryPhone: "+91 9390326541",
   supportEmail: "support@udharchi.in",
   adminEmail: "bhanuswaroop04@gmail.com",
+  smtpUser: "sriudharchienterprises@gmail.com",
+  smtpPass: "",
   legalName: "Sri Udharchi Enterprises (Proprietor: Dabbara Bhanu Swaroop)",
   proprietor: "Dabbara Bhanu Swaroop",
   registeredAddress: "H-7, Kubera Hills, Palasamudram, Sri Sathya Sai District, AP - 515241",
@@ -736,7 +738,8 @@ export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
     id: orderNumber,
     orderId: orderNumber,
     orderNumber,
-    customerId: order.customerId,
+    customerId: order.customerId || (order as any).userId || undefined,
+    userId: order.customerId || (order as any).userId || undefined,
     customerName: order.customerName || "Customer",
     customerPhone: rawPhone,
     customerEmail: rawEmail,
@@ -834,21 +837,74 @@ export function subscribeOrders(callback: (orders: OrderItem[]) => void): () => 
 export function subscribeUserOrders(
   customerId: string,
   callback: (orders: OrderItem[]) => void,
+  userEmail?: string | null,
 ): () => void {
-  const q = query(collection(db, "orders"), where("customerId", "==", customerId));
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const orders = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as OrderItem[];
-      callback(orders);
-    },
-    (err) => {
-      console.error("Firestore user orders subscription error:", err);
-    },
-  );
+  if (!customerId && !userEmail) {
+    callback([]);
+    return () => {};
+  }
+
+  let ordersByUid: OrderItem[] = [];
+  let ordersByEmail: OrderItem[] = [];
+
+  const emitMerged = () => {
+    const map = new Map<string, OrderItem>();
+    for (const ord of [...ordersByUid, ...ordersByEmail]) {
+      const key = ord.orderNumber || ord.id || "";
+      if (key && !map.has(key)) {
+        map.set(key, ord);
+      }
+    }
+    const merged = Array.from(map.values()).sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+    callback(merged);
+  };
+
+  const unsubs: Array<() => void> = [];
+
+  if (customerId) {
+    const qUid = query(collection(db, "orders"), where("customerId", "==", customerId));
+    const unsubUid = onSnapshot(
+      qUid,
+      (snapshot) => {
+        ordersByUid = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as OrderItem[];
+        emitMerged();
+      },
+      (err) => {
+        console.error("Firestore user orders (UID) subscription error:", err);
+      },
+    );
+    unsubs.push(unsubUid);
+  }
+
+  const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : "";
+  if (cleanEmail) {
+    const qEmail = query(collection(db, "orders"), where("customerEmail", "==", cleanEmail));
+    const unsubEmail = onSnapshot(
+      qEmail,
+      (snapshot) => {
+        ordersByEmail = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as OrderItem[];
+        emitMerged();
+      },
+      (err) => {
+        console.error("Firestore user orders (Email) subscription error:", err);
+      },
+    );
+    unsubs.push(unsubEmail);
+  }
+
+  return () => {
+    unsubs.forEach((u) => u());
+  };
 }
 
 export async function getOrders(): Promise<OrderItem[]> {
@@ -958,15 +1014,30 @@ export async function updateOrderStatus(
   if (trackingUrl !== undefined) updates.trackingUrl = trackingUrl;
   if (dispatchNote !== undefined) updates.dispatchNote = dispatchNote;
 
+  const customerTarget = existingOrder.customerId || (existingOrder as any).userId;
+
+  if (normStatus === "confirmed") {
+    if (customerTarget) {
+      createNotification({
+        userId: customerTarget,
+        title: "Order Confirmed & Processing 📋",
+        message: `Your equipment order #${existingOrder.orderNumber || orderId} has been confirmed and scheduled for dispatch from our Palasamudram Logistics Depot.`,
+        type: "order",
+        orderId: existingOrder.orderNumber || orderId,
+        read: false,
+        createdAt: nowIso,
+      }).catch((e) => console.warn("Auto confirm notification notice:", e));
+    }
+  }
+
   if (normStatus === "shipped") {
     updates.shippedAt = nowIso;
 
     // Send real-time in-app notification to user
-    const customerTarget = existingOrder.customerId;
     if (customerTarget) {
       createNotification({
         userId: customerTarget,
-        title: "Order Shipped! 🚚",
+        title: "Order Dispatched & In Transit 🚚",
         message: `Your safety equipment order #${existingOrder.orderNumber || orderId} has been shipped${finalCourier ? ` via ${finalCourier}` : ""}.${finalTrackingNum ? ` Tracking ID: ${finalTrackingNum}.` : ""} Open live tracking in your sidebar to track delivery progress.`,
         type: "order",
         orderId: existingOrder.orderNumber || orderId,
@@ -981,6 +1052,20 @@ export async function updateOrderStatus(
     );
   }
 
+  if (normStatus === "cancelled") {
+    if (customerTarget) {
+      createNotification({
+        userId: customerTarget,
+        title: "Order Cancelled ⚠️",
+        message: `Your equipment order #${existingOrder.orderNumber || orderId} has been cancelled.${note ? ` Reason: ${note}` : ""}`,
+        type: "order",
+        orderId: existingOrder.orderNumber || orderId,
+        read: false,
+        createdAt: nowIso,
+      }).catch((e) => console.warn("Auto cancellation notification notice:", e));
+    }
+  }
+
   if (normStatus === "delivered") {
     const finalDeliveredAt = deliveredAt || nowIso;
     const finalInstallDate = installDate || getKolkataDateString();
@@ -988,7 +1073,6 @@ export async function updateOrderStatus(
     updates.installDate = finalInstallDate;
 
     // Send real-time delivery notification to user
-    const customerTarget = existingOrder.customerId;
     if (customerTarget) {
       createNotification({
         userId: customerTarget,
@@ -2273,6 +2357,30 @@ export function subscribeReminders(callback: (reminders: ReminderItem[]) => void
   );
 }
 
+export function subscribeUserReminders(
+  userId: string,
+  callback: (reminders: ReminderItem[]) => void,
+): () => void {
+  if (!userId) {
+    callback([]);
+    return () => {};
+  }
+  const q = query(collection(db, "reminders"), where("userId", "==", userId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as ReminderItem[];
+      callback(items);
+    },
+    (err) => {
+      console.error("Firestore user reminders subscription error:", err);
+    },
+  );
+}
+
 export async function markReminderCompleted(
   reminderId: string,
   completionDateOrNote?: string,
@@ -2404,22 +2512,41 @@ export function subscribeNotifications(
   userId: string,
   callback: (notifications: NotificationItem[]) => void,
 ): () => void {
-  const colRef = collection(db, "notifications");
+  if (!userId) {
+    callback([]);
+    return () => {};
+  }
+
+  if (userId === "admin") {
+    const colRef = collection(db, "notifications");
+    return onSnapshot(
+      colRef,
+      (snapshot) => {
+        const all = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as NotificationItem[];
+        callback(all);
+      },
+      (err) => {
+        console.error("Firestore notifications subscription error:", err);
+      },
+    );
+  }
+
+  // Regular authenticated user: strictly query their userId to comply with Firestore security rules
+  const q = query(collection(db, "notifications"), where("userId", "==", userId));
   return onSnapshot(
-    colRef,
+    q,
     (snapshot) => {
-      const all = snapshot.docs.map((d) => ({
+      const items = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       })) as NotificationItem[];
-      const userNotifs = all.filter(
-        (n) =>
-          n.userId === userId || n.userId === "all" || (userId === "admin" && n.userId === "admin"),
-      );
-      callback(userNotifs);
+      callback(items);
     },
     (err) => {
-      console.error("Firestore notifications subscription error:", err);
+      console.error("Firestore user notifications subscription error:", err);
     },
   );
 }

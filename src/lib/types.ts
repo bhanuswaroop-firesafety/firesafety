@@ -83,6 +83,7 @@ export interface OrderItem {
   orderId?: string | undefined;
   orderNumber: string;
   customerId?: string | undefined;
+  userId?: string | undefined;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -309,6 +310,8 @@ export interface ContactSettings {
   secondaryPhone?: string | undefined;
   supportEmail: string;
   adminEmail: string;
+  smtpUser?: string | undefined;
+  smtpPass?: string | undefined;
   address?: string | undefined;
   registeredAddress?: string | undefined;
   officeDepotAddress?: string | undefined;
