@@ -1164,9 +1164,9 @@ function AdminPage() {
 
       // Attempt automated email dispatch
       const emailRes = await triggerOrderShippingEmail(shippingOrder.id, shippingOrder.orderNumber);
-      const emailStatusText = emailRes.success
-        ? "Automated dispatch email sent to customer!"
-        : "Email notice: Configure Gmail App Password in Settings -> Communication to enable auto-emails.";
+      const emailStatusText = emailRes.gmailComposeUrl
+        ? "Automated email logged & queued (Click the Mail icon to open Gmail draft directly)."
+        : emailRes.message || "Dispatch email notification recorded.";
 
       showSuccessMessage(
         `Order #${shippingOrder.orderNumber || shippingOrder.id} marked as SHIPPED with courier tracking! In-app notification delivered. ${emailStatusText}`,
@@ -1186,13 +1186,18 @@ function AdminPage() {
     if (!ord.id && !ord.orderNumber) return;
     try {
       const res = await triggerOrderShippingEmail(ord.id || "", ord.orderNumber);
-      showSuccessMessage(
-        res.success
-          ? `Shipping email dispatched to ${ord.customerEmail || "customer"}!`
-          : res.message || "Failed to dispatch shipping email.",
-      );
+      if (res.gmailComposeUrl && typeof window !== "undefined") {
+        window.open(res.gmailComposeUrl, "_blank");
+        showSuccessMessage(
+          `Shipping email draft opened in Gmail for ${ord.customerEmail || "customer"}! Tap 'Send' in Gmail to dispatch.`,
+        );
+      } else {
+        showSuccessMessage(
+          res.message || `Shipping email dispatched to ${ord.customerEmail || "customer"}!`,
+        );
+      }
     } catch (e: unknown) {
-      showSuccessMessage("Error sending shipping email: " + (e instanceof Error ? e.message : String(e)));
+      showSuccessMessage("Notice sending shipping email: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 

@@ -237,6 +237,14 @@ service cloud.firestore {
       allow create: if true; // Allows clients to log checkout attempts, successes, and failures
       allow read, update, delete: if isAdmin();
     }
+
+    // ========================================================
+    // Mail Queue: Standard Firebase Trigger Email collection
+    // ========================================================
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
 
