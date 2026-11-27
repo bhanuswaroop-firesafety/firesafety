@@ -242,7 +242,10 @@ service cloud.firestore {
     // Mail Queue: Standard Firebase Trigger Email collection
     // ========================================================
     match /mail/{mailId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() || (
+        request.resource.data.to is string &&
+        request.resource.data.message is map
+      );
       allow read, update, delete: if isAdmin();
     }
   }

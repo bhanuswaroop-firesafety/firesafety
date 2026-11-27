@@ -815,6 +815,76 @@ export async function submitOrder(order: Partial<OrderItem>): Promise<string> {
     }
   }
 
+  // 4. Automatically queue order confirmation email to customer via mail collection (Firebase Extension)
+  if (cleanOrder.customerEmail) {
+    try {
+      const itemsListHtml = (cleanOrder.items || [])
+        .map(
+          (it) =>
+            `<tr><td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${it.name}</td><td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">${it.quantity}</td><td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">₹${(it.price * it.quantity).toLocaleString("en-IN")}</td></tr>`,
+        )
+        .join("");
+
+      const orderConfirmHtml = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+  <div style="background-color: #7c2d12; background: linear-gradient(135deg, #7c2d12 0%, #ea580c 100%); padding: 24px; text-align: center; color: #ffffff;">
+    <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">Sri Udharchi Enterprises</h1>
+    <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">NBC 2016 &amp; IS Certified Industrial Fire Protection</p>
+  </div>
+  <div style="padding: 24px;">
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+      <h2 style="margin: 0 0 6px; font-size: 17px; color: #166534;">✅ Order Confirmed!</h2>
+      <p style="margin: 0; font-size: 14px; color: #15803d;">Thank you for your order, <strong>${cleanOrder.customerName || "Customer"}</strong>. Your fire safety equipment is being prepared for dispatch.</p>
+    </div>
+    <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+      <table style="width: 100%; font-size: 14px; color: #334155;">
+        <tr><td style="padding: 4px 0; color: #64748b;">Order Number:</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">#${orderNumber}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Total Amount:</td><td style="padding: 4px 0; font-weight: 600; text-align: right; color: #0f172a;">₹${cleanOrder.totalAmount?.toLocaleString("en-IN")}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Delivery Method:</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${cleanOrder.shippingType === "express" ? "Express Logistics" : "Standard Logistics"}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Estimated Delivery:</td><td style="padding: 4px 0; font-weight: 600; text-align: right; color: #ea580c;">${cleanOrder.estimatedDelivery || "3-5 business days"}</td></tr>
+      </table>
+    </div>
+    ${
+      itemsListHtml
+        ? `
+    <h3 style="font-size: 15px; color: #1e293b; margin: 0 0 10px;">Order Summary:</h3>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
+      <thead>
+        <tr style="background: #f1f5f9; color: #475569; text-align: left;">
+          <th style="padding: 8px 12px; border-bottom: 2px solid #cbd5e1;">Item</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #cbd5e1; text-align: center;">Qty</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #cbd5e1; text-align: right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemsListHtml}</tbody>
+    </table>`
+        : ""
+    }
+    <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 13px; color: #64748b; line-height: 1.5;">
+      <p style="margin: 0 0 4px;"><strong>Delivery Address:</strong> ${cleanOrder.shippingAddress || "As registered in profile"}</p>
+      <p style="margin: 0;">For dispatch questions or installation queries, contact Palasamudram Logistics Desk: <strong>+91 8639858221</strong> or <strong>sriudharchienterprises@gmail.com</strong>.</p>
+    </div>
+  </div>
+</div>`;
+
+      await addDoc(collection(db, "mail"), {
+        to: cleanOrder.customerEmail,
+        replyTo: "sriudharchienterprises@gmail.com",
+        message: {
+          subject: `Order Confirmation #${orderNumber} - Sri Udharchi Enterprises`,
+          text: `Dear ${cleanOrder.customerName || "Customer"},\n\nThank you for choosing Sri Udharchi Enterprises! Your order #${orderNumber} for ₹${cleanOrder.totalAmount?.toLocaleString("en-IN")} has been placed successfully.\n\nDelivery to: ${cleanOrder.shippingAddress || ""}\nExpected delivery: ${cleanOrder.estimatedDelivery || "3-5 business days"}\n\nSupport Desk: +91 8639858221 | sriudharchienterprises@gmail.com`,
+          html: orderConfirmHtml,
+        },
+        orderId: orderNumber,
+        orderNumber: orderNumber,
+        type: "order_confirmation",
+        createdAt: serverTimestamp(),
+      });
+    } catch (mailErr) {
+      console.warn("Order confirmation mail queue notice:", mailErr);
+    }
+  }
+
   return orderNumber;
 }
 
@@ -1194,20 +1264,76 @@ export async function triggerOrderShippingEmail(
         });
       } catch (err) {}
 
-      // Add to standard mail queue collection
+      // Add to standard mail queue collection (Firebase firestore-send-email Extension)
       if (recipientEmail) {
         try {
+          const itemsSummary = (orderData.items || [])
+            .map(
+              (it) =>
+                `<tr><td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${it.name}</td><td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">${it.quantity}</td><td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">₹${(it.price * it.quantity).toLocaleString("en-IN")}</td></tr>`,
+            )
+            .join("");
+
+          const shippingHtml = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+  <div style="background-color: #7c2d12; background: linear-gradient(135deg, #7c2d12 0%, #ea580c 100%); padding: 24px; text-align: center; color: #ffffff;">
+    <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">Sri Udharchi Enterprises</h1>
+    <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">NBC 2016 &amp; IS Certified Industrial Fire Protection</p>
+  </div>
+  <div style="padding: 24px;">
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+      <h2 style="margin: 0 0 6px; font-size: 17px; color: #166534;">📦 Your Order Has Shipped!</h2>
+      <p style="margin: 0; font-size: 14px; color: #15803d;">Your fire safety equipment is on the way from our Palasamudram Logistics Depot.</p>
+    </div>
+    <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+      <table style="width: 100%; font-size: 14px; color: #334155;">
+        <tr><td style="padding: 4px 0; color: #64748b;">Order Number:</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">#${ordNum}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Courier Partner:</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${courier}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Tracking ID / AWB:</td><td style="padding: 4px 0; font-weight: 600; text-align: right; color: #ea580c;">${awb}</td></tr>
+      </table>
+      <div style="text-align: center; margin-top: 16px;">
+        <a href="${trackingUrl}" style="background-color: #ea580c; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Track Live Shipment</a>
+      </div>
+    </div>
+    ${
+      itemsSummary
+        ? `
+    <h3 style="font-size: 15px; color: #1e293b; margin: 0 0 10px;">Equipment Dispatched:</h3>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
+      <thead>
+        <tr style="background: #f1f5f9; color: #475569; text-align: left;">
+          <th style="padding: 8px 12px; border-bottom: 2px solid #cbd5e1;">Item</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #cbd5e1; text-align: center;">Qty</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #cbd5e1; text-align: right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemsSummary}</tbody>
+    </table>`
+        : ""
+    }
+    <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 13px; color: #64748b; line-height: 1.5;">
+      <p style="margin: 0 0 4px;"><strong>Delivery Address:</strong> ${orderData.shippingAddress || "As registered in profile"}</p>
+      <p style="margin: 0;">For 24/7 technical and dispatch support, reach our Palasamudram Logistics Desk: <strong>+91 8639858221</strong> or email <strong>sriudharchienterprises@gmail.com</strong>.</p>
+    </div>
+  </div>
+</div>`;
+
           await addDoc(collection(db, "mail"), {
             to: recipientEmail,
+            replyTo: "sriudharchienterprises@gmail.com",
             message: {
               subject: `Your Safety Order #${ordNum} Has Shipped via ${courier} (AWB: ${awb})`,
-              html: `<p>Dear ${orderData.customerName || "Customer"},</p><p>Your safety equipment order #${ordNum} has been dispatched via ${courier} (AWB: ${awb}). Track live: <a href="${trackingUrl}">${trackingUrl}</a></p>`,
+              text: `Dear ${orderData.customerName || "Customer"},\n\nYour industrial fire protection equipment for order #${ordNum} has been dispatched from our Palasamudram Logistics Depot via ${courier}.\n\nAirway Bill (AWB): ${awb}\nLive Tracking Link: ${trackingUrl}\n\nFor support, call +91 8639858221.\n\nSri Udharchi Enterprises`,
+              html: shippingHtml,
             },
             orderId: finalDocId,
             orderNumber: ordNum,
+            type: "order_shipping",
             createdAt: serverTimestamp(),
           });
-        } catch (mailQueueErr) {}
+        } catch (mailQueueErr) {
+          console.warn("Mail collection insertion notice:", mailQueueErr);
+        }
       }
 
       // Generate direct 1-click Gmail Web compose link
